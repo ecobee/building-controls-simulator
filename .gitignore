@@ -12,3 +12,4 @@ Output_EPExport_Test FMI 1.0 CS/
 *eplusssz.csv
 *epluszsz.csv
 *_preped.idf
+*.egg-info
