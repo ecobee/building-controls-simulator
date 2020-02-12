@@ -1,0 +1,21 @@
+[[source]]
+name = "pypi"
+url = "https://pypi.org/simple"
+verify_ssl = true
+
+[dev-packages]
+pytest = "*"
+
+[packages]
+matplotlib = "*"
+numpy = "*"
+cython = "*"
+lxml = "*"
+scipy = "*"
+eppy = "*"
+pandas = "==1.0"
+jupyterlab = "*"
+setuptools = "*"
+
+[requires]
+python_version = "3.7"

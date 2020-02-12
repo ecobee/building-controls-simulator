@@ -1,0 +1,14 @@
+*.fmu
+*.DS_store
+*.txt
+*.png
+*.csv
+idf-to-fmu-export-prep-darwin
+Output_EPExport_Slave/
+Output_EPExport_Test FMI 1.0 CS/
+*__pycache__/
+*eplusout*
+*sqlite.err
+*eplusssz.csv
+*epluszsz.csv
+*_preped.idf
