@@ -1,3 +1,6 @@
+#!/usr/bin/env python
+# created by Tom Stesco tom.s@ecobee.com
+
 import pytest
 
 from types import ModuleType

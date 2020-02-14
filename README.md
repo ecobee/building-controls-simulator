@@ -11,7 +11,7 @@ To setup this repo open up your bash terminal and follow along. Ideally use
 your SSH key for gitlab. If you haven't set that up just use HTTPS.
 
 ```bash
-git clone 
+git clone
 cd building-control-simulator
 ```
 
@@ -28,7 +28,7 @@ The bash script `run.sh` provides a minimal CLI to manage the service.
 . scripts/run.sh -i
 
 # set EnergyPlus version with the included manager (it just changes env variables and symboli links)
-. src/bash/epvm.sh 9-2-0
+. scripts/epvm.sh 9-2-0
 
 # exit container shell
 exit
@@ -48,7 +48,7 @@ for those things.
 . scripts/run.sh -s
 
 # in the container shell
-. src/bash/epvm.sh 9-2-0
+. scripts/epvm.sh 9-2-0
 
 # start a pipenv shell with the installed python development environment
 pipenv shell

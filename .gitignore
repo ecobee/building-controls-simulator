@@ -16,3 +16,5 @@ Output_EPExport_Test FMI 1.0 CS/
 *idf-to-fmu-export-prep-linux
 *.exe
 *.mat
+*.pytest_cache
+*preprocessed/
