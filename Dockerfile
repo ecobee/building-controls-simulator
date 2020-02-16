@@ -58,6 +58,10 @@ RUN apt-get update && apt-get upgrade -y \
     subversion \
     && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
+# install nodejs and npm (for plotly)
+RUN curl -sL https://deb.nodesource.com/setup_12.x | bash - \
+    && apt-get install -y nodejs
+
 # install pip
 RUN curl --silent https://bootstrap.pypa.io/get-pip.py | python3
 
@@ -107,7 +111,13 @@ RUN cd "${PACKAGE_DIR}" \
     && . ${HOME}/.local/share/virtualenvs/$( ls "${HOME}/.local/share/virtualenvs/" | grep "${PACKAGE_NAME}" )/bin/activate \
     && python "setup.py" install --fmil-home="${FMIL_HOME}" \
     && cd "${PACKAGE_DIR}" \
-    && pip install -e ./
+    && pip install -e ./ \
+    && export NODE_OPTIONS=--max-old-space-size=4096 \
+    && jupyter labextension install @jupyter-widgets/jupyterlab-manager@1.1 --no-build \
+    && jupyter labextension install jupyterlab-plotly@1.5.0 --no-build \
+    && jupyter labextension install plotlywidget@1.5.0 --no-build \
+    && jupyter lab build \
+    && unset NODE_OPTIONS
 
 # WARNING: FOR LOCAL HOSTING ONLY
 # disables authentication for jupyter notebook server 

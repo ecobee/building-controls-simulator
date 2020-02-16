@@ -16,6 +16,9 @@ eppy = "*"
 pandas = "==1.0"
 jupyterlab = "*"
 setuptools = "*"
+plotly = "*"
+ipywidgets = "*"
+psutil = "*"
 
 [requires]
 python_version = "3.7"

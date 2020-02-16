@@ -21,7 +21,12 @@ class IDFPreprocessor(object):
     ```
 
     """
-    def __init__(self, idf_name=None, idf_path=None, weather_name=None, weather_path=None, timesteps=60):
+    def __init__(self,
+        idf_name=None,
+        idf_path=None,
+        weather_name=None,
+        weather_path=None,
+        timesteps=12):
         """Initialize `IDFPreprocessor` with an IDF file and desired actions"""
         self.ep_version = os.environ["ENERGYPLUS_INSTALL_VERSION"]
         self.idf_dir = os.environ["IDF_DIR"]
@@ -64,7 +69,10 @@ class IDFPreprocessor(object):
         self.idf_prep_dir = os.path.join(self.idf_dir, "preprocessed")
         self.idf_prep_path = os.path.join(self.idf_prep_dir, self.idf_prep_name)
 
-        self.fmu_name = self.idf_prep_name[:self.idf_prep_name.index(".idf")]+".fmu"
+        self.fmu_name = self.idf_prep_name.replace(".idf", ".fmu").replace("-", "_")
+        if self.fmu_name[0].isdigit():
+            self.fmu_name = "f_" + self.fmu_name
+
         self.fmu_path = os.path.join(self.fmu_dir, self.fmu_name)
 
 
@@ -83,7 +91,7 @@ class IDFPreprocessor(object):
         # set the intial temperature via the initial setpoint which will be tracked 
         # in the warmup simulation
         self.prep_onoff_setpt_control(
-            FMU_control_type_var_init=2,
+            FMU_control_type_var_init=1,
             FMU_control_heating_var_init=21.0,
             FMU_control_cooling_var_init=21.0
         )
@@ -92,9 +100,9 @@ class IDFPreprocessor(object):
             "Zone Air Temperature",
             "Zone Thermostat Heating Setpoint Temperature",
             "Zone Thermostat Cooling Setpoint Temperature",
-            # "Zone Air System Sensible Heating Rate",
-            # "Zone Air System Sensible Cooling Rate",
-            # "Zone Total Internal Total Heating Rate",
+            "Zone Air System Sensible Heating Rate",
+            "Zone Air System Sensible Cooling Rate",
+            "Zone Total Internal Total Heating Rate",
             # "Zone Total Internal Latent Gain Rate",
             # "Zone Total Internal Convective Heating Rate",
             # "Zone Total Internal Radiant Heating Rate",
@@ -207,16 +215,31 @@ class IDFPreprocessor(object):
         heating_stp_schedule_name = "CONST_heating_stp_schedule"
 
         # create a temperature schedule limits
-        if not [s_obj for s_obj in self.ep_idf.idfobjects['ScheduleTypeLimits'.upper()] 
-                if "Temperature" in s_obj.Name]:
-            self.ep_idf.newidfobject(
-                'ScheduleTypeLimits'.upper(),
-                Name="Temperature",
-                Lower_Limit_Value=-99.0,
-                Upper_Limit_Value=200.0,
-                Numeric_Type="CONTINUOUS",
-                Unit_Type="Temperature"
-            )
+        self.popifdobject_by_name("ScheduleTypeLimits", "temperature")
+        self.ep_idf.newidfobject(
+            'ScheduleTypeLimits'.upper(),
+            Name="Temperature",
+            Lower_Limit_Value=-100.0,
+            Upper_Limit_Value=200.0,
+            Numeric_Type="CONTINUOUS",
+            Unit_Type="Temperature"
+        )
+
+        # for i, s_obj in enumerate(self.ep_idf.idfobjects['ScheduleTypeLimits'.upper()]): 
+        #     if "temperature" in s_obj.Name.lower():
+        #         self.editted_temperature_schedule = True
+        #         s_obj.Lower_Limit_Value = -100.0
+        #         s_obj.Upper_Limit_Value = 200.0
+
+        # if not self.editted_temperature_schedule:
+        #     self.ep_idf.newidfobject(
+        #         'ScheduleTypeLimits'.upper(),
+        #         Name="Temperature",
+        #         Lower_Limit_Value=-100.0,
+        #         Upper_Limit_Value=200.0,
+        #         Numeric_Type="CONTINUOUS",
+        #         Unit_Type="Temperature"
+        #     )
 
         # create FMU heating setpoint schedule variable
         self.ep_idf.newidfobject(
@@ -261,12 +284,14 @@ class IDFPreprocessor(object):
         
         # over write ZoneControl:Thermostat control objects
         for tstat in self.ep_idf.idfobjects['zonecontrol:thermostat'.upper()]:
+
             tstat.Control_Type_Schedule_Name = control_schedule_type_name
             tstat.Control_1_Object_Type = "ThermostatSetpoint:SingleHeating"
             tstat.Control_1_Name = heating_stp_name
             tstat.Control_2_Object_Type = "ThermostatSetpoint:SingleCooling"
             tstat.Control_2_Name = cooling_stp_name
 
+        self.popallidfobjects("ThermostatSetpoint:SingleHeating")
         # create new thermostat setpoint for cooling
         self.ep_idf.newidfobject(
             "ThermostatSetpoint:SingleHeating".upper(),
@@ -274,6 +299,7 @@ class IDFPreprocessor(object):
             Setpoint_Temperature_Schedule_Name=heating_stp_schedule_name
         )
 
+        self.popallidfobjects("ThermostatSetpoint:SingleCooling")
         # create new thermostat setpoint for heating
         self.ep_idf.newidfobject(
             "ThermostatSetpoint:SingleCooling".upper(),
@@ -391,7 +417,14 @@ class IDFPreprocessor(object):
         '''
         pops all idf objects of any key name if object exists.
         extension of eppy.modeleditor.IDF.popidfobjects
-        '''
+        '''        
         if idf_obj_name in self.ep_idf.idfobjects:
             for i in range(len(self.ep_idf.idfobjects[idf_obj_name])):
                 self.ep_idf.popidfobject(idf_obj_name, 0)
+
+    def popifdobject_by_name(self, idf_objs, name):
+        """
+        """
+        for i, s_obj in enumerate(self.ep_idf.idfobjects['ScheduleTypeLimits'.upper()]): 
+            if "temperature" in s_obj.Name.lower():
+                self.ep_idf.popidfobject('ScheduleTypeLimits', i)
