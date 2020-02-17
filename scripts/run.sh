@@ -8,7 +8,7 @@ CONTAINER_ID="c3dd7717bb6f"
 # ==============================================================================
 
 PACKAGE_NAME="building-control-simulator"
-VERSION="0.1.0"
+VERSION="0.1.1"
 CONTAINER_NAME="${PACKAGE_NAME}"
 LOCAL_MNT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && cd .. && pwd )"
 DOCKER_LIB_DIR="/root/home/lib"

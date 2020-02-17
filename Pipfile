@@ -19,6 +19,7 @@ setuptools = "*"
 plotly = "*"
 ipywidgets = "*"
 psutil = "*"
+attrs = "*"
 
 [requires]
 python_version = "3.7"

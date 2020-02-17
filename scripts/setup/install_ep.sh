@@ -36,6 +36,6 @@ function install_ep () {
 }
 
 install_ep "8-9-0" "40101eaafd" "${ENERGYPLUS_INSTALL_DIR}"
-install_ep "9-0-1" "bb7ca4f0da" "${ENERGYPLUS_INSTALL_DIR}"
-install_ep "9-1-0" "08d2e308bb" "${ENERGYPLUS_INSTALL_DIR}"
-install_ep "9-2-0" "921312fa1d" "${ENERGYPLUS_INSTALL_DIR}"
+# install_ep "9-0-1" "bb7ca4f0da" "${ENERGYPLUS_INSTALL_DIR}"
+# install_ep "9-1-0" "08d2e308bb" "${ENERGYPLUS_INSTALL_DIR}"
+# install_ep "9-2-0" "921312fa1d" "${ENERGYPLUS_INSTALL_DIR}"

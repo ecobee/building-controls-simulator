@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 # created by Tom Stesco tom.s@ecobee.com
 
 import os
@@ -7,10 +6,11 @@ import shlex
 import shutil
 
 import pandas as pd
+import attr
 import numpy as np
 from eppy import modeleditor
 
-
+@attr.s
 class IDFPreprocessor(object):
     """Converts IDFs (Input Data Files) for EnergyPlus into working IDFs.
 
@@ -80,6 +80,13 @@ class IDFPreprocessor(object):
         print("IDFPreprocessor loading .idf file: {}".format(self.idf_path))
         self.ep_idf = modeleditor.IDF(self.idf_path)
 
+        self.zone_outputs = []
+        self.building_outputs = []
+        # config
+        self.FMU_control_cooling_stp_name = "FMU_T_cooling_stp"
+        self.FMU_control_heating_stp_name = "FMU_T_heating_stp"
+        self.FMU_control_type_name = "FMU_T_control_type"
+
 
     def preprocess(self):
         """add control signals to IDF before making FMU"""
@@ -91,9 +98,9 @@ class IDFPreprocessor(object):
         # set the intial temperature via the initial setpoint which will be tracked 
         # in the warmup simulation
         self.prep_onoff_setpt_control(
-            FMU_control_type_var_init=1,
-            FMU_control_heating_var_init=21.0,
-            FMU_control_cooling_var_init=21.0
+            FMU_control_type_name_init=1,
+            FMU_control_heating_stp_name_init=21.0,
+            FMU_control_cooling_stp_name_init=25.0
         )
         # create per zone outputs depending on HVAC system type
         zone_outputs = [
@@ -108,7 +115,7 @@ class IDFPreprocessor(object):
             # "Zone Total Internal Radiant Heating Rate",
             # "Zone Total Internal Visible Radiation Heating Rate"
         ]
-        non_zone_outputs = {
+        building_outputs = {
             "Environment": [
                 "Site Outdoor Air Relative Humidity",
                 "Site Outdoor Air Drybulb Temperature",
@@ -116,9 +123,10 @@ class IDFPreprocessor(object):
                 # "Site Direct Solar Radiation Rate per Area"
             ],
         }
+
         self.prep_ext_int_output(
             zone_outputs=zone_outputs,
-            non_zone_outputs=non_zone_outputs)
+            building_outputs=building_outputs)
 
         self.ep_idf.saveas(self.idf_prep_path)
 
@@ -127,10 +135,13 @@ class IDFPreprocessor(object):
 
     def make_fmu(self):
         """make the fmu"""
+
         cmd = f'python2.7 {self.eplustofmu_path} -i {self.idd_path} -w {self.weather_path} -d {self.idf_prep_path}'
+        
         proc = subprocess.run(shlex.split(cmd), stdout=subprocess.PIPE)
         if not proc.stdout:
             raise ValueError(f"Empty STDOUT. Invalid EnergyPlusToFMU cmd={cmd}")
+
 
         # EnergyPlusToFMU puts fmu in cwd always, move out of cwd
         shutil.move(
@@ -191,22 +202,16 @@ class IDFPreprocessor(object):
             # )
 
     def prep_onoff_setpt_control(self,
-            FMU_control_type_var_init=1,
-            FMU_control_heating_var_init=20.0,
-            FMU_control_cooling_var_init=27.0):
-        '''
+            FMU_control_type_name_init,
+            FMU_control_heating_stp_name_init,
+            FMU_control_cooling_stp_name_init):
+        """
         add external interface
         add external interface schedules for heatng and cooling setpoints
         add external interface schedule for HVAC control mode
         add HVAC setpoint schedule linked to external setpoint variable
 
-        '''
-        print("Adding on-off set point control")
-        # config
-        FMU_control_cooling_var = "FMU_T_cooling_stp"
-        FMU_control_heating_var = "FMU_T_heating_stp"
-        FMU_control_type_var = "FMU_T_control_type"
-
+        """
         # FMU_stp_control_schedule_name = "FMU_stp_control_schedule"
         control_schedule_type_name = "CONST_control_type_schedule"
         heating_stp_name = "CONST_heating_stp"
@@ -246,8 +251,8 @@ class IDFPreprocessor(object):
             "ExternalInterface:FunctionalMockupUnitExport:To:Schedule".upper(),
             Schedule_Name=heating_stp_schedule_name,
             Schedule_Type_Limits_Names="Temperature",
-            FMU_Variable_Name=FMU_control_heating_var,
-            Initial_Value=FMU_control_heating_var_init
+            FMU_Variable_Name=self.FMU_control_heating_stp_name,
+            Initial_Value=FMU_control_heating_stp_name_init
         )
 
         # create FMU cooling setpoint schedule variable
@@ -255,8 +260,8 @@ class IDFPreprocessor(object):
             "ExternalInterface:FunctionalMockupUnitExport:To:Schedule".upper(),
             Schedule_Name=cooling_stp_schedule_name,
             Schedule_Type_Limits_Names="Temperature",
-            FMU_Variable_Name=FMU_control_cooling_var,
-            Initial_Value=FMU_control_cooling_var_init
+            FMU_Variable_Name=self.FMU_control_cooling_stp_name,
+            Initial_Value=FMU_control_cooling_stp_name_init
         )
         # create a control type schedule limits
         # 0 - Uncontrolled (No specification or default)
@@ -278,8 +283,8 @@ class IDFPreprocessor(object):
             "ExternalInterface:FunctionalMockupUnitExport:To:Schedule".upper(),
             Schedule_Name=control_schedule_type_name,
             Schedule_Type_Limits_Names="Control Type",
-            FMU_Variable_Name=FMU_control_type_var,
-            Initial_Value=FMU_control_type_var_init
+            FMU_Variable_Name=self.FMU_control_type_name,
+            Initial_Value=FMU_control_type_name_init
         )
         
         # over write ZoneControl:Thermostat control objects
@@ -343,7 +348,7 @@ class IDFPreprocessor(object):
                 amln = g.Availability_Manager_List_Name
         pass
 
-    def prep_ext_int_output(self, zone_outputs=[], non_zone_outputs={}):
+    def prep_ext_int_output(self, zone_outputs=[], building_outputs={}):
         '''
         add external interface output variables
         Note: FMU input variables cannot be read directly and must be read through an
@@ -354,7 +359,7 @@ class IDFPreprocessor(object):
                 "Zone Thermostat Heating Setpoint Temperature",
                 "Zone Air System Sensible Heating Rate"
             ]
-            non_zone_outputs = {
+            building_outputs = {
                 "Environment": [
                     "Site Outdoor Air Drybulb Temperature",
                     "Site Outdoor Air Relative Humidity",
@@ -363,13 +368,17 @@ class IDFPreprocessor(object):
                 ]
             }
         '''
-        print("Adding external interface outputs")
         # overwrite all output variables
         self.popallidfobjects('Output:variable'.upper())
         self.popallidfobjects('Output:Meter:MeterFileOnly'.upper())
-        # add non_zone_outputs
-        for e in non_zone_outputs.keys():
-            for o in non_zone_outputs[e]:
+        # add building_outputs
+        for e in building_outputs.keys():
+            for o in building_outputs[e]:
+                nzo = "FMU_{}_{}".format(
+                    e.replace(" ","_").replace("-", "_"),
+                    o.replace(" ", "_").replace("-", "_")
+                )
+                
                 self.ep_idf.newidfobject(
                     'Output:variable'.upper(),
                     Key_Value=e,
@@ -380,10 +389,9 @@ class IDFPreprocessor(object):
                     "ExternalInterface:FunctionalMockupUnitExport:From:Variable".upper(),
                     OutputVariable_Index_Key_Name=e,
                     OutputVariable_Name=o,
-                    FMU_Variable_Name="FMU_{}_{}".format(
-                        e.replace(" ","_"),
-                        o.replace(" ", "_"))
+                    FMU_Variable_Name=nzo
                 )
+                self.building_outputs.append(nzo)
         # add zone_outputs
         # output IDF obj is broken out because the * key value can be used to select
         # all zones and is standard in E+ .idf files
@@ -394,16 +402,21 @@ class IDFPreprocessor(object):
                 Variable_Name=o,
                 Reporting_Frequency="Timestep"
             )
+
         for z in self.ep_idf.idfobjects['Zone'.upper()]:
             for o in zone_outputs:
+
+                zo = "FMU_{}_{}".format(
+                    z.Name.replace(" ","_").replace("-", "_"),
+                    o.replace(" ", "_").replace("-", "_")
+                )
                 self.ep_idf.newidfobject(
                     "ExternalInterface:FunctionalMockupUnitExport:From:Variable".upper(),
                     OutputVariable_Index_Key_Name=z.Name,
                     OutputVariable_Name=o,
-                    FMU_Variable_Name="FMU_{}_{}".format(
-                        z.Name.replace(" ","_"),
-                        o.replace(" ", "_"))
+                    FMU_Variable_Name=zo
                 )
+                self.zone_outputs.append(zo)
     '''
     TODO: Changes to eppy:
      - parse .idf comments differently or remove them

@@ -34,7 +34,7 @@ elif [[ "${TO_SET_VERSION}" =~ ^("8-9-0"|"9-0-1"|"9-1-0"|"9-2-0")$ ]]; then
   else
     # swap versions
     _CUR_EPLUS_NAME="EnergyPlus-${ENERGYPLUS_INSTALL_VERSION}"
-    export EPLUS_DIR=
+    export EPLUS_DIR="${ENERGYPLUS_INSTALL_DIR}/${_NEW_EPLUS_NAME}"
     export PATH="${PATH//${_CUR_EPLUS_NAME}/${_NEW_EPLUS_NAME}}"
   fi
 
@@ -44,6 +44,7 @@ elif [[ "${TO_SET_VERSION}" =~ ^("8-9-0"|"9-0-1"|"9-1-0"|"9-2-0")$ ]]; then
     export IDF_DIR="${PACKAGE_DIR}/idf/v${ENERGYPLUS_INSTALL_VERSION}"
     export IDF_PREPROCESSED_DIR="${PACKAGE_DIR}/idf/v${ENERGYPLUS_INSTALL_VERSION}/preprocessed"
     export FMU_DIR="${PACKAGE_DIR}/fmu/v${ENERGYPLUS_INSTALL_VERSION}"
+    export WEATHER_DIR="${PACKAGE_DIR}/weather"
     
     if [[ "${TO_SET_VERSION}" == "9-0-1" ]]; then
       export EPLUS_IDD="${EPLUS_DIR}/PreProcess/IDFVersionUpdater/V9-0-0-Energy+.idd"

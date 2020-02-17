@@ -27,7 +27,7 @@ class Simulator(object):
     """
     def __init__(self):
         self.control_model = ""
-        self.building_model = ""
+        self.bm = ""
         self.output_dir = os.path.join(os.environ["PACKAGE_DIR"], "data")
 
         
