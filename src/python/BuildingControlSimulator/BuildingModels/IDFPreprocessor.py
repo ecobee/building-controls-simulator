@@ -33,7 +33,7 @@ class IDFPreprocessor(object):
         self.idf_dir = os.environ["IDF_DIR"]
         self.fmu_dir = os.environ["FMU_DIR"]
         self.idd_path = os.environ["EPLUS_IDD"]
-        self.weather_dir = os.environ["WEATHER_DIR"]
+        
         self.eplustofmu_path = os.path.join(
             os.environ["EXT_DIR"],
             "EnergyPlusToFMU/Scripts/EnergyPlusToFMU.py"
@@ -54,17 +54,7 @@ class IDFPreprocessor(object):
             raise ValueError(f"""Must supply valid IDF file, 
                 idf_path={weather_path} and idf_name={weather_name}""")
 
-        if weather_path:
-            # TODO add path checking
-            self.weather_path = weather_path
-        elif weather_name:
-            for r, d, f in os.walk(self.weather_dir):
-                for fname in f:
-                    if fname == weather_name:
-                        self.weather_path = os.path.join(self.weather_dir, weather_name)
-        else:
-            raise ValueError(f"""Must supply valid weather file, 
-                weather_path={weather_path} and weather_name={weather_name}""")
+        
 
         self.idf_name = os.path.basename(self.idf_path)
         idx = self.idf_name.index(".idf")
@@ -99,12 +89,13 @@ class IDFPreprocessor(object):
 
     def preprocess(self,
         init_control_type=1,
-        init_temperature=21.
+        init_temperature=21.,
+        timesteps_per_hour=60
         ):
         """add control signals to IDF before making FMU"""
 
         self.prep_ep_version(self.ep_version.split("-"))
-        self.prep_timesteps(self.timesteps)
+        self.prep_timesteps(timesteps_per_hour)
         self.prep_runtime()
         self.prep_ext_int()
         # set the intial temperature via the initial setpoint which will be tracked 
@@ -145,10 +136,10 @@ class IDFPreprocessor(object):
         return self.idf_prep_path
 
 
-    def make_fmu(self):
+    def make_fmu(self, weather_path):
         """make the fmu"""
 
-        cmd = f'python2.7 {self.eplustofmu_path} -i {self.idd_path} -w {self.weather_path} -d {self.idf_prep_path}'
+        cmd = f'python2.7 {self.eplustofmu_path} -i {self.idd_path} -w {weather_path} -d {self.idf_prep_path}'
         
         proc = subprocess.run(shlex.split(cmd), stdout=subprocess.PIPE)
         if not proc.stdout:

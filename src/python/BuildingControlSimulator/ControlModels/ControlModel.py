@@ -38,10 +38,10 @@ class ControlModel(object):
 
     ```
 
-    """
-    FMU_control_cooling_stp_name = attr.ib(kw_only=True)
-    FMU_control_heating_stp_name = attr.ib(kw_only=True)
-    FMU_control_type_name = attr.ib(kw_only=True)
+    # """
+    # FMU_control_cooling_stp_name = attr.ib(kw_only=True)
+    # FMU_control_heating_stp_name = attr.ib(kw_only=True)
+    # FMU_control_type_name = attr.ib(kw_only=True)
     # def __init__(self,
     #     FMU_control_heating_stp_name,
     #     FMU_control_cooling_stp_name,

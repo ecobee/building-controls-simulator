@@ -1,17 +1,25 @@
+# created by Tom Stesco tom.s@ecobee.com
+
+import os
+import subprocess
+import shlex
+import shutil
+
+import pandas as pd
+import attr
+import numpy as np
+from eppy import modeleditor
 
 
+# from BuildingControlSimulator.BuildingModels.BuildingModel import BuildingModel
+# from BuildingControlSimulator.BuildingModels.IDFPreprocessor import IDFPreprocessor
 
+@attr.s
 class BuildingModel(object):
     """Abstract Base Class for building models
-
-
     """
-    def __init__(self):
-        """Initialize `IDFPreprocessor` with an IDF file and desired actions"""
-        pass
 
-    def abc_test(self):
+    
+    def test_abc(self):
         return 4
-
-
 
