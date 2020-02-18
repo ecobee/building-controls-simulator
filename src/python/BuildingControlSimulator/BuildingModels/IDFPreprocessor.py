@@ -6,11 +6,10 @@ import shlex
 import shutil
 
 import pandas as pd
-import attr
+# import attr
 import numpy as np
 from eppy import modeleditor
 
-@attr.s
 class IDFPreprocessor(object):
     """Converts IDFs (Input Data Files) for EnergyPlus into working IDFs.
 
@@ -26,7 +25,9 @@ class IDFPreprocessor(object):
         idf_path=None,
         weather_name=None,
         weather_path=None,
-        timesteps=12):
+        timesteps=12,
+        init_temperature=21.0,
+        init_control_type=1):
         """Initialize `IDFPreprocessor` with an IDF file and desired actions"""
         self.ep_version = os.environ["ENERGYPLUS_INSTALL_VERSION"]
         self.idf_dir = os.environ["IDF_DIR"]
@@ -38,6 +39,8 @@ class IDFPreprocessor(object):
             "EnergyPlusToFMU/Scripts/EnergyPlusToFMU.py"
         )
         self.timesteps = timesteps
+        self.init_temperature = init_temperature
+        self.init_control_type = init_control_type
 
         if idf_path:
             # TODO add path checking
@@ -86,9 +89,18 @@ class IDFPreprocessor(object):
         self.FMU_control_cooling_stp_name = "FMU_T_cooling_stp"
         self.FMU_control_heating_stp_name = "FMU_T_heating_stp"
         self.FMU_control_type_name = "FMU_T_control_type"
+        
+
+    def output_keys(self):
+        """
+        """
+        return self.building_outputs + self.zone_outputs
 
 
-    def preprocess(self):
+    def preprocess(self,
+        init_control_type=1,
+        init_temperature=21.
+        ):
         """add control signals to IDF before making FMU"""
 
         self.prep_ep_version(self.ep_version.split("-"))
@@ -98,9 +110,9 @@ class IDFPreprocessor(object):
         # set the intial temperature via the initial setpoint which will be tracked 
         # in the warmup simulation
         self.prep_onoff_setpt_control(
-            FMU_control_type_name_init=1,
-            FMU_control_heating_stp_name_init=21.0,
-            FMU_control_cooling_stp_name_init=25.0
+            FMU_control_type_init=self.init_control_type,
+            FMU_control_heating_stp_init=self.init_temperature,
+            FMU_control_cooling_stp_init=self.init_temperature
         )
         # create per zone outputs depending on HVAC system type
         zone_outputs = [
@@ -202,9 +214,9 @@ class IDFPreprocessor(object):
             # )
 
     def prep_onoff_setpt_control(self,
-            FMU_control_type_name_init,
-            FMU_control_heating_stp_name_init,
-            FMU_control_cooling_stp_name_init):
+            FMU_control_type_init,
+            FMU_control_heating_stp_init,
+            FMU_control_cooling_stp_init):
         """
         add external interface
         add external interface schedules for heatng and cooling setpoints
@@ -252,7 +264,7 @@ class IDFPreprocessor(object):
             Schedule_Name=heating_stp_schedule_name,
             Schedule_Type_Limits_Names="Temperature",
             FMU_Variable_Name=self.FMU_control_heating_stp_name,
-            Initial_Value=FMU_control_heating_stp_name_init
+            Initial_Value=FMU_control_heating_stp_init
         )
 
         # create FMU cooling setpoint schedule variable
@@ -261,7 +273,7 @@ class IDFPreprocessor(object):
             Schedule_Name=cooling_stp_schedule_name,
             Schedule_Type_Limits_Names="Temperature",
             FMU_Variable_Name=self.FMU_control_cooling_stp_name,
-            Initial_Value=FMU_control_cooling_stp_name_init
+            Initial_Value=FMU_control_cooling_stp_init
         )
         # create a control type schedule limits
         # 0 - Uncontrolled (No specification or default)
@@ -284,7 +296,7 @@ class IDFPreprocessor(object):
             Schedule_Name=control_schedule_type_name,
             Schedule_Type_Limits_Names="Control Type",
             FMU_Variable_Name=self.FMU_control_type_name,
-            Initial_Value=FMU_control_type_name_init
+            Initial_Value=FMU_control_type_init
         )
         
         # over write ZoneControl:Thermostat control objects

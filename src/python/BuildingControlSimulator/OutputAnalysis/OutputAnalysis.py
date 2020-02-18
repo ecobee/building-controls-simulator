@@ -26,11 +26,23 @@ class OutputAnalysis(object):
     ```
 
     """
-    def __init__(self, deadband, building_model=None, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.deadband = deadband
+    deadband = attr.ib(kw_only=True)
+    bm = attr.ib(kw_only=True)
+    stp_heat = attr.ib(default=21.)
+    stp_cool = attr.ib(default=25.)
+    # HVAC_mode = attr.ib(kw_only=True)
+    HVAC_mode = attr.ib(default=HVAC_modes.UNCONTROLLED)
+    T_heat_off = attr.ib(default=-60.0)
+    T_heat_on = attr.ib(default=99.0)
+    T_cool_off = attr.ib(default=99.0)
+    T_cool_on = attr.ib(default=-60.0)
 
-    def from_idf(self, building_model):
+    @classmethod
+    def from_idf_deadband(cls, building_model, idf, controller):
+        pass
+
+    @classmethod
+    def from_simulator(cls, simulator):
         pass
 
 

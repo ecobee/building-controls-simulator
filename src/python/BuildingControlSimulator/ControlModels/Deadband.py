@@ -24,61 +24,72 @@ class Deadband(ControlModel):
     Example:
     ```python
     from BuildingControlSimulator.ControlModels.Deadband import Deadband
-    controller = Deadband(
-        FMU_control_cooling_stp_name=""
-    FMU_control_heating_stp_name = attr.ib(kw_only=True)
-    FMU_control_type_name = attr.ib(kw_only=True)
-    )
+
 
     ```
 
     """
 
-    deadband = attr.ib(kw_only=True)
     bm = attr.ib(kw_only=True)
-    stp_heat = attr.ib(kw_only=True)
-    stp_cool = attr.ib(kw_only=True)
     # HVAC_mode = attr.ib(kw_only=True)
     HVAC_mode = attr.ib(default=HVAC_modes.UNCONTROLLED)
+    stp_heat = attr.ib(default=21.)
+    stp_cool = attr.ib(default=25.)
+    deadband = attr.ib(default=2.)
     T_heat_off = attr.ib(default=-60.0)
     T_heat_on = attr.ib(default=99.0)
     T_cool_off = attr.ib(default=99.0)
     T_cool_on = attr.ib(default=-60.0)
-    # def __init__(self, deadband, building_model=None, *args, **kwargs):
-    #     super().__init__(*args, **kwargs)
 
-    # def from_idf(self, building_model):
-    #     pass
+    @classmethod
+    def from_idf(cls, building_model, idf):
+        return cls(
+            bm=building_model,
+            FMU_control_heating_stp_name=idf.FMU_control_heating_stp_name,
+            FMU_control_cooling_stp_name=idf.FMU_control_cooling_stp_name,
+            FMU_control_type_name=idf.FMU_control_type_name
+        )
+
+    def output_keys(self):
+        """
+        """
+        return [
+            "HVAC_mode",
+            "stp_heat",
+            "stp_cool",
+            "deadband"
+        ]
+
     def do_step(self, t_ctrl):
         """
         """
-        next_HVAC_mode = self.decide_HVAC_mode(t_ctrl)
+        next_HVAC_mode = self.next_HVAC_mode(t_ctrl)
         self.actuate_HVAC_mode(next_HVAC_mode)
         self.HVAC_mode = next_HVAC_mode
+        return [getattr(self, k) for k in self.output_keys()]
 
     def next_HVAC_mode(self, t_ctrl):
         """ 
         """
-        _HVAC_mode = HVAC_modes.UNCONTROLLED
+
+        _HVAC_mode = self.HVAC_mode
         if (
-            t_ctrl
-            < (self.stp_heat - self.deadband)
-            # and self.HVAC_mode != HVAC_modes.SINGLE_HEATING_SETPOINT
+            t_ctrl < (self.stp_heat - self.deadband)
+            and self.HVAC_mode != HVAC_modes.SINGLE_HEATING_SETPOINT
         ):
             # turn on heat
             _HVAC_mode = HVAC_modes.SINGLE_HEATING_SETPOINT
 
-        # if (
-        #     t_ctrl > (self.stp_heat + self.deadband)
-        #     and self.HVAC_mode == HVAC_modes.SINGLE_HEATING_SETPOINT
-        # ):
-        #     # turn off heat
-        #     _HVAC_mode = HVAC_modes.UNCONTROLLED
+        if (
+            t_ctrl > (self.stp_heat + self.deadband)
+            and self.HVAC_mode == HVAC_modes.SINGLE_HEATING_SETPOINT
+        ):
+            # turn off heat
+            _HVAC_mode = HVAC_modes.UNCONTROLLED
 
         if (
-            t_ctrl
-            > (self.stp_cool + self.deadband)
-            # and self.HVAC_mode != HVAC_modes.SINGLE_COOLING_SETPOINT
+            t_ctrl > (self.stp_cool + self.deadband)
+            and self.HVAC_mode != HVAC_modes.SINGLE_COOLING_SETPOINT
         ):
             # turn on cool
             _HVAC_mode = HVAC_modes.SINGLE_COOLING_SETPOINT
@@ -87,6 +98,13 @@ class Deadband(ControlModel):
         #     self.stp_heat - self.deadband
         # ):
         #     _HVAC_mode = HVAC_modes.UNCONTROLLED
+
+        if (
+            t_ctrl < (self.stp_cool - self.deadband)
+            and self.HVAC_mode == HVAC_modes.SINGLE_COOLING_SETPOINT
+        ):
+            # turn off cool
+            _HVAC_mode = HVAC_modes.UNCONTROLLED
 
         return _HVAC_mode
 
@@ -107,3 +125,5 @@ class Deadband(ControlModel):
                 self.bm.set(self.FMU_control_type_name, int(next_HVAC_mode))
                 self.bm.set(self.FMU_control_heating_stp_name, self.T_heat_off)
                 self.bm.set(self.FMU_control_cooling_stp_name, self.T_cool_off)
+
+
