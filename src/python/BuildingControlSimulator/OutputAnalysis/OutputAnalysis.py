@@ -188,8 +188,9 @@ class OutputAnalysis(object):
             col=1,
         )
         # fig.add_trace(go.Scatter(x=df.datetime, y=df["FMU_Main_Chiller_Chiller_Electric_Power"], mode='lines',name='chiller_power'), row=1, col=1)
-
-        fig.show()
+        fig.update_layout(title_text="Power Response")
+        if show:
+            fig.show()
 
     def control_actuation_plot(self, show=False):
         traces = []
