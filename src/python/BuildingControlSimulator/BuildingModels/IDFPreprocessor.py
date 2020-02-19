@@ -106,6 +106,8 @@ class IDFPreprocessor(object):
             FMU_control_cooling_stp_init=self.init_temperature
         )
         # create per zone outputs depending on HVAC system type
+
+        # Output:Variable,*,Facility Total HVAC Electric Demand Power,hourly; !- HVAC Average [W]
         zone_outputs = [
             "Zone Air Temperature",
             "Zone Thermostat Heating Setpoint Temperature",
@@ -117,6 +119,13 @@ class IDFPreprocessor(object):
             # "Zone Total Internal Convective Heating Rate",
             # "Zone Total Internal Radiant Heating Rate",
             # "Zone Total Internal Visible Radiation Heating Rate"
+            # "Air System Electric Energy"
+            # "Air System Gas Energy"
+            # "Air System Fan Electric Energy"
+            # "Air System Cooling Coil Chilled Water Energy"
+            # "Air System Heating Coil Hot Water Energy"
+            # "Air System DX Cooling Coil Electric Energy"
+            # "Air System Heating Coil Gas Energy"
         ]
         building_outputs = {
             "Environment": [
@@ -125,6 +134,9 @@ class IDFPreprocessor(object):
                 # "Site Diffuse Solar Radiation Rate per Area",
                 # "Site Direct Solar Radiation Rate per Area"
             ],
+            "Main Chiller": [
+                "Chiller Electric Power",
+           ]
         }
 
         self.prep_ext_int_output(

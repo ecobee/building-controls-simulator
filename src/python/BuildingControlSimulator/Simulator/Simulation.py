@@ -51,7 +51,6 @@ class Simulation(object):
     def final_time_seconds(self):
         return int(self.final_time_days * 86400)
 
-
     @property
     def simulator_output_keys(self):
         return ["time_seconds", "step_status", "t_ctrl"]
@@ -68,32 +67,31 @@ class Simulation(object):
         self.building_model.idf.preprocess(timesteps_per_hour=self.steps_per_hour)
         self.building_model.initialize(self.start_time_seconds, self.final_time_seconds)
     
-    def do_step(self):
-        pass
+    # def do_step(self):
+    #     pass
 
     def get_air_temp_vars(self, step_output):
+        """
+        """
         return [step_output[i] for i, k 
             in enumerate(self.building_model_output_keys) 
             if "Zone_Air_Temperature" in k
         ]
 
-    def calc_T_control(self, building_model_output):        
+    def calc_T_control(self, building_model_output):
+        """
+        """      
         return np.mean(self.get_air_temp_vars(building_model_output))
          
 
     def run(self):
         """
         """
-
-        print("_"*80)
-        print("Entering co-simulation loop")
-        print("_"*80)
         output = []
         t_ctrl = self.building_model.init_temperature
 
+        print("Running co-simulation loop...")
         for t_step_seconds in range(self.start_time_seconds, self.final_time_seconds, self.step_size_seconds):
-        # while self.t_step_seconds <= self.final_time_seconds:
-            # do step
             controller_output = self.controller.do_step(t_ctrl)
             self.building_model.actuate_HVAC_equipment(self.controller.HVAC_mode)
             step_status = (self.building_model.fmu.do_step(
@@ -106,28 +104,7 @@ class Simulation(object):
             output.append(step_output)
             # TODO add multizone support
             t_ctrl = self.calc_T_control(building_model_output)
-            # step time forward
-        # self.t_step_seconds += step_size
 
-        print("="*80)
-        print("Simulation finished.")
-        print("="*80)
 
+        print("Co-simulation finished.")
         return pd.DataFrame.from_records(output, columns=self.output_keys)
-
-
-
-
-    
-
-    # HVAC_mode = attr.ib(kw_only=True)
-    # self.output_dir = os.path.join(os.environ["PACKAGE_DIR"], "data")
-
-
-
-    # def __init__(self):
-    #     self.control_model = ""
-    #     self.bm = ""
-    #     self.output_dir = os.path.join(os.environ["PACKAGE_DIR"], "data")
-
-        

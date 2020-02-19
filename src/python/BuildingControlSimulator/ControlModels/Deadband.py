@@ -36,16 +36,6 @@ class Deadband(ControlModel):
     stp_heat = attr.ib(default=21.)
     stp_cool = attr.ib(default=25.)
     deadband = attr.ib(default=2.)
-    
-
-    # @classmethod
-    # def from_idf(cls, building_model, idf):
-    #     return cls(
-    #         bm=building_model,
-    #         FMU_control_heating_stp_name=idf.FMU_control_heating_stp_name,
-    #         FMU_control_cooling_stp_name=idf.FMU_control_cooling_stp_name,
-    #         FMU_control_type_name=idf.FMU_control_type_name
-    #     )
 
     def output_keys(self):
         """
@@ -90,11 +80,6 @@ class Deadband(ControlModel):
         ):
             # turn on cool
             next_HVAC_mode = HVAC_modes.SINGLE_COOLING_SETPOINT
-
-        # if t_ctrl < (self.stp_cool - self.deadband) and t_ctrl > (
-        #     self.stp_heat - self.deadband
-        # ):
-        #     next_HVAC_mode = HVAC_modes.UNCONTROLLED
 
         if (
             t_ctrl < (self.stp_cool - self.deadband)
