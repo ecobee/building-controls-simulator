@@ -2,9 +2,6 @@
 
 import os
 from enum import Enum
-import subprocess
-import shlex
-import shutil
 
 import pandas as pd
 import numpy as np
@@ -29,9 +26,6 @@ class Deadband(ControlModel):
     ```
 
     """
-
-    # bm = attr.ib(kw_only=True)
-    # HVAC_mode = attr.ib(kw_only=True)
     HVAC_mode = attr.ib(default=HVAC_modes.UNCONTROLLED)
     stp_heat = attr.ib(default=21.)
     stp_cool = attr.ib(default=25.)

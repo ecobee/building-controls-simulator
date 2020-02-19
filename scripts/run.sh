@@ -4,7 +4,7 @@ set -o pipefail
 
 # user variables
 # ==============================================================================
-CONTAINER_ID="c3dd7717bb6f"
+CONTAINER_ID="073d6bd4af74"
 # ==============================================================================
 
 PACKAGE_NAME="building-control-simulator"

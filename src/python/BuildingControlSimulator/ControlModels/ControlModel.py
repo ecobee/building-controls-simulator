@@ -1,9 +1,6 @@
 # created by Tom Stesco tom.s@ecobee.com
 
 import os
-import subprocess
-import shlex
-import shutil
 import abc
 from enum import IntEnum
 

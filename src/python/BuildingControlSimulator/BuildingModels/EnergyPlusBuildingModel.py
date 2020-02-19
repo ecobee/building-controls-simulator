@@ -1,9 +1,6 @@
 # created by Tom Stesco tom.s@ecobee.com
 
 import os
-import subprocess
-import shlex
-import shutil
 
 import pandas as pd
 import attr
@@ -37,21 +34,12 @@ class EnergyPlusBuildingModel(BuildingModel):
     T_cool_on = attr.ib(default=-60.0)
 
     cur_HVAC_mode = attr.ib(default=HVAC_modes.UNCONTROLLED)
-    # step_HVAC_mode = attr.ib(default=HVAC_modes.UNCONTROLLED)
-
-    # @classmethod
-    # def from_idf(cls):
-    #     pass
 
     @property
     def init_temperature(self):
         return self.idf.init_temperature
     
 
-    # def preprocess(self):
-    #     """
-    #     """
-    #     self.idf.preprocess(steps_per_hour)
 
     def create_model_fmu(self):
         
@@ -96,7 +84,4 @@ class EnergyPlusBuildingModel(BuildingModel):
         """
         """
         self.fmu = self.create_model_fmu()
-        print("Model init starting ...")
         self.fmu.initialize(start_time_seconds, final_time_seconds)
-        print("Complete.")
-

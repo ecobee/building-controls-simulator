@@ -2,7 +2,6 @@
 # created by Tom Stesco tom.s@ecobee.com
 
 import os
-import subprocess
 
 import pandas as pd
 import numpy as np
@@ -13,6 +12,7 @@ import pyfmi
 from BuildingControlSimulator.BuildingModels.EnergyPlusBuildingModel import EnergyPlusBuildingModel
 from BuildingControlSimulator.BuildingModels.IDFPreprocessor import IDFPreprocessor
 from BuildingControlSimulator.ControlModels.Deadband import Deadband
+from BuildingControlSimulator.OutputAnalysis.OutputAnalysis import OutputAnalysis
 
 @attr.s
 class Simulation(object):
@@ -33,7 +33,6 @@ class Simulation(object):
     final_time_days = attr.ib(kw_only=True)
     output_data_dir = attr.ib(default=os.path.join(os.environ["PACKAGE_DIR"], "output/data"))
     output_plot_dir = attr.ib(default=os.path.join(os.environ["PACKAGE_DIR"], "output/plot"))
-    # t_step_seconds = attr.ib(default=0)
 
     @property
     def steps_per_hour(self):
@@ -90,7 +89,6 @@ class Simulation(object):
         output = []
         t_ctrl = self.building_model.init_temperature
 
-        print("Running co-simulation loop...")
         for t_step_seconds in range(self.start_time_seconds, self.final_time_seconds, self.step_size_seconds):
             controller_output = self.controller.do_step(t_ctrl)
             self.building_model.actuate_HVAC_equipment(self.controller.HVAC_mode)
@@ -105,6 +103,13 @@ class Simulation(object):
             # TODO add multizone support
             t_ctrl = self.calc_T_control(building_model_output)
 
+        self.output_df = pd.DataFrame.from_records(output, columns=self.output_keys)
+        return self.output_df
 
-        print("Co-simulation finished.")
-        return pd.DataFrame.from_records(output, columns=self.output_keys)
+    def show_plots(self):
+        output_analysis = OutputAnalysis(df=self.output_df)
+        output_analysis.postprocess()
+        output_analysis.thermal_plot(show=True)
+        output_analysis.power_plot(show=True)
+        output_analysis.control_actuation_plot(show=True)
+
