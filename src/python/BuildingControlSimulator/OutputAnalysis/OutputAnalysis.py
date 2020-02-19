@@ -148,7 +148,12 @@ class OutputAnalysis(object):
             secondary_y=False,
         )
 
-        fig.update_layout(title_text="Thermal Response")
+        fig.update_layout(
+            title_text="Thermal Response",
+            xaxis_title="Datetime",
+            yaxis_title="Temperature (°C)",
+            yaxis2_title="Outdoor Temperature (°C)",
+        )
         if show:
             fig.show()
 
@@ -188,7 +193,11 @@ class OutputAnalysis(object):
             col=1,
         )
         # fig.add_trace(go.Scatter(x=df.datetime, y=df["FMU_Main_Chiller_Chiller_Electric_Power"], mode='lines',name='chiller_power'), row=1, col=1)
-        fig.update_layout(title_text="Power Response")
+        fig.update_layout(
+            title_text="Power Response",
+            xaxis_title="Datetime",
+            yaxis_title="Power (W)",
+        )
         if show:
             fig.show()
 
