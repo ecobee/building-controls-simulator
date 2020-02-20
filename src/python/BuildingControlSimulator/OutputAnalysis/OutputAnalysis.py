@@ -153,6 +153,7 @@ class OutputAnalysis(object):
             xaxis_title="Datetime",
             yaxis_title="Temperature (°C)",
             yaxis2_title="Outdoor Temperature (°C)",
+            height=600,
         )
         if show:
             fig.show()
