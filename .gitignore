@@ -19,3 +19,4 @@ Output_EPExport_Test FMI 1.0 CS/
 *.pytest_cache
 *preprocessed/
 *.ipynb_checkpoints/
+idf/*

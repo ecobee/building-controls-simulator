@@ -2,6 +2,7 @@
 
 import os
 from enum import Enum
+import logging
 
 import pandas as pd
 import numpy as np
@@ -13,6 +14,11 @@ from BuildingControlSimulator.ControlModels.ControlModel import ControlModel
 from BuildingControlSimulator.ControlModels.ControlModel import HVAC_modes
 from BuildingControlSimulator.BuildingModels import IDFPreprocessor
 
+logging.basicConfig(
+    level=logging.DEBUG,
+    format="%(asctime)s %(levelname)-8s %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+)
 
 @attr.s
 class Deadband(ControlModel):

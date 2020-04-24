@@ -2,6 +2,7 @@
 # created by Tom Stesco tom.s@ecobee.com
 
 import os
+import logging
 
 import pandas as pd
 import numpy as np
@@ -13,6 +14,12 @@ from BuildingControlSimulator.BuildingModels.EnergyPlusBuildingModel import Ener
 from BuildingControlSimulator.BuildingModels.IDFPreprocessor import IDFPreprocessor
 from BuildingControlSimulator.ControlModels.Deadband import Deadband
 from BuildingControlSimulator.OutputAnalysis.OutputAnalysis import OutputAnalysis
+
+logging.basicConfig(
+    level=logging.DEBUG,
+    format="%(asctime)s %(levelname)-8s %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+)
 
 @attr.s
 class Simulation(object):
@@ -69,17 +76,23 @@ class Simulation(object):
     # def do_step(self):
     #     pass
 
-    def get_air_temp_vars(self, step_output):
+    def get_air_temp_vars(self, building_model_output):
         """
         """
-        return [step_output[i] for i, k 
+
+        air_temp_var_names = [
+            "FMU_" + z + "_Zone_Air_Temperature" 
+            for z in self.building_model.occupied_zones()
+        ]
+        # print(air_temp_var_names)
+        return [building_model_output[i] for i, k 
             in enumerate(self.building_model_output_keys) 
-            if "Zone_Air_Temperature" in k
+            if k in air_temp_var_names
         ]
 
     def calc_T_control(self, building_model_output):
         """
-        """      
+        """
         return np.mean(self.get_air_temp_vars(building_model_output))
          
 
@@ -109,7 +122,8 @@ class Simulation(object):
     def show_plots(self):
         output_analysis = OutputAnalysis(df=self.output_df)
         output_analysis.postprocess()
-        output_analysis.thermal_plot(show=True)
-        output_analysis.power_plot(show=True)
-        output_analysis.control_actuation_plot(show=True)
+        output_analysis.diagnostic_plot(show=True)
+        # output_analysis.thermal_plot(show=True)
+        # output_analysis.power_plot(show=True)
+        # output_analysis.control_actuation_plot(show=True)
 

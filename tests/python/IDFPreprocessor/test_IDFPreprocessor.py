@@ -43,7 +43,6 @@ class TestImports:
     def test_fmu_compliance(self):
         """
         """
-
         # TODO find way to run checker as part of test
         #   may need to change EnergyPlusToFMU or FMUComplianceChecker to be non-interactive
         fmu_dir = os.environ["FMU_DIR"]

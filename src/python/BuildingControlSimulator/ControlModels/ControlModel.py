@@ -3,13 +3,18 @@
 import os
 import abc
 from enum import IntEnum
+import logging
 
 import attr
 import pandas as pd
 import numpy as np
 from eppy import modeleditor
 
-
+logging.basicConfig(
+    level=logging.DEBUG,
+    format="%(asctime)s %(levelname)-8s %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+)
 
 class HVAC_modes(IntEnum):
     """

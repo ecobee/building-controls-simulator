@@ -15,7 +15,7 @@ function install_ep () {
   local ENERGYPLUS_DOWNLOAD_FILENAME="EnergyPlus-${ENERGYPLUS_VERSION}-${ENERGYPLUS_SHA}-Linux-x86_64.sh"
   local ENERGYPLUS_DOWNLOAD_URL="${ENERGYPLUS_DOWNLOAD_BASE_URL}/${ENERGYPLUS_DOWNLOAD_FILENAME}"
 
-  cd "${EXT_DIR}"
+  cd "${EXT_DIR}" || exit
   curl -SLO "${ENERGYPLUS_DOWNLOAD_URL}"
   chmod +x "${ENERGYPLUS_DOWNLOAD_FILENAME}"
   # handle the bad install script, manually enter the install dir
@@ -23,16 +23,16 @@ function install_ep () {
     mv "${_ENERGYPLUS_INSTALL_DIR}" "${_ENERGYPLUS_INSTALL_DIR}/../bkup"
     mkdir "${_ENERGYPLUS_INSTALL_DIR}"
     mkdir "${_ENERGYPLUS_INSTALL_DIR}/bin"
-    echo -e "y\r" | ./${ENERGYPLUS_DOWNLOAD_FILENAME}
+    echo -e "y\r" | "./${ENERGYPLUS_DOWNLOAD_FILENAME}"
     rm- "${_ENERGYPLUS_INSTALL_DIR}/bin"
     mv "${_ENERGYPLUS_INSTALL_DIR}" "$( dirname ${_ENERGYPLUS_INSTALL_DIR})/bkup/EnergyPlus-${_ENERGYPLUS_INSTALL_VERSION}"
     mv "$( dirname ${_ENERGYPLUS_INSTALL_DIR})/bkup" "${_ENERGYPLUS_INSTALL_DIR}"
   else
-    echo -e "y\r" | ./${ENERGYPLUS_DOWNLOAD_FILENAME}
+    echo -e "y\r" | "./${ENERGYPLUS_DOWNLOAD_FILENAME}"
   fi
   find -L "${_ENERGYPLUS_INSTALL_DIR}/bin" -type l -delete
   rm "${ENERGYPLUS_DOWNLOAD_FILENAME}"
-  cd -
+  cd - || exit
 }
 
 install_ep "8-9-0" "40101eaafd" "${ENERGYPLUS_INSTALL_DIR}"

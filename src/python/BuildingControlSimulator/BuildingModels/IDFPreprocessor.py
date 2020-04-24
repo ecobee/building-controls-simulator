@@ -4,11 +4,18 @@ import os
 import subprocess
 import shlex
 import shutil
+import logging
 
 import pandas as pd
 # import attr
 import numpy as np
 from eppy import modeleditor
+
+logging.basicConfig(
+    level=logging.DEBUG,
+    format="%(asctime)s %(levelname)-8s %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+)
 
 class IDFPreprocessor(object):
     """Converts IDFs (Input Data Files) for EnergyPlus into working IDFs.
@@ -27,7 +34,8 @@ class IDFPreprocessor(object):
         weather_path=None,
         timesteps=12,
         init_temperature=21.0,
-        init_control_type=1):
+        init_control_type=2,
+        debug=True):
         """Initialize `IDFPreprocessor` with an IDF file and desired actions"""
         self.ep_version = os.environ["ENERGYPLUS_INSTALL_VERSION"]
         self.idf_dir = os.environ["IDF_DIR"]
@@ -41,45 +49,55 @@ class IDFPreprocessor(object):
         self.timesteps = timesteps
         self.init_temperature = init_temperature
         self.init_control_type = init_control_type
+        self.debug = debug
 
         if idf_path:
             # TODO add path checking
             self.idf_path = idf_path
         elif idf_name:
-            for r, d, f in os.walk(self.idf_dir):
-                for fname in f:
-                    if fname == idf_name:
-                        self.idf_path = os.path.join(self.idf_dir, idf_name)
+            self.idf_path = os.path.join(self.idf_dir, idf_name)
+            if not os.path.exists(self.idf_path):
+                raise ValueError(f"""IDF file: {idf_name} does not exist in {self.idf_dir}.""")
         else:
             raise ValueError(f"""Must supply valid IDF file, 
                 idf_path={weather_path} and idf_name={weather_name}""")
 
-        
-
         self.idf_name = os.path.basename(self.idf_path)
-        idx = self.idf_name.index(".idf")
-        self.idf_prep_name = self.idf_name[:idx] + "_prep" + self.idf_name[idx:]
+        self.idf_prep_name = idf_name.replace(".idf", "_prep.idf")
+        
         self.idf_prep_dir = os.path.join(self.idf_dir, "preprocessed")
         self.idf_prep_path = os.path.join(self.idf_prep_dir, self.idf_prep_name)
-
-        self.fmu_name = self.idf_prep_name.replace(".idf", ".fmu").replace("-", "_")
-        if self.fmu_name[0].isdigit():
-            self.fmu_name = "f_" + self.fmu_name
-
+        
+        self.fmu_name = self.get_fmu_name(self.idf_prep_name)
         self.fmu_path = os.path.join(self.fmu_dir, self.fmu_name)
-
-
+        
         modeleditor.IDF.setiddname(self.idd_path)
-        print("IDFPreprocessor loading .idf file: {}".format(self.idf_path))
+        logging.info("IDFPreprocessor loading .idf file: {}".format(self.idf_path))
         self.ep_idf = modeleditor.IDF(self.idf_path)
 
         self.zone_outputs = []
         self.building_outputs = []
         # config
+        self.FMU_control_dual_stp_name = "FMU_T_dual_stp"
         self.FMU_control_cooling_stp_name = "FMU_T_cooling_stp"
         self.FMU_control_heating_stp_name = "FMU_T_heating_stp"
         self.FMU_control_type_name = "FMU_T_control_type"
-        
+
+    @staticmethod
+    def get_fmu_name(idf_name):
+        """
+        """
+        fmu_name = os.path.splitext(idf_name)[0]
+        idf_bad_chars = [" ", "-", "+", "."]
+        for c in idf_bad_chars:
+            fmu_name = fmu_name.replace(c, "_")
+
+        if fmu_name[0].isdigit():
+            fmu_name = "f_" + fmu_name
+
+        fmu_name = fmu_name + ".fmu"
+
+        return fmu_name
 
     def output_keys(self):
         """
@@ -94,7 +112,8 @@ class IDFPreprocessor(object):
         ):
         """add control signals to IDF before making FMU"""
 
-        self.prep_ep_version(self.ep_version.split("-"))
+        self.prep_ep_version(self.ep_version)
+        self.prep_expand_objects()
         self.prep_timesteps(timesteps_per_hour)
         self.prep_runtime()
         self.prep_ext_int()
@@ -134,9 +153,9 @@ class IDFPreprocessor(object):
                 # "Site Diffuse Solar Radiation Rate per Area",
                 # "Site Direct Solar Radiation Rate per Area"
             ],
-            "Main Chiller": [
-                "Chiller Electric Power",
-           ]
+           #  "Main Chiller": [
+           #      "Chiller Electric Power",
+           # ]
         }
 
         self.prep_ext_int_output(
@@ -156,7 +175,6 @@ class IDFPreprocessor(object):
         proc = subprocess.run(shlex.split(cmd), stdout=subprocess.PIPE)
         if not proc.stdout:
             raise ValueError(f"Empty STDOUT. Invalid EnergyPlusToFMU cmd={cmd}")
-
 
         # EnergyPlusToFMU puts fmu in cwd always, move out of cwd
         shutil.move(
@@ -202,19 +220,94 @@ class IDFPreprocessor(object):
         Checks if curent ep idf version is same as target version.
         If not equal upgrades to target version (or downgrades?)
         '''
-        cur_version = self.ep_idf.idfobjects['version'.upper()].list2[0][1].split(".")
-        if len(cur_version) < 3:
-            cur_version.append('0')
-        if cur_version != target_version:
-            print(f"WARNING: idf file cur_version={cur_version}, target_version={target_version}")
-            # TODO make transition shell script
-            # subprocess.call(
-            #     shlex.split('{} {} {}'.format(
-            #         os.path.join(os.environ["BASH_DIR"], prep_transition.sh),
-            #         cur_version,
-            #         target_version)
-            #     )
-            # )
+        conversion_dict = {
+            "8-0-0": "Transition-V8-0-0-to-V8-1-0",
+            "8-1-0": "Transition-V8-1-0-to-V8-2-0",
+            "8-2-0": "Transition-V8-2-0-to-V8-3-0",
+            "8-3-0": "Transition-V8-3-0-to-V8-4-0",
+            "8-4-0": "Transition-V8-4-0-to-V8-5-0",
+            "8-5-0": "Transition-V8-5-0-to-V8-6-0",
+            "8-6-0": "Transition-V8-6-0-to-V8-7-0",
+            "8-7-0": "Transition-V8-7-0-to-V8-8-0",
+            "8-8-0": "Transition-V8-8-0-to-V8-9-0",
+            "8-9-0": "Transition-V8-9-0-to-V9-0-1",
+            "9-0-1": "Transition-V9-0-1-to-V9-1-0",
+            "9-1-0": "Transition-V9-1-0-to-V9-2-0",
+        }
+
+        cur_version = self.ep_idf.idfobjects['version'.upper()].list2[0][1].replace(".", "-")
+        if len(cur_version) <= 3:
+            # if only first two simver digits in .idf add a zero
+            cur_version += '-0'
+
+        # check if current version above target
+        if int(cur_version.replace("-", "")) > int(target_version.replace("-", "")):
+            logging.error(f".idf current_version={cur_version} above target_version={target_version}")
+        elif cur_version == target_version:
+            logging.info(f"Correct .idf version {cur_version}. Using {self.idf_path}")
+        else:
+            # upgrade .idf file repeatedly
+            first_transition = True
+            for i in range(len(conversion_dict)):
+                if cur_version != target_version:
+                    transition_dir = os.path.join(os.environ["EPLUS_DIR"], "PreProcess/IDFVersionUpdater")
+                    transistion_path = os.path.join(transition_dir, conversion_dict[cur_version])
+                    logging.info(f"Upgrading idf file. cur_version={cur_version}, target_version={target_version}, transistion_path={transistion_path}")
+                    
+                    # must use os.chdir() because a subprocess cannot change another subprocess's wd
+                    # see https://stackoverflow.com/questions/21406887/subprocess-changing-directory/21406995
+                    original_wd = os.getcwd()
+                    os.chdir(transition_dir)
+                    cmd = f'{transistion_path} {self.idf_path}'
+
+                    # make transition call
+                    subprocess.call(shlex.split(cmd), stdout=subprocess.PIPE)
+                    os.chdir(original_wd)
+
+                    cur_version = conversion_dict[cur_version][-5:]
+                    if self.debug:
+                        shutil.move(
+                            self.idf_path + "new",
+                            self.idf_path.replace(".idf", f"_{cur_version}.idf")
+                        )
+
+                    if first_transition:
+                        shutil.move(
+                            self.idf_path + "old",
+                            self.idf_path + "original"
+                        )
+                        first_transition = False
+
+            shutil.move(
+                self.idf_path + "original",
+                self.idf_path
+            )
+
+            if not self.debug:
+                shutil.move(
+                    self.idf_path + "new",
+                    self.idf_path.replace(".idf", f"_{cur_version}.idf")
+                )
+            os.remove(self.idf_path + "old")
+            self.idf_path = self.idf_path.replace(".idf", f"_{cur_version}.idf")
+            # after running transition need to reload .idf file
+            self.ep_idf = modeleditor.IDF(self.idf_path)
+            logging.info(f"Upgrading complete. Using: {self.idf_path}")
+
+    def prep_expand_objects(self):
+        # must use os.chdir() because a subprocess cannot change another subprocess's wd
+        # see https://stackoverflow.com/questions/21406887/subprocess-changing-directory/21406995
+        logging.info(f"Expanding objects. Using: {self.idf_path}")            
+        original_wd = os.getcwd()
+        exp_dir = os.path.join(os.environ["EPLUS_DIR"])
+        os.chdir(exp_dir)
+        exp_path = os.path.join(exp_dir, "ExpandObjects")
+        cmd = f'{exp_path} {self.idf_path}'
+
+        # make transition call
+        subprocess.call(shlex.split(cmd), stdout=subprocess.PIPE)
+        os.chdir(original_wd)
+
 
     def prep_onoff_setpt_control(self,
             FMU_control_type_init,
@@ -231,8 +324,10 @@ class IDFPreprocessor(object):
         control_schedule_type_name = "CONST_control_type_schedule"
         heating_stp_name = "CONST_heating_stp"
         cooling_stp_name = "CONST_cooling_stp"
+        dual_stp_name = "CONST_heating_cooling_stp"
         cooling_stp_schedule_name = "CONST_cooling_stp_schedule"
         heating_stp_schedule_name = "CONST_heating_stp_schedule"
+        dual_stp_schedule_name = "CONST_heating_stp_schedule"
 
         # create a temperature schedule limits
         self.popifdobject_by_name("ScheduleTypeLimits", "temperature")
@@ -308,24 +403,34 @@ class IDFPreprocessor(object):
             tstat.Control_Type_Schedule_Name = control_schedule_type_name
             tstat.Control_1_Object_Type = "ThermostatSetpoint:SingleHeating"
             tstat.Control_1_Name = heating_stp_name
+            # tstat.Control_1_Object_Type = "ThermostatSetpoint:DualSetpoint"
+            # tstat.Control_1_Name = dual_stp_name
             tstat.Control_2_Object_Type = "ThermostatSetpoint:SingleCooling"
             tstat.Control_2_Name = cooling_stp_name
 
+        # create new thermostat setpoint for heating
         self.popallidfobjects("ThermostatSetpoint:SingleHeating")
-        # create new thermostat setpoint for cooling
         self.ep_idf.newidfobject(
             "ThermostatSetpoint:SingleHeating".upper(),
             Name=heating_stp_name,
             Setpoint_Temperature_Schedule_Name=heating_stp_schedule_name
         )
 
-        self.popallidfobjects("ThermostatSetpoint:SingleCooling")
-        # create new thermostat setpoint for heating
+        # create new thermostat setpoint for cooling
+        self.popallidfobjects("ThermostatSetpoint:Singlecooling")
         self.ep_idf.newidfobject(
             "ThermostatSetpoint:SingleCooling".upper(),
             Name=cooling_stp_name,
             Setpoint_Temperature_Schedule_Name=cooling_stp_schedule_name
         )
+
+        # self.popallidfobjects("ThermostatSetpoint:SingleCooling")
+        # # create new thermostat setpoint for heating
+        # self.ep_idf.newidfobject(
+        #     "ThermostatSetpoint:DualSetpoint".upper(),
+        #     Name=cooling_stp_name,
+        #     Setpoint_Temperature_Schedule_Name=cooling_stp_schedule_name
+        # )
 
         # TODO: make equipment always available
 
@@ -387,6 +492,7 @@ class IDFPreprocessor(object):
         self.popallidfobjects('Output:variable'.upper())
         self.popallidfobjects('Output:Meter:MeterFileOnly'.upper())
         # add building_outputs
+
         for e in building_outputs.keys():
             for o in building_outputs[e]:
                 nzo = "FMU_{}_{}".format(

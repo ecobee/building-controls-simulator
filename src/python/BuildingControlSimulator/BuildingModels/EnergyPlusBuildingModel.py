@@ -1,6 +1,7 @@
 # created by Tom Stesco tom.s@ecobee.com
 
 import os
+import logging
 
 import pandas as pd
 import attr
@@ -13,12 +14,20 @@ from BuildingControlSimulator.BuildingModels.IDFPreprocessor import IDFPreproces
 from BuildingControlSimulator.ControlModels.ControlModel import HVAC_modes
 from BuildingControlSimulator.ControlModels.ControlModel import ControlModel
 
+
+logging.basicConfig(
+    level=logging.DEBUG,
+    format="%(asctime)s %(levelname)-8s %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+)
+
 @attr.s
 class EnergyPlusBuildingModel(BuildingModel):
     """Abstract Base Class for building models
 
 
     """
+
     idf = attr.ib(kw_only=True)
 
     weather_dir = attr.ib(default=os.environ["WEATHER_DIR"])
@@ -26,7 +35,6 @@ class EnergyPlusBuildingModel(BuildingModel):
     weather_path = attr.ib(default=None)
     weather_name = attr.ib(default=None)
     fmu = attr.ib(default=None)
-
 
     T_heat_off = attr.ib(default=-60.0)
     T_heat_on = attr.ib(default=99.0)
@@ -38,24 +46,33 @@ class EnergyPlusBuildingModel(BuildingModel):
     @property
     def init_temperature(self):
         return self.idf.init_temperature
-    
-
 
     def create_model_fmu(self):
-        
+        """
+        """
         # TODO add validator for weather
-
         if not self.weather_path and self.weather_name:
             for r, d, f in os.walk(self.weather_dir):
                 for fname in f:
                     if fname == self.weather_name:
-                        self.weather_path = os.path.join(self.weather_dir, self.weather_name)
+                        self.weather_path = os.path.join(
+                            self.weather_dir, self.weather_name
+                        )
         else:
-            raise ValueError(f"""Must supply valid weather file, 
-                weather_path={self.weather_path} and weather_name={self.weather_name}""")
-
+            raise ValueError(
+                f"""Must supply valid weather file, 
+                weather_path={self.weather_path} and weather_name={self.weather_name}"""
+            )
+        
         self.idf.make_fmu(weather_path=self.weather_path)
         return pyfmi.load_fmu(fmu=self.idf.fmu_path)
+
+    def occupied_zones(self):
+        """Gets occupiec zones from zones that have a tstat in them."""
+        return [
+            tstat.Zone_or_ZoneList_Name for tstat
+            in self.idf.ep_idf.idfobjects['zonecontrol:thermostat'.upper()]
+        ]
 
 
     def actuate_HVAC_equipment(self, step_HVAC_mode):

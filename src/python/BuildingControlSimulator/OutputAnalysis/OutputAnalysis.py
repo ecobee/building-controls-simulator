@@ -1,6 +1,7 @@
 # created by Tom Stesco tom.s@ecobee.com
 
 import os
+import logging
 
 import pandas as pd
 import numpy as np
@@ -8,6 +9,13 @@ import plotly.graph_objects as go
 import plotly.express as px
 import plotly
 import attr
+
+
+logging.basicConfig(
+    level=logging.DEBUG,
+    format="%(asctime)s %(levelname)-8s %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+)
 
 
 @attr.s
@@ -41,13 +49,63 @@ class OutputAnalysis(object):
             ]
         ].sum(axis=1)
 
-    def thermal_plot(self, show=False):
+    def diagnostic_plot(self, show=False):
+        """
+        """
+        fig = plotly.subplots.make_subplots(
+            subplot_titles=("Thermal", "Power", "Control Signals"),
+            rows=3,
+            cols=1,
+            shared_xaxes=True,
+            x_title="Time",
+            row_heights=[2, 1, 1],   # relative heights
+            vertical_spacing=0.05,
+            specs=[
+                [
+                    {"secondary_y": True},
+                ],
+                [
+                    {"secondary_y": False},
+                ],
+                [
+                    {"secondary_y": True},
+                ],
+            ],
+        )
+
+        self.thermal_plot(fig=fig, row=1, col=1)
+        self.power_plot(fig=fig, row=2, col=1)
+        self.control_actuation_plot(fig=fig, row=3, col=1)
+
+        layout = go.Layout(
+            title_text="Diagnostic Plots",
+            autosize=False,
+            width=1500,
+            height=1000,
+            hovermode='closest',
+        )
+
+        fig.update_layout(layout)
+
+        if show:
+            fig.show()
+        
+
+
+    def thermal_plot(self, fig, row, col):
         """
         """
 
-        fig = plotly.subplots.make_subplots(
-            rows=1, cols=1, specs=[[{"secondary_y": True}]]
+        fig.update_yaxes(title_text="Temperature (°C)", row=row, col=col)
+
+        # legend subtitle
+        fig.add_trace(
+            go.Scatter(x=self.df.datetime, y=np.zeros(len(self.df.datetime)), mode="lines", visible='legendonly', name="Thermal diagnostics"),
+            row=row,
+            col=col,
+            secondary_y=False,
         )
+        
 
         for c in [c for c in self.df.columns if "Zone_Air_Temperature" in c]:
             fig.add_trace(
@@ -61,8 +119,8 @@ class OutputAnalysis(object):
             go.Scatter(
                 x=self.df.datetime, y=self.df["t_ctrl"], mode="lines", name="T_ctrl"
             ),
-            row=1,
-            col=1,
+            row=row,
+            col=col,
             secondary_y=False,
         )
 
@@ -73,8 +131,8 @@ class OutputAnalysis(object):
                 go.Scatter(
                     x=self.df.datetime, y=self.df[c], mode="lines", name="T_outdoor"
                 ),
-                row=1,
-                col=1,
+                row=row,
+                col=col,
                 secondary_y=True,
             )
 
@@ -86,8 +144,8 @@ class OutputAnalysis(object):
                 line=dict(color="firebrick", width=1, dash="dash"),
                 name="stp_heat",
             ),
-            row=1,
-            col=1,
+            row=row,
+            col=col,
             secondary_y=False,
         )
         fig.add_trace(
@@ -97,8 +155,8 @@ class OutputAnalysis(object):
                 mode="lines",
                 name="stp_heat_upper",
             ),
-            row=1,
-            col=1,
+            row=row,
+            col=col,
             secondary_y=False,
         )
         fig.add_trace(
@@ -108,8 +166,8 @@ class OutputAnalysis(object):
                 mode="lines",
                 name="stp_heat_lower",
             ),
-            row=1,
-            col=1,
+            row=row,
+            col=col,
             secondary_y=False,
         )
 
@@ -121,8 +179,8 @@ class OutputAnalysis(object):
                 line=dict(color="blue", width=1, dash="dash"),
                 name="stp_cool",
             ),
-            row=1,
-            col=1,
+            row=row,
+            col=col,
             secondary_y=False,
         )
         fig.add_trace(
@@ -132,8 +190,8 @@ class OutputAnalysis(object):
                 mode="lines",
                 name="stp_cool_upper",
             ),
-            row=1,
-            col=1,
+            row=row,
+            col=col,
             secondary_y=False,
         )
         fig.add_trace(
@@ -143,26 +201,27 @@ class OutputAnalysis(object):
                 mode="lines",
                 name="stp_cool_lower",
             ),
-            row=1,
-            col=1,
+            row=row,
+            col=col,
             secondary_y=False,
         )
 
-        fig.update_layout(
-            title_text="Thermal Response",
-            xaxis_title="Datetime",
-            yaxis_title="Temperature (°C)",
-            yaxis2_title="Outdoor Temperature (°C)",
-            height=600,
-        )
-        if show:
-            fig.show()
 
-    def power_plot(self, show=False):
+    def power_plot(self, fig, row, col):
         """
         """
-        # TODO add equipment integration
-        fig = plotly.subplots.make_subplots(rows=1, cols=1)
+
+        fig.update_yaxes(title_text="Power (W)", row=row, col=col)
+
+        # legend subtitle
+        fig.add_trace(
+            go.Scatter(x=self.df.datetime, y=np.zeros(len(self.df.datetime)), mode="lines", visible='legendonly', name="Power diagnostics"),
+            row=row,
+            col=col,
+            secondary_y=False,
+        )
+        
+
         fig.add_trace(
             go.Scatter(
                 x=self.df.datetime,
@@ -170,8 +229,9 @@ class OutputAnalysis(object):
                 mode="lines",
                 name="heating",
             ),
-            row=1,
-            col=1,
+            row=row,
+            col=col,
+            secondary_y=False,
         )
         fig.add_trace(
             go.Scatter(
@@ -180,8 +240,8 @@ class OutputAnalysis(object):
                 mode="lines",
                 name="cooling",
             ),
-            row=1,
-            col=1,
+            row=row,
+            col=col,
         )
         fig.add_trace(
             go.Scatter(
@@ -190,32 +250,45 @@ class OutputAnalysis(object):
                 mode="lines",
                 name="internal_heat",
             ),
-            row=1,
-            col=1,
+            row=row,
+            col=col,
         )
-        # fig.add_trace(go.Scatter(x=df.datetime, y=df["FMU_Main_Chiller_Chiller_Electric_Power"], mode='lines',name='chiller_power'), row=1, col=1)
-        fig.update_layout(
-            title_text="Power Response",
-            xaxis_title="Datetime",
-            yaxis_title="Power (W)",
-        )
-        if show:
-            fig.show()
 
-    def control_actuation_plot(self, show=False):
-        traces = []
+    def control_actuation_plot(self, fig, row, col):
+        # traces = []
+
+        fig.update_yaxes(title_text="Signal", row=row, col=col)
+
+        # legend subtitle
+        fig.add_trace(
+            go.Scatter(
+                x=self.df.datetime,
+                y=np.zeros(len(self.df.datetime)),
+                mode="lines",
+                visible='legendonly',
+                name="Control signal diagnostics",
+            ),
+            row=row,
+            col=col,
+            secondary_y=False,
+        )
+        
+
         for c in [c for c in self.df.columns if "Setpoint_Temperature" in c]:
-            traces.append(
+            fig.add_trace(
                 go.Scatter(
                     x=self.df.datetime,
                     y=self.df[c],
                     mode="lines",
                     line_shape="hv",
                     name=c,
-                )
+                ),
+                row=row,
+                col=col,
+                secondary_y=True,
             )
 
-        traces.append(
+        fig.add_trace(
             go.Scatter(
                 x=self.df.datetime,
                 y=self.df["HVAC_mode"],
@@ -223,14 +296,7 @@ class OutputAnalysis(object):
                 line_shape="hv",
                 name="HVAC_mode",
                 yaxis="y2",
-            )
+            ),
+            row=row,
+            col=col,
         )
-
-        layout = go.Layout(
-            title_text="Control Actuation",
-            yaxis2=dict(range=[-2, 4], overlaying="y", side="right"),
-        )
-
-        fig = go.Figure(data=traces, layout=layout)
-        if show:
-            fig.show()
