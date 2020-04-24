@@ -5,7 +5,7 @@ simulation models using EnergyPlus.
 
 For more information on EnergyPlus simulation see [here](https://ecobee.atlassian.net/wiki/spaces/DAT/pages/810615819/EnergyPlus+Building+Simulation+for+Controller+Testing).
 
-## Setup and Installation
+## Installation and Setup
 
 To setup this repo open up your bash terminal and follow along. Ideally use
 your SSH key for gitlab. If you haven't set that up just use HTTPS.
@@ -27,10 +27,18 @@ The bash script `run.sh` provides a minimal CLI to manage the service.
 # enter container in interactive mode
 . scripts/run.sh -i
 
-# set EnergyPlus version with the included manager (it just changes env variables and symboli links)
-. scripts/epvm.sh 9-2-0
+# install multiple versions of EnergyPlus, default versions supported: 8.9.0, 9.0.1, 9.1.0, 9.2.0 (see script for details)
+. scripts/setup/install_ep.sh
 
-# exit container shell
+# (optional) download IECC 2018 IDF files to start with
+. scripts/setup/download_IECC_idfs.sh
+
+
+
+# you're done with setup! now exit container shell or just stop the docker container
+# docker container can now be reattched to, stopped, and restarted when you need it again (see below for usage)
+# unless you specifically delete this docker container it can be restarted with the setup already done
+# if you delete the container just go through the setup here again
 exit
 ```
 
@@ -45,18 +53,19 @@ Some things are just easier to setup not using Docker, so this is a good place
 for those things.
 
 ```bash
+# reattach shell to a pre-built container
 . scripts/run.sh -s
 
-# in the container shell
+# select the version of EnergyPlus to use
+# EnergyPlus Version Manager (epvm) just changes env variables and symbolic links to hot-swap version
 . scripts/epvm.sh 9-2-0
 
 # start a pipenv shell with the installed python development environment
 pipenv shell
 ```
 
-Once you've started the container you're away to the races! 
 You can check everything is in good working order by running the tests as described
-below or just start using the package and EnergyPlus environment via jupyter-lab.
+below or just start using the package and EnergyPlus environment using your favourite python IDE or jupyter-lab.
 
 ### Run tests
 
@@ -66,9 +75,14 @@ python -m pytest tests/python
 
 ### Run Jupyter-Lab Server
 
-Start a local jupyter-lab server over port 8888 and use it in the browser at
-http://localhost:8888/lab.
+Make Jupyter-Lab available locally at: http://localhost:8888/lab 
 
+Use the convenience script:
+```bash
+. scripts/start_jupyterlab.sh
+```
+
+Or, do it manually:
 ```bash
 jupyter-lab --ip="0.0.0.0" --allow-root --no-browser
 ```
