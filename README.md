@@ -27,13 +27,13 @@ The bash script `run.sh` provides a minimal CLI to manage the service.
 # enter container in interactive mode
 . scripts/run.sh -i
 
-# install multiple versions of EnergyPlus, default versions supported: 8.9.0, 9.0.1, 9.1.0, 9.2.0 (see script for details)
-. scripts/setup/install_ep.sh
+# (optional) select the version of EnergyPlus to use, this can be done at any time
+# EnergyPlus Version Manager (epvm) script changes env variables and symbolic links to hot-swap version
+# by default .bashrc sets version to 9-2-0
+. scripts/epvm.sh 9-2-0
 
 # (optional) download IECC 2018 IDF files to start with
 . scripts/setup/download_IECC_idfs.sh
-
-
 
 # you're done with setup! now exit container shell or just stop the docker container
 # docker container can now be reattched to, stopped, and restarted when you need it again (see below for usage)
@@ -56,8 +56,9 @@ for those things.
 # reattach shell to a pre-built container
 . scripts/run.sh -s
 
-# select the version of EnergyPlus to use
-# EnergyPlus Version Manager (epvm) just changes env variables and symbolic links to hot-swap version
+# (optional) select the version of EnergyPlus to use, this can be done at any time
+# EnergyPlus Version Manager (epvm) script changes env variables and symbolic links to hot-swap version
+# by default .bashrc sets version to 9-2-0
 . scripts/epvm.sh 9-2-0
 
 # start a pipenv shell with the installed python development environment
@@ -73,16 +74,12 @@ below or just start using the package and EnergyPlus environment using your favo
 python -m pytest tests/python
 ```
 
-### Run Jupyter-Lab Server
+### Jupyter-Lab Server
 
-Make Jupyter-Lab available locally at: http://localhost:8888/lab 
+A jupyter-lab server is setup to run in `.bashrc` when the container starts.
+This is accessible locally at: http://localhost:8888/lab
 
-Use the convenience script:
+The PID is logged and the server can be stopped manually via:
 ```bash
-. scripts/start_jupyterlab.sh
-```
-
-Or, do it manually:
-```bash
-jupyter-lab --ip="0.0.0.0" --allow-root --no-browser
+kill -15 "$(cat ${JUPYTER_LOG_DIR}/JUPYTER_SERVER_PID.txt)"
 ```

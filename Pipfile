@@ -13,13 +13,19 @@ cython = "*"
 lxml = "*"
 scipy = "*"
 eppy = "*"
-pandas = "==1.0"
+pandas = ">=1.0.3"
 jupyterlab = "*"
 setuptools = "*"
 plotly = "*"
 ipywidgets = "*"
 psutil = "*"
 attrs = "*"
+google-cloud-storage = "*"
+pandas-gbq = "*"
+tqdm = "*"
 
 [requires]
 python_version = "3.7"
+
+[scripts]
+jupyter_lab_bkgrnd = "${PACKAGE_DIR:?}/scripts/setup/jupyter_lab_bkgrnd.sh"
