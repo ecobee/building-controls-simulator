@@ -1,32 +1,28 @@
-FROM ubuntu:18.04
+FROM ubuntu:20.04
 
 MAINTAINER Tom Stesco <tom.s@ecobee.com>
 
-USER root
-
-# user variables
-ENV HOME="/root/home"
+# env vars
+# Use C.UTF-8 locale to avoid issues with ASCII encoding
+ENV LANG="C.UTF-8"
+ENV LC_ALL="C.UTF-8"
+ENV DEBIAN_FRONTEND="noninteractive"
+ENV USER_NAME="bcs"
+ENV IS_DOCKER_ENV="true"
 ENV PACKAGE_NAME="building-control-simulator"
+ENV PYENV_SHELL="bash"
+
+# dependent env vars
+ENV HOME="/home/${USER_NAME}"
 ENV LIB_DIR="${HOME}/lib"
 ENV EXT_DIR="${LIB_DIR}/external"
-ENV FMIL_HOME="${EXT_DIR}/FMIL/build-fmil"
+ENV ENERGYPLUS_INSTALL_DIR="${EXT_DIR}"
+ENV FMIL_HOME="${EXT_DIR}/FMIL/build-fmil" 
 ENV PACKAGE_DIR="${LIB_DIR}/${PACKAGE_NAME}"
-ENV ENERGYPLUS_INSTALL_DIR="/usr/local"
+ENV PATH="${HOME}/pyenv/shims:${HOME}/pyenv/bin:${PATH}"
+ENV PYENV_ROOT="${HOME}/pyenv"
 
-# fixed vars
-WORKDIR "${HOME}"
-# Use C.UTF-8 locale to avoid issues with ASCII encoding
-ENV LC_ALL=C.UTF-8
-ENV LANG=C.UTF-8
-ENV IS_DOCKER_ENV="true"
-ARG DEBIAN_FRONTEND="noninteractive"
-
-ENV LANG="C.UTF-8" \
-    LC_ALL="C.UTF-8" \
-    PATH="${HOME}/pyenv/shims:${HOME}/pyenv/bin:${PATH}" \
-    PYENV_ROOT="${HOME}/pyenv" \
-    PYENV_SHELL="bash"
-
+# install core system libraries
 RUN apt-get update && apt-get upgrade -y \
     && apt-get install -y --no-install-recommends \
     build-essential \
@@ -39,9 +35,9 @@ RUN apt-get update && apt-get upgrade -y \
     libncursesw5-dev \
     libreadline-dev \
     libsqlite3-dev \
-    libssl1.0-dev \
+    # libssl1.0-dev \
     liblzma-dev \
-    # libssl-dev \
+    libssl-dev \
     llvm \
     make \
     cmake \
@@ -56,7 +52,15 @@ RUN apt-get update && apt-get upgrade -y \
     python3-dev \
     python3-distutils \
     subversion \
+    sudo \
     && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+
+RUN groupadd --gid 3434 "${USER_NAME}" \
+  && useradd --uid 3434 --gid "${USER_NAME}" --shell /bin/bash --create-home "${USER_NAME}" \
+  && echo 'bcs ALL=NOPASSWD: ALL' >> "/etc/sudoers.d/50-${USER_NAME}" \
+  && echo 'Defaults    env_keep += "DEBIAN_FRONTEND"' >> /etc/sudoers.d/env_keep
+
+
 
 # install nodejs and npm (for plotly)
 RUN curl -sL https://deb.nodesource.com/setup_12.x | bash - \
@@ -103,6 +107,11 @@ RUN cd "${PACKAGE_DIR}" \
     && chmod +x "./scripts/setup/install_ep.sh" \
     && ./scripts/setup/install_ep.sh
 
+RUN chown -R "${USER_NAME}":"${USER_NAME}" "${HOME}" \
+    && chmod -R 770 "${HOME}"
+
+USER "${USER_NAME}"
+
 # install python dev environment
 RUN cd "${PACKAGE_DIR}" \
     && pipenv install --dev --skip-lock \
@@ -113,16 +122,14 @@ RUN cd "${PACKAGE_DIR}" \
     && cd "${PACKAGE_DIR}" \
     && pip install -e ./ \
     && export NODE_OPTIONS=--max-old-space-size=4096 \
-    && jupyter labextension install @jupyter-widgets/jupyterlab-manager@1.1 --no-build \
-    && jupyter labextension install jupyterlab-plotly@1.5.0 --no-build \
+    && jupyter labextension install @jupyter-widgets/jupyterlab-manager@2 --no-build \
+    && jupyter labextension install jupyterlab-plotly --no-build \
     && jupyter labextension install plotlywidget@1.5.0 --no-build \
     && jupyter lab build \
     && unset NODE_OPTIONS
 
-# WARNING: FOR LOCAL HOSTING ONLY
-# disables authentication for jupyter notebook server 
-RUN mkdir "${HOME}/.jupyter" \
-    && touch "${HOME}/.jupyter/jupyter_notebook_config.py" \
-    && echo "c.NotebookApp.token = u''" >> "${HOME}/.jupyter/jupyter_notebook_config.py"
+# copy .bashrc file to user home for use on startup. This can be further configured by user.
+RUN cp "${PACKAGE_DIR}/scripts/setup/.bashrc" "$HOME/.bashrc" \
+    && chmod +x "${PACKAGE_DIR}/scripts/setup/jupyter_lab_bkgrnd.sh"
 
 WORKDIR "${PACKAGE_DIR}"
