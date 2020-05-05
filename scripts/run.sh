@@ -1,6 +1,34 @@
 #! /usr/bin/env bash
 
-set -o pipefail
+function printUsage(){
+  cat << EndOfMessage
+================================================================================
+Building Control Simulator run manager: 
+A bash script to manage Building Control Simulator docker containers.
+Set user variables to define which container is used.
+
+usage: 
+  -b, --build-docker
+    build docker container from Dockerfile and tag with {VERSION}.
+
+  -r, --run
+    start container {CONTAINER_NAME}:{VERSION} in interactive modewith bash 
+    mount volumes
+    open port 8888 to local host for jupyter server
+
+  -s, --start
+    start recently ran container by name "{CONTAINER_NAME}_v{VERSION}"
+
+  --copy-creds
+    copy GCP credentials into docker container
+
+  --remove
+    removes all exited containers
+
+for example: . run.sh -b
+================================================================================
+EndOfMessage
+}
 
 # user variables
 # ==============================================================================
@@ -20,12 +48,8 @@ while [[ "$#" -gt "0" ]]; do
     # build docker container
     docker build "${LOCAL_MNT_DIR}" -t "${CONTAINER_NAME}:${VERSION}"
     ;;
-  -l|--install-local)
-    # build docker container
-    echo "NOT IMPLEMENTED"
-    ;;
-  -i|--interactive)
-    # run docker container interactive bash
+  -r|--run)
+    # run docker container interactive with bash
     echo "mounting: ${LOCAL_MNT_DIR}:${DOCKER_MNT_DIR}:rw"
     docker run -it \
       --name "${CONTAINER_NAME}_v${VERSION}" \
@@ -34,25 +58,16 @@ while [[ "$#" -gt "0" ]]; do
       "${CONTAINER_NAME}:${VERSION}" \
       sh -c "bash"
     ;;
-  -j|--jupyter)
-    # run jupyter-lab server 
-    docker run -it \
-      --name "${CONTAINER_NAME}_v${VERSION}" \
-      -v "${LOCAL_MNT_DIR}:${DOCKER_MNT_DIR}:rw" \
-      -p 127.0.0.1:8888:8888 \
-      "${CONTAINER_NAME}:${VERSION}" \
-      sh -c 'pipenv run jupyter-lab --ip="0.0.0.0" --allow-root --no-browser'
-    ;;
   -s|--start)
-    # start a specific container
-    docker start -i "${CONTAINER_NAME}:${VERSION}"
+    # start recently ran container
+    docker start -i "${CONTAINER_NAME}_v${VERSION}"
     ;;
   --copy-creds)
     # copy GCP credentials to docker container
-    docker cp "$GOOGLE_APPLICATION_CREDENTIALS" "${CONTAINER_NAME}_v${VERSION}:${DOCKER_CREDS_DIR}"
+    docker cp "${GOOGLE_APPLICATION_CREDENTIALS}" "${CONTAINER_NAME}_v${VERSION}:${DOCKER_CREDS_DIR}"
     ;;
   --remove)
-    # removes all quited containers
+    # removes all exited containers
     docker ps -a -q | xargs docker rm
     ;;
   esac

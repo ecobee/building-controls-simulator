@@ -41,6 +41,7 @@ class IDFPreprocessor(object):
         self.idf_dir = os.environ["IDF_DIR"]
         self.fmu_dir = os.environ["FMU_DIR"]
         self.idd_path = os.environ["EPLUS_IDD"]
+        self.fmi_version = 1.0
         
         self.eplustofmu_path = os.path.join(
             os.environ["EXT_DIR"],
@@ -170,7 +171,7 @@ class IDFPreprocessor(object):
     def make_fmu(self, weather_path):
         """make the fmu"""
 
-        cmd = f'python2.7 {self.eplustofmu_path} -i {self.idd_path} -w {weather_path} -d {self.idf_prep_path}'
+        cmd = f'python2.7 {self.eplustofmu_path} -i {self.idd_path} -w {weather_path} -a {self.fmi_version} -d {self.idf_prep_path}'
         
         proc = subprocess.run(shlex.split(cmd), stdout=subprocess.PIPE)
         if not proc.stdout:

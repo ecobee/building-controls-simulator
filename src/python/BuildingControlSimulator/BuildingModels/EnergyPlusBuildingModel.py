@@ -62,7 +62,7 @@ class EnergyPlusBuildingModel(BuildingModel):
             raise ValueError(
                 f"""Must supply valid weather file, 
                 weather_path={self.weather_path} and weather_name={self.weather_name}"""
-            )
+            )        
         
         self.idf.make_fmu(weather_path=self.weather_path)
         return pyfmi.load_fmu(fmu=self.idf.fmu_path)
@@ -100,5 +100,5 @@ class EnergyPlusBuildingModel(BuildingModel):
     def initialize(self, start_time_seconds, final_time_seconds):
         """
         """
-        self.fmu = self.create_model_fmu()
+        self.fmu = self.create_model_fmu()        
         self.fmu.initialize(start_time_seconds, final_time_seconds)

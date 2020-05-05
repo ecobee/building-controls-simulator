@@ -3,7 +3,11 @@
 # bash script to install EnergyPlus releases from:
 # https://github.com/NREL/docker-energyplus/blob/develop/Dockerfile
 
-set -u -o pipefail
+set -eu
+# -e exit on first error
+# -u exit when an undefined variable such as $FOO is accessed
+# -o pipefail exit when | any |cmd | in | a | pipe has exitcode != 0
+# -x print all commands (debug only)
 
 function install_ep () {
   local _ENERGYPLUS_INSTALL_VERSION="${1}"
@@ -15,7 +19,7 @@ function install_ep () {
   local ENERGYPLUS_DOWNLOAD_FILENAME="EnergyPlus-${ENERGYPLUS_VERSION}-${ENERGYPLUS_SHA}-Linux-x86_64.sh"
   local ENERGYPLUS_DOWNLOAD_URL="${ENERGYPLUS_DOWNLOAD_BASE_URL}/${ENERGYPLUS_DOWNLOAD_FILENAME}"
 
-  cd "${EXT_DIR}" || exit
+  cd "${EXT_DIR}"
   curl -SLO "${ENERGYPLUS_DOWNLOAD_URL}"
   chmod +x "${ENERGYPLUS_DOWNLOAD_FILENAME}"
   # handle the bad install script, manually enter the install dir
@@ -32,10 +36,13 @@ function install_ep () {
   fi
   find -L "${_ENERGYPLUS_INSTALL_DIR}/bin" -type l -delete
   rm "${ENERGYPLUS_DOWNLOAD_FILENAME}"
-  cd - || exit
+  cd -
 }
 
 install_ep "8-9-0" "40101eaafd" "${ENERGYPLUS_INSTALL_DIR}"
 install_ep "9-0-1" "bb7ca4f0da" "${ENERGYPLUS_INSTALL_DIR}"
 install_ep "9-1-0" "08d2e308bb" "${ENERGYPLUS_INSTALL_DIR}"
 install_ep "9-2-0" "921312fa1d" "${ENERGYPLUS_INSTALL_DIR}"
+
+# reset shell options so that sourcing script in current shell doesn't leave options on
+set +eu
