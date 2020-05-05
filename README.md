@@ -80,10 +80,17 @@ below or just start using the package and EnergyPlus environment using your favo
 ### Example Notebook (Hello World)
 
 This requires that you downloaded the IECC .idf files or have some preexisting building model to work with.
+First move the .idf file to the IDR_DIR.
 
 ```bash
 mv "idf/IECC_2018/cz_2B/SF+CZ2B+USA_AZ_Phoenix-Sky.Harbor.Intl.AP.722780+gasfurnace+crawlspace+IECC_2018.idf" "${IDF_DIR}"
-mv ""
+```
+
+Next, download the weather file for that geography using https://energyplus.net/weather.
+Other weather data can be used as long as it is put into the .epw format.
+
+```bash
+cd "${WEATHER_DIR}" && wget "https://energyplus.net/weather-download/north_and_central_america_wmo_region_4/USA/AZ/USA_AZ_Phoenix-Sky.Harbor.Intl.AP.722780_TMY3/USA_AZ_Phoenix-Sky.Harbor.Intl.AP.722780_TMY3.epw"
 ```
 
 ### Run tests
