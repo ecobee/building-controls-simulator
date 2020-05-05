@@ -16,15 +16,29 @@ ENV PYENV_SHELL="bash"
 ENV HOME="/home/${USER_NAME}"
 ENV LIB_DIR="${HOME}/lib"
 ENV EXT_DIR="${LIB_DIR}/external"
-ENV ENERGYPLUS_INSTALL_DIR="${EXT_DIR}"
+ENV ENERGYPLUS_INSTALL_DIR="/usr/local"
 ENV FMIL_HOME="${EXT_DIR}/FMIL/build-fmil" 
 ENV PACKAGE_DIR="${LIB_DIR}/${PACKAGE_NAME}"
-ENV PATH="${HOME}/pyenv/shims:${HOME}/pyenv/bin:${PATH}"
+ENV PATH="${HOME}/.local/bin:${HOME}/pyenv/shims:${HOME}/pyenv/bin:${PATH}"
 ENV PYENV_ROOT="${HOME}/pyenv"
 
+RUN apt-get update && apt-get install -y --no-install-recommends sudo
+
+# create application user
+RUN groupadd --gid 3434 "${USER_NAME}" \
+  && useradd --uid 3434 --gid "${USER_NAME}" --shell /bin/bash --create-home "${USER_NAME}" \
+  && echo 'bcs ALL=NOPASSWD: ALL' >> "/etc/sudoers.d/50-${USER_NAME}" \
+  && echo 'Defaults    env_keep += "DEBIAN_FRONTEND"' >> /etc/sudoers.d/env_keep
+
+# give user ownership and rwx of $HOME and rwx default EnergyPlus install location
+RUN chown -R "${USER_NAME}":"${USER_NAME}" "${HOME}" \
+    && chmod -R 775 "${HOME}" "/usr/local"
+
+USER "${USER_NAME}"
+
 # install core system libraries
-RUN apt-get update && apt-get upgrade -y \
-    && apt-get install -y --no-install-recommends \
+RUN sudo apt-get update && sudo apt-get upgrade -y \
+    && sudo apt-get install -y --no-install-recommends \
     build-essential \
     ca-certificates \
     curl \
@@ -52,19 +66,11 @@ RUN apt-get update && apt-get upgrade -y \
     python3-dev \
     python3-distutils \
     subversion \
-    sudo \
-    && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
-
-RUN groupadd --gid 3434 "${USER_NAME}" \
-  && useradd --uid 3434 --gid "${USER_NAME}" --shell /bin/bash --create-home "${USER_NAME}" \
-  && echo 'bcs ALL=NOPASSWD: ALL' >> "/etc/sudoers.d/50-${USER_NAME}" \
-  && echo 'Defaults    env_keep += "DEBIAN_FRONTEND"' >> /etc/sudoers.d/env_keep
-
-
+    && sudo rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
 # install nodejs and npm (for plotly)
-RUN curl -sL https://deb.nodesource.com/setup_12.x | bash - \
-    && apt-get install -y nodejs
+RUN curl -sL https://deb.nodesource.com/setup_12.x | sudo bash - \
+    && sudo apt-get install -y nodejs
 
 # install pip
 RUN curl --silent https://bootstrap.pypa.io/get-pip.py | python3
@@ -99,28 +105,33 @@ RUN cd "${EXT_DIR}" \
 RUN cd "${EXT_DIR}" \
     && git clone https://github.com/lbl-srg/EnergyPlusToFMU.git
 
+# download and extract PyFMI release
+RUN cd "${EXT_DIR}" \
+    && wget "https://github.com/modelon-community/PyFMI/archive/PyFMI-2.7.tar.gz" \
+    && tar -xzf "PyFMI-2.7.tar.gz" \
+    && mv "${EXT_DIR}/PyFMI-PyFMI-2.7" "${EXT_DIR}/PyFMI" \
+    && rm -rf "${EXT_DIR}/PyFMI-PyFMI-2.7"
+
 RUN mkdir "${PACKAGE_DIR}"
 
 COPY ./ "${PACKAGE_DIR}/" 
 
 RUN cd "${PACKAGE_DIR}" \
-    && chmod +x "./scripts/setup/install_ep.sh" \
+    && sudo chmod +x "./scripts/setup/install_ep.sh" \
     && ./scripts/setup/install_ep.sh
-
-RUN chown -R "${USER_NAME}":"${USER_NAME}" "${HOME}" \
-    && chmod -R 770 "${HOME}"
-
-USER "${USER_NAME}"
 
 # install python dev environment
 RUN cd "${PACKAGE_DIR}" \
-    && pipenv install --dev --skip-lock \
-    && git clone https://github.com/modelon-community/PyFMI.git "${EXT_DIR}/PyFMI" \
-    && cd "${EXT_DIR}/PyFMI" \
+    && pipenv install --dev --skip-lock
+
+RUN cd "${EXT_DIR}/PyFMI" \
     && . ${HOME}/.local/share/virtualenvs/$( ls "${HOME}/.local/share/virtualenvs/" | grep "${PACKAGE_NAME}" )/bin/activate \
-    && python "setup.py" install --fmil-home="${FMIL_HOME}" \
-    && cd "${PACKAGE_DIR}" \
-    && pip install -e ./ \
+    && python "setup.py" install --fmil-home="${FMIL_HOME}"
+
+ENV PATH="${HOME}/.local/bin:/usr/local/bin:${HOME}/pyenv/shims:${HOME}/pyenv/bin:${PATH}"
+RUN cd "${PACKAGE_DIR}" \
+    && . ${HOME}/.local/share/virtualenvs/$( ls "${HOME}/.local/share/virtualenvs/" | grep "${PACKAGE_NAME}" )/bin/activate \
+    && pip install -e ./ --log "${PACKAGE_DIR}/piplog.txt" \
     && export NODE_OPTIONS=--max-old-space-size=4096 \
     && jupyter labextension install @jupyter-widgets/jupyterlab-manager@2 --no-build \
     && jupyter labextension install jupyterlab-plotly --no-build \

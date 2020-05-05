@@ -1,4 +1,7 @@
 #!/bin/bash
+
+set -eu -o pipefail
+
 TIMESTAMP=$(date +"%Y_%m_%dT%H_%M_%S")
 FNAME="jupyter_lab_logs_${TIMESTAMP}"
 
@@ -12,3 +15,5 @@ accessable at: http://localhost:8888/lab
 jupyter-lab logs are being stored in: ${JUPYTER_LOG_DIR}/${FNAME}
 ================================================================================
 EndOfMessage
+
+set +eu +o pipefail

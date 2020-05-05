@@ -13,15 +13,12 @@ logging.basicConfig(
     format="%(asctime)s %(levelname)-8s %(message)s",
     datefmt="%Y-%m-%d %H:%M:%S",
 )
-# from BuildingControlSimulator.BuildingModels.BuildingModel import BuildingModel
-# from BuildingControlSimulator.BuildingModels.IDFPreprocessor import IDFPreprocessor
 
 @attr.s
 class BuildingModel(object):
     """Abstract Base Class for building models
     """
 
-    
     def test_abc(self):
-        return 4
+        pass
 
