@@ -30,4 +30,5 @@ setup(
     package_dir={"": "src/python"},
     packages=find_namespace_packages(where="src/python"),
     install_requires=REQUIRES,
+    python_requires='>=3.7',
 )
