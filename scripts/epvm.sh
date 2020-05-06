@@ -8,18 +8,12 @@ A bash CLI script to toggle between EnergyPlus versions.
 
 usage: . epvm.sh <ENERGYPLUS-VERSION-NUMBER>
 
-Supported versions: {8-9-0, 9-0-1, 9-1-0, 9-2-0}
+Supported versions: {8-9-0, 9-0-1, 9-1-0, 9-2-0, 9-3-0}
 
 for example: . epvm.sh 8-9-0
 ================================================================================
 EndOfMessage
 }
-
-set -eu
-# -e exit on first error
-# -u exit when an undefined variable such as $FOO is accessed
-# -o pipefail exit when | any |cmd | in | a | pipe has exitcode != 0
-# -x print all commands (debug only)
 
 TO_SET_VERSION="${1}"
 
@@ -27,7 +21,7 @@ if [[ -z "${TO_SET_VERSION}" ]]; then
   printUsage
 elif [[ "${TO_SET_VERSION}" == "-h" ]]; then
   printUsage
-elif [[ "${TO_SET_VERSION}" =~ ^("8-9-0"|"9-0-1"|"9-1-0"|"9-2-0")$ ]]; then
+elif [[ "${TO_SET_VERSION}" =~ ^("8-9-0"|"9-0-1"|"9-1-0"|"9-2-0"|"9-3-0")$ ]]; then
   
   # set -u
   _NEW_EPLUS_NAME="EnergyPlus-${TO_SET_VERSION}"
@@ -57,7 +51,7 @@ elif [[ "${TO_SET_VERSION}" =~ ^("8-9-0"|"9-0-1"|"9-1-0"|"9-2-0")$ ]]; then
     mkdir -p "${IDF_PREPROCESSED_DIR}"
 
     # setup fmu dirs
-    mkdir -p "${PACKAGE_DIR}/fmu}"
+    mkdir -p "${PACKAGE_DIR}/fmu"
     export FMU_DIR="${PACKAGE_DIR}/fmu/v${ENERGYPLUS_INSTALL_VERSION}"
     mkdir -p "${FMU_DIR}"
 
@@ -72,9 +66,9 @@ elif [[ "${TO_SET_VERSION}" =~ ^("8-9-0"|"9-0-1"|"9-1-0"|"9-2-0")$ ]]; then
       export EPLUS_IDD="${EPLUS_DIR}/PreProcess/IDFVersionUpdater/V${ENERGYPLUS_INSTALL_VERSION}-Energy+.idd"
     fi
 
-    # EnergyPlus uses symbolic links in /usr/local/bin to define all runtime executables
+    # EnergyPlus uses symbolic links to define all runtime executables
     # we simply redefine these to hot-swap what version is currently used
-    _LINK_DIR="/usr/local/bin"
+    _LINK_DIR="/home/bcs/.local/bin"
     ln -sf "${EPLUS_DIR}/runenergyplus" "${_LINK_DIR}/runenergyplus"
     ln -sf "${EPLUS_DIR}/runepmacro" "${_LINK_DIR}/runepmacro"
     ln -sf "${EPLUS_DIR}/runreadvars" "${_LINK_DIR}/runreadvars"
@@ -109,4 +103,3 @@ else
 fi
 
 # reset shell options so that sourcing script in current shell doesn't leave options on
-set +eu

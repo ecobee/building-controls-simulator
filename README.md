@@ -33,19 +33,19 @@ The bash script `run.sh` provides a minimal CLI to manage the service.
 # build container (only need to do this once!)
 . scripts/run.sh -b
 
-# enter container in interactive mode
-. scripts/run.sh -i
+# run container in interactive mode for first time to set it up with mounted volumes
+. scripts/run.sh -r
 
-# (optional) select the version of EnergyPlus to use, this can be done at any time
+# select the version of EnergyPlus to use in current environment, this can be changed at any time
 # EnergyPlus Version Manager (epvm) script changes env variables and symbolic links to hot-swap version
-# by default .bashrc sets version to 8-9-0. This is the longest supported version on 
+# by default .bashrc sets version to 8-9-0.
 . scripts/epvm.sh 8-9-0
 
 # (optional) download IECC 2018 IDF files to start with
 . scripts/setup/download_IECC_idfs.sh
 
 # you're done with setup! now exit container shell or just stop the docker container
-# docker container can now be reattched to, stopped, and restarted when you need it again (see below for usage)
+# the docker container can now be reattched to, stopped, and restarted when you need it again (see below for usage)
 # unless you specifically delete this docker container it can be restarted with the setup already done
 # if you delete the container just go through the setup here again
 exit
@@ -62,13 +62,8 @@ Some things are just easier to setup not using Docker, so this is a good place
 for those things.
 
 ```bash
-# reattach shell to a pre-built container
+# restart a pre-built container with interactive bash shell
 . scripts/run.sh -s
-
-# (optional) select the version of EnergyPlus to use, this can be done at any time
-# EnergyPlus Version Manager (epvm) script changes env variables and symbolic links to hot-swap version
-# by default .bashrc sets version to 8-9-0
-. scripts/epvm.sh 8-9-0
 
 # start a pipenv shell with the installed python development environment
 pipenv shell
@@ -83,14 +78,18 @@ This requires that you downloaded the IECC .idf files or have some preexisting b
 First move the .idf file to the IDR_DIR.
 
 ```bash
-mv "idf/IECC_2018/cz_2B/SF+CZ2B+USA_AZ_Phoenix-Sky.Harbor.Intl.AP.722780+gasfurnace+crawlspace+IECC_2018.idf" "${IDF_DIR}"
+cp "idf/IECC_2018/cz_2B/SF+CZ2B+USA_AZ_Phoenix-Sky.Harbor.Intl.AP.722780+gasfurnace+crawlspace+IECC_2018.idf" "${IDF_DIR}"
 ```
 
 Next, download the weather file for that geography using https://energyplus.net/weather.
 Other weather data can be used as long as it is put into the .epw format.
 
 ```bash
-cd "${WEATHER_DIR}" && wget "https://energyplus.net/weather-download/north_and_central_america_wmo_region_4/USA/AZ/USA_AZ_Phoenix-Sky.Harbor.Intl.AP.722780_TMY3/USA_AZ_Phoenix-Sky.Harbor.Intl.AP.722780_TMY3.epw"
+cd "${WEATHER_DIR}"
+EPLUS_WEATHER_URL_USA="https://energyplus.net/weather-download/north_and_central_america_wmo_region_4/USA"
+WEATHER_FILE="AZ/USA_AZ_Phoenix-Sky.Harbor.Intl.AP.722780_TMY3/USA_AZ_Phoenix-Sky.Harbor.Intl.AP.722780_TMY3.epw"
+wget "${EPLUS_WEATHER_URL_USA}/${WEATHER_FILE}" -P "${WEATHER_DIR}"
+cd -
 ```
 
 ### Run tests
@@ -109,5 +108,16 @@ The PID is logged and the server can be stopped manually via:
 kill -15 "$(cat ${JUPYTER_LOG_DIR}/JUPYTER_SERVER_PID.txt)"
 ```
 
+Stopping or exitting the container will also shutdown the jupyter server.
+
+### Configuration
+
+The .bashrc at `scripts/setup/.bashrc` can be configured similar to any .bashrc file.
+It simply runs commands (rc) whenever an interctive bash shell is opened.
+
+For example removing the line `pipenv run jupyter_lab_bkgrnd` will cause the jupyter
+server to not be start in the background.
+
 ## Contributing
 
+See CONTRIBUTING.md

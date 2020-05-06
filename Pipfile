@@ -23,6 +23,7 @@ attrs = "*"
 google-cloud-storage = "*"
 pandas-gbq = "*"
 tqdm = "*"
+buildingcontrolsimulator = {editable = true,path = "."}
 
 [requires]
 python_version = "3.7"
