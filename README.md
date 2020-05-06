@@ -31,6 +31,7 @@ The bash script `run.sh` provides a minimal CLI to manage the service.
 
 ```bash
 # build container (only need to do this once!)
+# this will take ~40 minutes, mostly to download all desired versions of EnergyPlus
 . scripts/run.sh -b
 
 # run container in interactive mode for first time to set it up with mounted volumes
@@ -85,11 +86,9 @@ Next, download the weather file for that geography using https://energyplus.net/
 Other weather data can be used as long as it is put into the .epw format.
 
 ```bash
-cd "${WEATHER_DIR}"
 EPLUS_WEATHER_URL_USA="https://energyplus.net/weather-download/north_and_central_america_wmo_region_4/USA"
 WEATHER_FILE="AZ/USA_AZ_Phoenix-Sky.Harbor.Intl.AP.722780_TMY3/USA_AZ_Phoenix-Sky.Harbor.Intl.AP.722780_TMY3.epw"
 wget "${EPLUS_WEATHER_URL_USA}/${WEATHER_FILE}" -P "${WEATHER_DIR}"
-cd -
 ```
 
 ### Run tests
