@@ -10,11 +10,16 @@ import pyfmi
 
 from BuildingControlSimulator.BuildingModels.IDFPreprocessor import IDFPreprocessor
 
+
 class TestImports:
+    def __init__(self):
+        # basic IDF file found in all EnergyPlus installations
+        self.dummy_idf_path = f"{os.environ['EPLUS_DIR']}/ExampleFiles/Furnace.idf"
+
     def test_preprocess(self):
         """
         """
-        # TODO test different ep versions 
+        # TODO test different ep versions
         # print(os.environ["PACKAGE_DIR"])
         # cmd = f'{os.environ["PACKAGE_DIR"]}/scripts/epvm.sh 8-9-0'
         # print(os.environ["IDF_DIR"])
@@ -23,18 +28,20 @@ class TestImports:
         # print(os.environ["IDF_DIR"])
 
         idf = IDFPreprocessor(
-            idf_name=f"Furnace_{os.environ['ENERGYPLUS_INSTALL_VERSION']}.idf",
-            weather_name="USA_IL_Chicago-OHare.Intl.AP.725300_TMY3.epw"
+            idf_path=f"{os.environ['EPLUS_DIR']}/ExampleFiles/Furnace.idf",
+            weather_name="USA_IL_Chicago-OHare.Intl.AP.725300_TMY3.epw",
         )
-        # test that preprocessing produces idf prep file
+        # test that preprocessing produces output file
         assert os.path.exists(idf.preprocess())
+
+        # test that preprocessing produces valid IDF output file
 
     def test_make_fmu(self):
         """
         """
         idf = IDFPreprocessor(
-            idf_name=f"Furnace_{os.environ['ENERGYPLUS_INSTALL_VERSION']}.idf",
-            weather_name="USA_IL_Chicago-OHare.Intl.AP.725300_TMY3.epw"
+            idf_path=f"Furnace_{os.environ['ENERGYPLUS_INSTALL_VERSION']}.idf",
+            weather_name="USA_IL_Chicago-OHare.Intl.AP.725300_TMY3.epw",
         )
 
         # test that make fmu produces fmu file
@@ -51,7 +58,7 @@ class TestImports:
         print(cmd)
         # subprocess.run(shlex.split(cmd), stdout=subprocess.PIPE, shell=True)
         pass
-    
+
     def test_pyfmi_load_fmu(self):
         """
         """
@@ -65,8 +72,6 @@ class TestImports:
         fmu_dir = os.environ["FMU_DIR"]
         model = pyfmi.load_fmu(os.path.join(fmu_dir, "_test_fmu_8-9-0.fmu"))
         opts = model.simulate_options()
-        t_end = 86400.
-        opts['ncp'] = int(t_end / 60.)
+        t_end = 86400.0
+        opts["ncp"] = int(t_end / 60.0)
         res = model.simulate(final_time=t_end, options=opts)
-        
-

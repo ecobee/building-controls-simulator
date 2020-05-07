@@ -8,11 +8,9 @@ import attr
 import numpy as np
 from eppy import modeleditor
 
-logging.basicConfig(
-    level=logging.DEBUG,
-    format="%(asctime)s %(levelname)-8s %(message)s",
-    datefmt="%Y-%m-%d %H:%M:%S",
-)
+
+logger = logging.getLogger(__name__)
+
 
 @attr.s
 class BuildingModel(object):
@@ -21,4 +19,3 @@ class BuildingModel(object):
 
     def test_abc(self):
         pass
-

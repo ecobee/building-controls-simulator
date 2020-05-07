@@ -15,11 +15,8 @@ from BuildingControlSimulator.ControlModels.ControlModel import HVAC_modes
 from BuildingControlSimulator.ControlModels.ControlModel import ControlModel
 
 
-logging.basicConfig(
-    level=logging.DEBUG,
-    format="%(asctime)s %(levelname)-8s %(message)s",
-    datefmt="%Y-%m-%d %H:%M:%S",
-)
+logger = logging.getLogger(__name__)
+
 
 @attr.s
 class EnergyPlusBuildingModel(BuildingModel):
@@ -58,22 +55,21 @@ class EnergyPlusBuildingModel(BuildingModel):
                         self.weather_path = os.path.join(
                             self.weather_dir, self.weather_name
                         )
-        else:
+        elif not self.weather_path and not self.weather_name:
             raise ValueError(
                 f"""Must supply valid weather file, 
                 weather_path={self.weather_path} and weather_name={self.weather_name}"""
-            )        
-        
+            )
+
         self.idf.make_fmu(weather_path=self.weather_path)
         return pyfmi.load_fmu(fmu=self.idf.fmu_path)
 
     def occupied_zones(self):
         """Gets occupiec zones from zones that have a tstat in them."""
         return [
-            tstat.Zone_or_ZoneList_Name for tstat
-            in self.idf.ep_idf.idfobjects['zonecontrol:thermostat'.upper()]
+            tstat.Zone_or_ZoneList_Name
+            for tstat in self.idf.ep_idf.idfobjects["zonecontrol:thermostat".upper()]
         ]
-
 
     def actuate_HVAC_equipment(self, step_HVAC_mode):
         """
@@ -100,5 +96,5 @@ class EnergyPlusBuildingModel(BuildingModel):
     def initialize(self, start_time_seconds, final_time_seconds):
         """
         """
-        self.fmu = self.create_model_fmu()        
+        self.fmu = self.create_model_fmu()
         self.fmu.initialize(start_time_seconds, final_time_seconds)

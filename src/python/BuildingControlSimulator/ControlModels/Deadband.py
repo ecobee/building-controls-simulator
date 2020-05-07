@@ -14,11 +14,6 @@ from BuildingControlSimulator.ControlModels.ControlModel import ControlModel
 from BuildingControlSimulator.ControlModels.ControlModel import HVAC_modes
 from BuildingControlSimulator.BuildingModels import IDFPreprocessor
 
-logging.basicConfig(
-    level=logging.DEBUG,
-    format="%(asctime)s %(levelname)-8s %(message)s",
-    datefmt="%Y-%m-%d %H:%M:%S",
-)
 
 @attr.s
 class Deadband(ControlModel):
@@ -32,27 +27,23 @@ class Deadband(ControlModel):
     ```
 
     """
+
     HVAC_mode = attr.ib(default=HVAC_modes.UNCONTROLLED)
-    stp_heat = attr.ib(default=21.)
-    stp_cool = attr.ib(default=25.)
-    deadband = attr.ib(default=2.)
+    stp_heat = attr.ib(default=21.0)
+    stp_cool = attr.ib(default=25.0)
+    deadband = attr.ib(default=2.0)
 
     def output_keys(self):
         """
         """
-        return [
-            "HVAC_mode",
-            "stp_heat",
-            "stp_cool",
-            "deadband"
-        ]
+        return ["HVAC_mode", "stp_heat", "stp_cool", "deadband"]
 
     def do_step(self, t_ctrl):
         """
         before building model step `HVAC_mode` is the HVAC_mode for the step
         """
         self.HVAC_mode = self.next_HVAC_mode(t_ctrl)
-        output = [getattr(self, k) for k in self.output_keys()] 
+        output = [getattr(self, k) for k in self.output_keys()]
         return output
 
     def next_HVAC_mode(self, t_ctrl):
@@ -89,7 +80,3 @@ class Deadband(ControlModel):
             next_HVAC_mode = HVAC_modes.UNCONTROLLED
 
         return next_HVAC_mode
-
-    
-
-

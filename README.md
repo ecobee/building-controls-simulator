@@ -65,13 +65,14 @@ for those things.
 ```bash
 # restart a pre-built container with interactive bash shell
 . scripts/run.sh -s
-
-# start a pipenv shell with the installed python development environment
-pipenv shell
 ```
 
-You can check everything is in good working order by running the hello world notebook and the tests below
-below or just start using the package and EnergyPlus environment using your favourite python IDE or jupyter-lab.
+The default `.bashrc` file should start a jupyter lab server in background and 
+then start a pipenv shell with the installed python development environment.
+
+You can check everything is in good working order by running the hello world notebook 
+and the tests below or just start using the package and EnergyPlus environment 
+using your favourite python IDE or jupyter-lab.
 
 ### Example Notebook (Hello World)
 

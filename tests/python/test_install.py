@@ -1,18 +1,31 @@
 #!/usr/bin/env python
 # created by Tom Stesco tom.s@ecobee.com
 
-import pytest
-
 from types import ModuleType
+import importlib
+
+import pytest
 
 
 class TestImports:
-    def test_import_package(self):
-        import BuildingControlSimulator as bcs
+    def test_import_package_modules(self, module):
+        """Test all package modules can be imported"""
+        modules = [
+            "BuildingControlSimulator",
+        ]
 
-        assert isinstance(bcs, ModuleType)
+        for m in modules:
+            assert isinstance(importlib.import_module(m), ModuleType)
 
-    def test_import_pyfmi(self):
-        import pyfmi
-
-        assert isinstance(pyfmi, ModuleType)
+    def test_import_deps(self):
+        """Test all dependencies can be imported"""
+        deps = [
+            "pyfmi",
+            "pandas",
+            "numpy",
+            "scipy",
+            "eppy",
+            "plotly",
+        ]
+        for d in deps:
+            assert isinstance(importlib.import_module(d), ModuleType)
