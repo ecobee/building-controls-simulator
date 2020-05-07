@@ -150,6 +150,7 @@ EndOfMessage
     fi
     # this is configured in Pipfile [scripts] to start headless jupyter server
     pipenv run jupyter_lab_bkgrnd
+    pipenv shell
 fi
 
 

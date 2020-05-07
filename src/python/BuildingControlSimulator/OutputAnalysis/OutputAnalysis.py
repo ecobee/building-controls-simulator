@@ -11,13 +11,6 @@ import plotly
 import attr
 
 
-logging.basicConfig(
-    level=logging.DEBUG,
-    format="%(asctime)s %(levelname)-8s %(message)s",
-    datefmt="%Y-%m-%d %H:%M:%S",
-)
-
-
 @attr.s
 class OutputAnalysis(object):
     """OutputAnalysis
@@ -58,18 +51,12 @@ class OutputAnalysis(object):
             cols=1,
             shared_xaxes=True,
             x_title="Time",
-            row_heights=[2, 1, 1],   # relative heights
+            row_heights=[2, 1, 1],  # relative heights
             vertical_spacing=0.05,
             specs=[
-                [
-                    {"secondary_y": True},
-                ],
-                [
-                    {"secondary_y": False},
-                ],
-                [
-                    {"secondary_y": True},
-                ],
+                [{"secondary_y": True},],
+                [{"secondary_y": False},],
+                [{"secondary_y": True},],
             ],
         )
 
@@ -82,15 +69,13 @@ class OutputAnalysis(object):
             autosize=False,
             width=1500,
             height=1000,
-            hovermode='closest',
+            hovermode="closest",
         )
 
         fig.update_layout(layout)
 
         if show:
             fig.show()
-        
-
 
     def thermal_plot(self, fig, row, col):
         """
@@ -100,12 +85,17 @@ class OutputAnalysis(object):
 
         # legend subtitle
         fig.add_trace(
-            go.Scatter(x=self.df.datetime, y=np.zeros(len(self.df.datetime)), mode="lines", visible='legendonly', name="Thermal diagnostics"),
+            go.Scatter(
+                x=self.df.datetime,
+                y=np.zeros(len(self.df.datetime)),
+                mode="lines",
+                visible="legendonly",
+                name="Thermal diagnostics",
+            ),
             row=row,
             col=col,
             secondary_y=False,
         )
-        
 
         for c in [c for c in self.df.columns if "Zone_Air_Temperature" in c]:
             fig.add_trace(
@@ -206,7 +196,6 @@ class OutputAnalysis(object):
             secondary_y=False,
         )
 
-
     def power_plot(self, fig, row, col):
         """
         """
@@ -215,12 +204,17 @@ class OutputAnalysis(object):
 
         # legend subtitle
         fig.add_trace(
-            go.Scatter(x=self.df.datetime, y=np.zeros(len(self.df.datetime)), mode="lines", visible='legendonly', name="Power diagnostics"),
+            go.Scatter(
+                x=self.df.datetime,
+                y=np.zeros(len(self.df.datetime)),
+                mode="lines",
+                visible="legendonly",
+                name="Power diagnostics",
+            ),
             row=row,
             col=col,
             secondary_y=False,
         )
-        
 
         fig.add_trace(
             go.Scatter(
@@ -265,14 +259,13 @@ class OutputAnalysis(object):
                 x=self.df.datetime,
                 y=np.zeros(len(self.df.datetime)),
                 mode="lines",
-                visible='legendonly',
+                visible="legendonly",
                 name="Control signal diagnostics",
             ),
             row=row,
             col=col,
             secondary_y=False,
         )
-        
 
         for c in [c for c in self.df.columns if "Setpoint_Temperature" in c]:
             fig.add_trace(
