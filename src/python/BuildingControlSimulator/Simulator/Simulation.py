@@ -114,7 +114,7 @@ class Simulation(object):
 
         for t_step_seconds in range(
             self.start_time_seconds, self.final_time_seconds, self.step_size_seconds
-        ):  
+        ):
             controller_output = self.controller.do_step(t_ctrl)
             self.building_model.actuate_HVAC_equipment(self.controller.HVAC_mode)
             step_status = self.building_model.fmu.do_step(

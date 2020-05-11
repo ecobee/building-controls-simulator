@@ -8,96 +8,92 @@ import logging
 
 import pandas as pd
 
-# import attr
+import attr
 import numpy as np
-from eppy import modeleditor
+from eppy.modeleditor import IDF
 
 logger = logging.getLogger(__name__)
 
 
+@attr.s(kw_only=True)
 class IDFPreprocessor(object):
     """Converts IDFs (Input Data Files) for EnergyPlus into working IDFs.
-
     Example:
     ```python
-    src.IDFPreprocessor.()
-
+    from BuildingControlSimulator.BuildingModels import IDFPreprocessor
+    idf = IDFPreprocessor(
+        idf_file=self.dummy_idf_file,
+        weather_file=self.dummy_weather_file,
+    )
     ```
-
     """
 
-    def __init__(
-        self,
-        idf_name=None,
-        idf_path=None,
-        weather_name=None,
-        weather_path=None,
-        timesteps=12,
-        init_temperature=21.0,
-        init_control_type=2,
-        debug=True,
-    ):
-        """Initialize `IDFPreprocessor` with an IDF file and desired actions"""
-        self.ep_version = os.environ["ENERGYPLUS_INSTALL_VERSION"]
-        self.idf_dir = os.environ["IDF_DIR"]
-        self.fmu_dir = os.environ["FMU_DIR"]
-        self.idd_path = os.environ["EPLUS_IDD"]
-        self.fmi_version = 1.0
+    # user must supply an idf file as either 1) full path, or 2) a file in self.idf_dir
+    idf_file = attr.ib()
 
-        self.eplustofmu_path = os.path.join(
+    init_temperature = attr.ib(type=float, default=21.0)
+    init_control_type = attr.ib(type=int, default=2)
+    debug = attr.ib(type=bool, default=False)
+    timesteps = attr.ib(type=int, default=12)
+    fmi_version = attr.ib(type=float, default=1.0)
+
+    # first, terminate env vars, these will raise exceptions if undefined
+    ep_version = attr.ib(default=os.environ["ENERGYPLUS_INSTALL_VERSION"])
+    idf_dir = attr.ib(default=os.environ["IDF_DIR"])
+    idd_path = attr.ib(default=os.environ["EPLUS_IDD"])
+    # weather_dir = attr.ib(default=os.environ["WEATHER_DIR"])
+    fmu_dir = attr.ib(default=os.environ["FMU_DIR"])
+    eplustofmu_path = attr.ib(
+        default=os.path.join(
             os.environ["EXT_DIR"], "EnergyPlusToFMU/Scripts/EnergyPlusToFMU.py"
         )
-        self.timesteps = timesteps
-        self.init_temperature = init_temperature
-        self.init_control_type = init_control_type
-        self.debug = debug
+    )
 
-        if idf_path:
-            if not os.path.isfile(idf_path):
-                raise ValueError(f"""IDF file: {idf_path} is not a file.""")
-            elif not self.check_valid_idf(idf_path):
-                raise ValueError(f"""IDF file: {idf_path} is not a valid IDF file.""")
-            else:
-                self.idf_path = idf_path
-        elif idf_name:
-            self.idf_path = os.path.join(self.idf_dir, idf_name)
-            if not os.path.exists(self.idf_path):
-                raise ValueError(
-                    f"""IDF file: {idf_name} does not exist in {self.idf_dir}."""
-                )
+    def __attrs_post_init__(self):
+        """Initialize `IDFPreprocessor` with an IDF file and desired actions"""
+        # set energyplus dictionary version for eppy
+        IDF.setiddname(self.idd_path)
+
+        # first make sure idf file exists
+        if os.path.isfile(self.idf_file):
+            self.idf_name = os.path.basename(self.idf_file)
         else:
-            raise ValueError(
-                f"""Must supply valid IDF file, 
-                idf_path={weather_path} and idf_name={weather_name}"""
-            )
+            self.idf_name = self.idf_file
+            self.idf_file = os.path.join(self.idf_dir, self.idf_name)
+            if not os.path.isfile(self.idf_file):
+                raise ValueError(f"""{self.idf_file} is not a file.""")
+        # make sure idf is valid IDF file
+        if not self.check_valid_idf(self.idf_file):
+            raise ValueError(f"""{self.idf_file} is not a valid IDF file.""")
 
-        self.idf_name = os.path.basename(self.idf_path)
-        self.idf_prep_name = idf_name.replace(".idf", "_prep.idf")
-
-        self.idf_prep_dir = os.path.join(self.idf_dir, "preprocessed")
-
-        self.idf_prep_path = os.path.join(self.idf_prep_dir, self.idf_prep_name)
-
-        self.fmu_name = self.get_fmu_name(self.idf_prep_name)
-        self.fmu_path = os.path.join(self.fmu_dir, self.fmu_name)
-
-        modeleditor.IDF.setiddname(self.idd_path)
-        logger.info("IDFPreprocessor loading .idf file: {}".format(self.idf_path))
-        self.ep_idf = modeleditor.IDF(self.idf_path)
+        logger.info("IDFPreprocessor loading .idf file: {}".format(self.idf_file))
+        self.ep_idf = IDF(self.idf_file)
 
         self.zone_outputs = []
         self.building_outputs = []
+
         # config
         self.FMU_control_dual_stp_name = "FMU_T_dual_stp"
         self.FMU_control_cooling_stp_name = "FMU_T_cooling_stp"
         self.FMU_control_heating_stp_name = "FMU_T_heating_stp"
         self.FMU_control_type_name = "FMU_T_control_type"
 
-    @staticmethod
-    def get_fmu_name(idf_name):
-        """
-        """
-        fmu_name = os.path.splitext(idf_name)[0]
+    @property
+    def idf_prep_name(self):
+        return self.idf_name.replace(".idf", "_prep.idf")
+
+    @property
+    def idf_prep_dir(self):
+        return os.path.join(self.idf_dir, "preprocessed")
+
+    @property
+    def idf_prep_path(self):
+        return os.path.join(self.idf_prep_dir, self.idf_prep_name)
+
+    @property
+    def fmu_name(self):
+        fmu_name = os.path.splitext(self.idf_prep_name)[0]
+        # add automatic conversion rules for fmu naming
         idf_bad_chars = [" ", "-", "+", "."]
         for c in idf_bad_chars:
             fmu_name = fmu_name.replace(c, "_")
@@ -108,6 +104,10 @@ class IDFPreprocessor(object):
         fmu_name = fmu_name + ".fmu"
 
         return fmu_name
+
+    @property
+    def fmu_path(self):
+        return os.path.join(self.fmu_dir, self.fmu_name)
 
     def output_keys(self):
         """
@@ -185,10 +185,10 @@ class IDFPreprocessor(object):
 
         return self.idf_prep_path
 
-    def make_fmu(self, weather_path):
+    def make_fmu(self, weather):
         """make the fmu"""
 
-        cmd = f"python2.7 {self.eplustofmu_path} -i {self.idd_path} -w {weather_path} -a {self.fmi_version} -d {self.idf_prep_path}"
+        cmd = f"python2.7 {self.eplustofmu_path} -i {self.idd_path} -w {weather} -a {self.fmi_version} -d {self.idf_prep_path}"
 
         proc = subprocess.run(shlex.split(cmd), stdout=subprocess.PIPE)
         if not proc.stdout:
@@ -265,10 +265,10 @@ class IDFPreprocessor(object):
                 f".idf current_version={cur_version} above target_version={target_version}"
             )
         elif cur_version == target_version:
-            logger.info(f"Correct .idf version {cur_version}. Using {self.idf_path}")
+            logger.info(f"Correct .idf version {cur_version}. Using {self.idf_file}")
         else:
             # first check for previous upgrade
-            transition_fpath = self.idf_path.replace(".idf", f"_{target_version}.idf")
+            transition_fpath = self.idf_file.replace(".idf", f"_{target_version}.idf")
             if not os.path.isfile(transition_fpath):
                 # upgrade .idf file repeatedly
                 first_transition = True
@@ -288,7 +288,7 @@ class IDFPreprocessor(object):
                         # see https://stackoverflow.com/questions/21406887/subprocess-changing-directory/21406995
                         original_wd = os.getcwd()
                         os.chdir(transition_dir)
-                        cmd = f"{transistion_path} {self.idf_path}"
+                        cmd = f"{transistion_path} {self.idf_file}"
 
                         # make transition call
                         subprocess.call(shlex.split(cmd), stdout=subprocess.PIPE)
@@ -297,39 +297,39 @@ class IDFPreprocessor(object):
                         cur_version = conversion_dict[cur_version][-5:]
                         if self.debug:
                             shutil.move(
-                                self.idf_path + "new",
-                                self.idf_path.replace(".idf", f"_{cur_version}.idf"),
+                                self.idf_file + "new",
+                                self.idf_file.replace(".idf", f"_{cur_version}.idf"),
                             )
 
                         if first_transition:
                             shutil.move(
-                                self.idf_path + "old", self.idf_path + "original"
+                                self.idf_file + "old", self.idf_file + "original"
                             )
                             first_transition = False
 
-                shutil.move(self.idf_path + "original", self.idf_path)
+                shutil.move(self.idf_file + "original", self.idf_file)
 
                 if not self.debug:
                     shutil.move(
-                        self.idf_path + "new",
-                        self.idf_path.replace(".idf", f"_{cur_version}.idf"),
+                        self.idf_file + "new",
+                        self.idf_file.replace(".idf", f"_{cur_version}.idf"),
                     )
-                if os.path.isfile(self.idf_path + "old"):
-                    os.remove(self.idf_path + "old")
-            self.idf_path = transition_fpath
+                if os.path.isfile(self.idf_file + "old"):
+                    os.remove(self.idf_file + "old")
+            self.idf_file = transition_fpath
             # after running transition need to reload .idf file
-            self.ep_idf = modeleditor.IDF(self.idf_path)
-            logger.info(f"Upgrading complete. Using: {self.idf_path}")
+            self.ep_idf = IDF(self.idf_file)
+            logger.info(f"Upgrading complete. Using: {self.idf_file}")
 
     def prep_expand_objects(self):
         # must use os.chdir() because a subprocess cannot change another subprocess's wd
         # see https://stackoverflow.com/questions/21406887/subprocess-changing-directory/21406995
-        logger.info(f"Expanding objects. Using: {self.idf_path}")
+        logger.info(f"Expanding objects. Using: {self.idf_file}")
         original_wd = os.getcwd()
         exp_dir = os.path.join(os.environ["EPLUS_DIR"])
         os.chdir(exp_dir)
         exp_path = os.path.join(exp_dir, "ExpandObjects")
-        cmd = f"{exp_path} {self.idf_path}"
+        cmd = f"{exp_path} {self.idf_file}"
 
         # make transition call
         subprocess.call(shlex.split(cmd), stdout=subprocess.PIPE)
@@ -596,7 +596,7 @@ class IDFPreprocessor(object):
     def popallidfobjects(self, idf_obj_name):
         """
         pops all idf objects of any key name if object exists.
-        extension of eppy.modeleditor.IDF.popidfobjects
+        extension of IDF.popidfobjects
         """
         if idf_obj_name in self.ep_idf.idfobjects:
             for i in range(len(self.ep_idf.idfobjects[idf_obj_name])):
@@ -623,12 +623,15 @@ class IDFPreprocessor(object):
         is_valid = False
         if os.path.isfile(idf_path):
             # any text file can be read by eppy and produce a garbage model
-            ep_model = modeleditor.IDF(idf_path)
+            if IDF.getiddname() == None:
+                IDF.setiddname(self.idd_path)
+
+            ep_model = IDF(idf_path)
             # check version to see if valid .idf, eppy returns empty list if obj not found
             version = self.get_idf_version(ep_model)
-            if not target_version or (version == target_version):
+            if target_version and (version == target_version):
                 is_valid = True
-            elif version and not target_version:
+            elif not target_version and version:
                 is_valid = True
 
         return is_valid

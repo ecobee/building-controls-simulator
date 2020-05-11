@@ -8,6 +8,8 @@ import attr
 import numpy as np
 from google.cloud import storage
 
+logger = logging.getLogger(__name__)
+
 
 @attr.s
 class DataConnector(object):
@@ -40,6 +42,7 @@ class DataConnector(object):
         try:
             blob.download_to_filename(local_path)
         except Exception as err:
+            logger.error(err)
 
     def get_tstat(self, tstat_id):
         """
