@@ -5,6 +5,7 @@ import subprocess
 import shlex
 import shutil
 import logging
+import fileinput
 
 import pandas as pd
 
@@ -41,7 +42,6 @@ class IDFPreprocessor(object):
     ep_version = attr.ib(default=os.environ["ENERGYPLUS_INSTALL_VERSION"])
     idf_dir = attr.ib(default=os.environ["IDF_DIR"])
     idd_path = attr.ib(default=os.environ["EPLUS_IDD"])
-    # weather_dir = attr.ib(default=os.environ["WEATHER_DIR"])
     fmu_dir = attr.ib(default=os.environ["FMU_DIR"])
     eplustofmu_path = attr.ib(
         default=os.path.join(
@@ -68,6 +68,8 @@ class IDFPreprocessor(object):
 
         logger.info("IDFPreprocessor loading .idf file: {}".format(self.idf_file))
         self.ep_idf = IDF(self.idf_file)
+        # select .idf output type
+        self.ep_idf.outputtype = "standard"
 
         self.zone_outputs = []
         self.building_outputs = []
@@ -186,6 +188,9 @@ class IDFPreprocessor(object):
             self.prep_expand_objects()
             self.ep_idf.saveas(self.idf_prep_path)
 
+            # fix version line
+            fix_idf_version_line(self.idf_prep_path, self.ep_version)
+
         return self.idf_prep_path
 
     def make_fmu(self, weather):
@@ -223,6 +228,7 @@ class IDFPreprocessor(object):
         Set runtime one full year without repeating.
         """
         self.popallidfobjects("RUNPERIOD")
+        # if self.ep_version == "8-9-0":
         self.ep_idf.newidfobject(
             "RUNPERIOD",
             Name="FULLYEAR",
@@ -707,3 +713,23 @@ class IDFPreprocessor(object):
                 is_valid = True
 
         return is_valid
+
+
+def fix_idf_version_line(idf_path, ep_version):
+    """
+    Fix format of Version Identifier line in IDF file for EnergyPlusToFMU
+    https://github.com/lbl-srg/EnergyPlusToFMU/issues/30#issuecomment-621353009
+    """
+
+    with open(idf_path, "r") as input:
+        with open(idf_path + ".patch", "w") as output:
+            for line in input:
+
+                if line == "Version,\n":
+                    output.write(
+                        line.replace("\n", "{};\n".format(ep_version.replace("-", ".")))
+                    )
+                elif "!- Version Identifier" not in line:
+                    output.write(line)
+
+    shutil.move(idf_path + ".patch", idf_path)
