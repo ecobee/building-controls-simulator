@@ -134,4 +134,4 @@ class TestIDFPreprocessor:
 
         output = res.result_data.get_data_matrix()
 
-        assert output.shape == (24, 1441)
+        assert output.shape == (24, opts["ncp"]+1)
