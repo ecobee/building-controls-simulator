@@ -132,10 +132,11 @@ class IDFPreprocessor(object):
         else:
             logger.info(f"Making new preprocessed IDF: {self.idf_prep_path}")
             self.prep_ep_version(self.ep_version)
-            self.prep_expand_objects()
+            self.prep_simulation_control()
             self.prep_timesteps(timesteps_per_hour)
             self.prep_runtime()
             self.prep_ext_int()
+
             # set the intial temperature via the initial setpoint which will be tracked
             # in the warmup simulation
             self.prep_onoff_setpt_control(
@@ -181,6 +182,8 @@ class IDFPreprocessor(object):
                 zone_outputs=zone_outputs, building_outputs=building_outputs
             )
 
+            # finally before saving expand objects
+            self.prep_expand_objects()
             self.ep_idf.saveas(self.idf_prep_path)
 
         return self.idf_prep_path
@@ -229,9 +232,102 @@ class IDFPreprocessor(object):
             End_Day_of_Month=31,
         )
 
+    def prep_simulation_control(self):
+        """
+        From V8-9-0-Energy+.idd:
+
+        SimulationControl,
+          unique-object
+          memo Note that the following 3 fields are related to the Sizing:Zone, Sizing:System,
+          memo and Sizing:Plant objects.  Having these fields set to Yes but no corresponding
+          memo Sizing object will not cause the sizing to be done. However, having any of these
+          memo fields set to No, the corresponding Sizing object is ignored.
+          memo Note also, if you want to do system sizing, you must also do zone sizing in the same
+          memo run or an error will result.
+          min-fields 5
+        A1, field Do Zone Sizing Calculation
+          note If Yes, Zone sizing is accomplished from corresponding Sizing:Zone objects
+          note and autosize fields.
+          type choice
+          key Yes
+          key No
+          default No
+        A2, field Do System Sizing Calculation
+          note If Yes, System sizing is accomplished from corresponding Sizing:System objects
+          note and autosize fields.
+          note If Yes, Zone sizing (previous field) must also be Yes.
+          type choice
+          key Yes
+          key No
+          default No
+        A3 field Do Plant Sizing Calculation
+          note If Yes, Plant sizing is accomplished from corresponding Sizing:Plant objects
+          note and autosize fields.
+          type choice
+          key Yes
+          key No
+          default No
+        A4, field Run Simulation for Sizing Periods
+          note If Yes, SizingPeriod:* objects are executed and results from those may be displayed..
+          type choice
+          key Yes
+          key No
+          default Yes
+        A5, field Run Simulation for Weather File Run Periods
+          note If Yes, RunPeriod:* objects are executed and results from those may be displayed..
+          type choice
+          key Yes
+          key No
+          default Yes
+        A6, field Do HVAC Sizing Simulation for Sizing Periods
+          note If Yes, SizingPeriod:* objects are exectuted additional times for advanced sizing.
+          note Currently limited to use with coincident plant sizing, see Sizing:Plant object
+          type choice
+          key Yes
+          key No
+          default No
+        N1; field Maximum Number of HVAC Sizing Simulation Passes
+          note the entire set of SizingPeriod:* objects may be repeated to fine tune size results
+          note this input sets a limit on the number of passes that the sizing algorithms can repeate the set
+          type integer
+          minimum 1
+          default 1
+        """
+        self.popallidfobjects("SimulationControl")
+        self.ep_idf.newidfobject(
+            "SimulationControl",
+            Do_Zone_Sizing_Calculation="Yes",
+            Do_System_Sizing_Calculation="Yes",
+            Do_Plant_Sizing_Calculation="No",
+            Run_Simulation_for_Sizing_Periods="Yes",
+            Run_Simulation_for_Weather_File_Run_Periods="Yes",
+            Do_HVAC_Sizing_Simulation_for_Sizing_Periods="No",
+            Maximum_Number_of_HVAC_Sizing_Simulation_Passes=1,
+        )
+
     def prep_timesteps(self, timesteps_per_hour):
         """
-        Changes time steps per hour to vale passed.
+        From V8-9-0-Energy+.idd:
+         
+        Timestep,
+            memo Specifies the "basic" timestep for the simulation. The
+            memo value entered here is also known as the Zone Timestep.  This is used in
+            memo the Zone Heat Balance Model calculation as the driving timestep for heat
+            memo transfer and load calculations.
+            unique-object
+            format singleLine
+        N1 ; field Number of Timesteps per Hour
+            note Number in hour: normal validity 4 to 60: 6 suggested
+            note Must be evenly divisible into 60
+            note Allowable values include 1, 2, 3, 4, 5, 6, 10, 12, 15, 20, 30, and 60
+            note Normal 6 is minimum as lower values may cause inaccuracies
+            note A minimum value of 20 is suggested for both ConductionFiniteDifference
+            note and CombinedHeatAndMoistureFiniteElement surface heat balance algorithms
+            note A minimum of 12 is suggested for simulations involving a Vegetated Roof (Material:RoofVegetation).
+            default 6
+            type integer
+            minimum 1
+            maximum 60
         """
         self.ep_idf.idfobjects["TIMESTEP"][
             0
@@ -368,22 +464,6 @@ class IDFPreprocessor(object):
             Unit_Type="Temperature",
         )
 
-        # for i, s_obj in enumerate(self.ep_idf.idfobjects['ScheduleTypeLimits']):
-        #     if "temperature" in s_obj.Name.lower():
-        #         self.editted_temperature_schedule = True
-        #         s_obj.Lower_Limit_Value = -100.0
-        #         s_obj.Upper_Limit_Value = 200.0
-
-        # if not self.editted_temperature_schedule:
-        #     self.ep_idf.newidfobject(
-        #         'ScheduleTypeLimits',
-        #         Name="Temperature",
-        #         Lower_Limit_Value=-100.0,
-        #         Upper_Limit_Value=200.0,
-        #         Numeric_Type="CONTINUOUS",
-        #         Unit_Type="Temperature"
-        #     )
-
         # remove all existing external schedule variables
         self.popallidfobjects(
             "ExternalInterface:FunctionalMockupUnitExport:To:Schedule"
@@ -459,14 +539,6 @@ class IDFPreprocessor(object):
             Name=cooling_stp_name,
             Setpoint_Temperature_Schedule_Name=cooling_stp_schedule_name,
         )
-
-        # self.popallidfobjects("ThermostatSetpoint:SingleCooling")
-        # # create new thermostat setpoint for heating
-        # self.ep_idf.newidfobject(
-        #     "ThermostatSetpoint:DualSetpoint",
-        #     Name=cooling_stp_name,
-        #     Setpoint_Temperature_Schedule_Name=cooling_stp_schedule_name
-        # )
 
         # TODO: make equipment always available
 

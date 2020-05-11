@@ -62,12 +62,15 @@ class TestIDFPreprocessor:
             _fpath = os.path.join(cls.eplus_dir, "WeatherData", cls.dummy_weather_name)
             shutil.copyfile(_fpath, cls.dummy_weather_file)
 
+        cls.timesteps_per_hour = 12
+        cls.step_size = int(3600.0 / cls.timesteps_per_hour)
+
         cls.idf_preproc = IDFPreprocessor(
             idf_file=cls.dummy_idf_file,
             idf_dir=cls.test_idf_dir,
             fmu_dir=cls.test_fmu_dir,
             ep_version=cls.ep_version,
-            timesteps=12,
+            timesteps=cls.timesteps_per_hour,
         )
 
     @classmethod
@@ -104,13 +107,25 @@ class TestIDFPreprocessor:
         """
         test that fmu file is compliant with FMI.
         """
-        # TODO find way to run checker as part of test
-        # may need to change EnergyPlusToFMU or FMUComplianceChecker to be non-interactive
-        cmd = f'yes | {os.environ["EXT_DIR"]}/FMUComplianceChecker/fmuCheck.linux64 -h {60} -s 172800 {self.idf_preproc.fmu_path}'
+        # use `bash expect` to run non-interactive
+        cmd = """
+        bash expect 'Press enter to continue.' {{ send '\r' }} | 
+        {}/FMUComplianceChecker/fmuCheck.linux64 -h {} -s 172800 -o {} {}
+        """.format(
+            os.environ["EXT_DIR"],
+            self.step_size,
+            os.path.join(self.test_data_dir, "compliance_check_output.csv"),
+            self.idf_preproc.fmu_path,
+        )
+
         logger.info("FMU compliance checker command:")
         logger.info(cmd)
-        # subprocess.run(shlex.split(cmd), stdout=subprocess.PIPE, shell=True)
-        pass
+        # shlex was causing FMUComplianceChecker to run with options, use cmd string
+        out = subprocess.run(
+            cmd, shell=True, capture_output=False, text=True, input="\n"
+        )
+
+        assert out.returncode == 0
 
     @pytest.mark.run(order=4)
     def test_pyfmi_load_fmu(self):
@@ -128,10 +143,10 @@ class TestIDFPreprocessor:
         model = pyfmi.load_fmu(self.idf_preproc.fmu_path)
         opts = model.simulate_options()
         t_end = 86400.0
-        opts["ncp"] = int((t_end / 3600.0) * self.idf_preproc.timesteps)
+        opts["ncp"] = int(t_end / self.step_size)
 
         res = model.simulate(final_time=t_end, options=opts)
 
         output = res.result_data.get_data_matrix()
 
-        assert output.shape == (24, 1441)
+        assert output.shape == (24, opts["ncp"] + 1)
