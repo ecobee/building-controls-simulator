@@ -18,27 +18,34 @@ from BuildingControlSimulator.ControlModels.ControlModel import ControlModel
 logger = logging.getLogger(__name__)
 
 
-@attr.s
+@attr.s(kw_only=True)
 class EnergyPlusBuildingModel(BuildingModel):
     """Abstract Base Class for building models
 
 
     """
 
-    idf = attr.ib(kw_only=True)
-
+    idf = attr.ib()
     weather_dir = attr.ib(default=os.environ["WEATHER_DIR"])
-    # TODO add validator for weather
-    weather_path = attr.ib(default=None)
-    weather_name = attr.ib(default=None)
+    # user must supply a weather file as either 1) full path, or 2) a file in self.idf_dir
+    weather_file = attr.ib()
     fmu = attr.ib(default=None)
-
     T_heat_off = attr.ib(default=-60.0)
     T_heat_on = attr.ib(default=99.0)
     T_cool_off = attr.ib(default=99.0)
     T_cool_on = attr.ib(default=-60.0)
 
     cur_HVAC_mode = attr.ib(default=HVAC_modes.UNCONTROLLED)
+
+    def __attrs_post_init__(self):
+        # first make sure weather file exists
+        if os.path.isfile(self.weather_file):
+            self.weather_name = os.path.basename(self.weather_file)
+        else:
+            self.weather_name = self.weather_file
+            self.weather_file = os.path.join(self.weather_dir, self.weather_name)
+            if not os.path.isfile(self.weather_file):
+                raise ValueError(f"""{self.weather_file} is not a file.""")
 
     @property
     def init_temperature(self):
@@ -48,20 +55,20 @@ class EnergyPlusBuildingModel(BuildingModel):
         """
         """
         # TODO add validator for weather
-        if not self.weather_path and self.weather_name:
+        if not self.weather_file and self.weather_name:
             for r, d, f in os.walk(self.weather_dir):
                 for fname in f:
                     if fname == self.weather_name:
-                        self.weather_path = os.path.join(
+                        self.weather_file = os.path.join(
                             self.weather_dir, self.weather_name
                         )
-        elif not self.weather_path and not self.weather_name:
+        elif not self.weather_file and not self.weather_name:
             raise ValueError(
                 f"""Must supply valid weather file, 
-                weather_path={self.weather_path} and weather_name={self.weather_name}"""
+                weather_file={self.weather_file} and weather_name={self.weather_name}"""
             )
 
-        self.idf.make_fmu(weather_path=self.weather_path)
+        self.idf.make_fmu(weather=self.weather_file)
         return pyfmi.load_fmu(fmu=self.idf.fmu_path)
 
     def occupied_zones(self):

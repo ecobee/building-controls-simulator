@@ -29,6 +29,8 @@ cd building-control-simulator
 You're going to need Docker installed, if not see https://www.docker.com/.
 The bash script `run.sh` provides a minimal CLI to manage the service.
 
+#### Note: Docker images may use up to 10 GB of disk space - make sure you have this available before building. 
+
 ```bash
 # build container (only need to do this once!)
 # this will take ~40 minutes, mostly to download all desired versions of EnergyPlus
