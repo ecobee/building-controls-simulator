@@ -21,7 +21,7 @@ class IDFPreprocessor(object):
     """Converts IDFs (Input Data Files) for EnergyPlus into working IDFs.
     Example:
     ```python
-    from BuildingControlSimulator.BuildingModels import IDFPreprocessor
+    from BuildingControlsSimulator.BuildingModels import IDFPreprocessor
     idf = IDFPreprocessor(
         idf_file=self.dummy_idf_file,
         weather_file=self.dummy_weather_file,
@@ -52,7 +52,9 @@ class IDFPreprocessor(object):
     def __attrs_post_init__(self):
         """Initialize `IDFPreprocessor` with an IDF file and desired actions"""
         # set energyplus dictionary version for eppy
+
         IDF.setiddname(self.idd_path)
+        # IDF.setiddname("/home/bcs/lib/external/EnergyPlus/EnergyPlus-9-3-0/PreProcess/IDFVersionUpdater/V8-6-0-Energy+.idd")
 
         # first make sure idf file exists
         if os.path.isfile(self.idf_file):
@@ -354,9 +356,10 @@ class IDFPreprocessor(object):
             "8-6-0": "Transition-V8-6-0-to-V8-7-0",
             "8-7-0": "Transition-V8-7-0-to-V8-8-0",
             "8-8-0": "Transition-V8-8-0-to-V8-9-0",
-            "8-9-0": "Transition-V8-9-0-to-V9-0-1",
-            "9-0-1": "Transition-V9-0-1-to-V9-1-0",
+            "8-9-0": "Transition-V8-9-0-to-V9-0-0",
+            "9-0-0": "Transition-V9-0-0-to-V9-1-0",
             "9-1-0": "Transition-V9-1-0-to-V9-2-0",
+            "9-2-0": "Transition-V9-2-0-to-V9-3-0",
         }
 
         cur_version = self.get_idf_version(self.ep_idf)

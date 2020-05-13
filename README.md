@@ -1,4 +1,4 @@
-# Building Control Simulator
+# Building Controls Simulator
 
 Package for running control loop co-simulations and generation of building 
 simulation models using EnergyPlus.
@@ -120,6 +120,26 @@ It simply runs commands (rc) whenever an interctive bash shell is opened.
 For example removing the line `pipenv run jupyter_lab_bkgrnd` will cause the jupyter
 server to not be start in the background.
 
+### Building the Documentation
+
+To build documentation in various formats, you will need [Sphinx](http://www.sphinx-doc.org) and the
+readthedocs theme.
+
+```
+cd docs/
+pip install -r requirements.txt
+```
+You can then build the documentation by running ``make <format>`` from the
+``docs/`` folder. Run ``make`` to get a list of all available output formats.
+
 ## Contributing
 
 See CONTRIBUTING.md
+
+## Communication
+
+GitHub issues: bug reports, feature requests, install issues, RFCs, thoughts, etc.
+
+## License
+
+Building Controls Simulator is BSD-style licensed, as found in the [LICENSE](LICENSE) file.

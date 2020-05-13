@@ -10,7 +10,7 @@ import logging
 import pytest
 import pyfmi
 
-from BuildingControlSimulator.BuildingModels.IDFPreprocessor import IDFPreprocessor
+from BuildingControlsSimulator.BuildingModels.IDFPreprocessor import IDFPreprocessor
 
 logger = logging.getLogger(__name__)
 

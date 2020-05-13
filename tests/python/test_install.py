@@ -11,7 +11,7 @@ class TestInstall:
     def test_import_package_modules(self):
         """Test all package modules can be imported"""
         modules = [
-            "BuildingControlSimulator",
+            "BuildingControlsSimulator",
         ]
 
         for m in modules:

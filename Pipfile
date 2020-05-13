@@ -7,6 +7,9 @@ verify_ssl = true
 pytest = "*"
 pytest-ordering = "*"
 black = "*"
+coverage = "*"
+sphinx = "*"
+sphinx-rtd-theme = "*"
 
 [packages]
 matplotlib = "*"
@@ -25,7 +28,8 @@ attrs = "*"
 google-cloud-storage = "*"
 pandas-gbq = "*"
 tqdm = "*"
-buildingcontrolsimulator = {editable = true,path = "."}
+BuildingControlsSimulator = {editable = true,path = "."}
+numba = "*"
 
 [requires]
 python_version = "3.7"
