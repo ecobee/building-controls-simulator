@@ -9,10 +9,10 @@ import numpy as np
 from eppy import modeleditor
 import pyfmi
 
-from BuildingControlSimulator.BuildingModels.BuildingModel import BuildingModel
-from BuildingControlSimulator.BuildingModels.IDFPreprocessor import IDFPreprocessor
-from BuildingControlSimulator.ControlModels.ControlModel import HVAC_modes
-from BuildingControlSimulator.ControlModels.ControlModel import ControlModel
+from BuildingControlsSimulator.BuildingModels.BuildingModel import BuildingModel
+from BuildingControlsSimulator.BuildingModels.IDFPreprocessor import IDFPreprocessor
+from BuildingControlsSimulator.ControlModels.ControlModel import HVAC_modes
+from BuildingControlsSimulator.ControlModels.ControlModel import ControlModel
 
 
 logger = logging.getLogger(__name__)
@@ -97,8 +97,6 @@ class EnergyPlusBuildingModel(BuildingModel):
                 self.fmu.set(self.idf.FMU_control_cooling_stp_name, self.T_cool_off)
 
         self.cur_HVAC_mode = step_HVAC_mode
-
-    # def do_step(self):
 
     def initialize(self, start_time_seconds, final_time_seconds):
         """

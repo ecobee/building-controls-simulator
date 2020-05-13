@@ -17,8 +17,8 @@ if _VERSION_SUFFIX:
 
 
 setup(
-    name="BuildingControlSimulator",
-    keywords="building simulator simulation control research HVAC",
+    name="BuildingControlsSimulator",
+    keywords="residential building simulator simulation controls research HVAC thermal heating air conditioning",
     version=__version__,
     author="Tom Stesco",
     author_email="tom.s@ecobee.com",

@@ -10,9 +10,9 @@ from eppy import modeleditor
 import attr
 import pyfmi
 
-from BuildingControlSimulator.ControlModels.ControlModel import ControlModel
-from BuildingControlSimulator.ControlModels.ControlModel import HVAC_modes
-from BuildingControlSimulator.BuildingModels import IDFPreprocessor
+from BuildingControlsSimulator.ControlModels.ControlModel import ControlModel
+from BuildingControlsSimulator.ControlModels.ControlModel import HVAC_modes
+from BuildingControlsSimulator.BuildingModels import IDFPreprocessor
 
 
 @attr.s
@@ -21,7 +21,7 @@ class Deadband(ControlModel):
 
     Example:
     ```python
-    from BuildingControlSimulator.ControlModels.Deadband import Deadband
+    from BuildingControlsSimulator.ControlModels.Deadband import Deadband
 
 
     ```

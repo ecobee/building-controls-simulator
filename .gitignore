@@ -16,7 +16,6 @@ Output_EPExport_Slave/
 Output_EPExport_Test FMI 1.0 CS/
 Output_EPExport_Model/
 data/
-notes/
 weather/
 idf/
 fmu/
@@ -24,3 +23,5 @@ __pycache__/
 .pytest_cache/
 .ipynb_checkpoints/
 application_default_credentials.json
+docs/build/
+docs/source/generated/

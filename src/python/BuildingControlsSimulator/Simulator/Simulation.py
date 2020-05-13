@@ -10,12 +10,12 @@ import attr
 
 import pyfmi
 
-from BuildingControlSimulator.BuildingModels.EnergyPlusBuildingModel import (
+from BuildingControlsSimulator.BuildingModels.EnergyPlusBuildingModel import (
     EnergyPlusBuildingModel,
 )
-from BuildingControlSimulator.BuildingModels.IDFPreprocessor import IDFPreprocessor
-from BuildingControlSimulator.ControlModels.Deadband import Deadband
-from BuildingControlSimulator.OutputAnalysis.OutputAnalysis import OutputAnalysis
+from BuildingControlsSimulator.BuildingModels.IDFPreprocessor import IDFPreprocessor
+from BuildingControlsSimulator.ControlModels.Deadband import Deadband
+from BuildingControlsSimulator.OutputAnalysis.OutputAnalysis import OutputAnalysis
 
 logger = logging.getLogger(__name__)
 
@@ -83,18 +83,13 @@ class Simulation(object):
         )
         self.building_model.initialize(self.start_time_seconds, self.final_time_seconds)
 
-    # def do_step(self):
-    #     pass
-
     def get_air_temp_vars(self, building_model_output):
         """
         """
-
         air_temp_var_names = [
             "FMU_" + z + "_Zone_Air_Temperature"
             for z in self.building_model.occupied_zones()
         ]
-        # print(air_temp_var_names)
         return [
             building_model_output[i]
             for i, k in enumerate(self.building_model_output_keys)
