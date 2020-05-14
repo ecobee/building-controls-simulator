@@ -1,18 +1,9 @@
 # Building Controls Simulator
 
 Package for running control loop co-simulations and generation of building 
-simulation models using EnergyPlus.
+models using EnergyPlus.
 
-For more information on EnergyPlus simulation see [here](https://ecobee.atlassian.net/wiki/spaces/DAT/pages/810615819/EnergyPlus+Building+Simulation+for+Controller+Testing).
-
-## Dependendcies
-
-- EnergyPlus: https://github.com/NREL/EnergyPlus
-- PyFMI: https://github.com/modelon-community/PyFMI
-- EnergyPlusToFMU: https://github.com/lbl-srg/EnergyPlusToFMU
-- Eppy: https://github.com/santoshphilip/eppy
-- fmi-library: https://github.com/modelon-community/fmi-library
-- FMUComplianceChecker: https://github.com/modelica-tools/FMUComplianceChecker
+For more information on EnergyPlus whole building simulation see [here](https://energyplus.net/).
 
 ## Installation and Setup
 
@@ -24,20 +15,24 @@ git clone
 cd building-control-simulator
 ```
 
-## Local Docker Setup
+### Local Docker Setup
 
 You're going to need Docker installed, if not see https://www.docker.com/.
 The bash script `run.sh` provides a minimal CLI to manage the service.
 
-#### Note: Docker images may use up to 10 GB of disk space - make sure you have this available before building. 
+#### Note: Docker images may use up to 8 GB of disk space - make sure you have this available before building.
+The size of the container image can be reduced by roughly 3 GB by not installing
+every EnergyPlus version in `scripts/setup/install_ep.sh` and not downloading 
+all IECC 2018 IDF files in `scripts/setup/download_IECC_idfs.sh`. Simply comment 
+out the files you do not need if the extra 3GB is not available.
 
 ```bash
 # build container (only need to do this once!)
 # this will take ~40 minutes, mostly to download all desired versions of EnergyPlus
-. scripts/run.sh -b
+make build-docker
 
 # run container in interactive mode for first time to set it up with mounted volumes
-. scripts/run.sh -r
+make run
 
 # select the version of EnergyPlus to use in current environment, this can be changed at any time
 # EnergyPlus Version Manager (epvm) script changes env variables and symbolic links to hot-swap version
@@ -66,7 +61,7 @@ for those things.
 
 ```bash
 # restart a pre-built container with interactive bash shell
-. scripts/run.sh -s
+make start
 ```
 
 The default `.bashrc` file should start a jupyter lab server in background and 
@@ -120,7 +115,7 @@ It simply runs commands (rc) whenever an interctive bash shell is opened.
 For example removing the line `pipenv run jupyter_lab_bkgrnd` will cause the jupyter
 server to not be start in the background.
 
-### Building the Documentation
+## Building the Documentation
 
 To build documentation in various formats, you will need [Sphinx](http://www.sphinx-doc.org) and the
 readthedocs theme.
@@ -133,9 +128,18 @@ make html
 The html files are then available in `docs/build/html`. Open the root file `index.html` 
 in a web browser to view them locally.
 
+## Dependendcies
+
+- EnergyPlus: https://github.com/NREL/EnergyPlus
+- PyFMI: https://github.com/modelon-community/PyFMI
+- EnergyPlusToFMU: https://github.com/lbl-srg/EnergyPlusToFMU
+- Eppy: https://github.com/santoshphilip/eppy
+- fmi-library: https://github.com/modelon-community/fmi-library
+- FMUComplianceChecker: https://github.com/modelica-tools/FMUComplianceChecker
+
 ## Contributing
 
-See notes on [CONTRIBUTING.md](CONTRIBUTING.md)
+See notes on how to develop this project in [CONTRIBUTING.md](CONTRIBUTING.md)
 
 ## Communication
 
