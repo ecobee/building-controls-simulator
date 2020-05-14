@@ -1,6 +1,6 @@
 # user variables
 # ==============================================================================
-PACKAGE_NAME		:= building-control-simulator
+PACKAGE_NAME		:= building-controls-simulator
 VERSION				:= 0.1.1
 CONTAINER_NAME 		:= ${PACKAGE_NAME}
 LOCAL_MNT_DIR 		:= ${PWD}
@@ -35,7 +35,7 @@ remove-all: ## removes all exited containers
 
 help: ## Show this help message.
 	@echo "================================================================================"
-	@echo "Building Control Simulator" 
+	@echo "Building Controls Simulator" 
 	@echo "make commands"
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
 	awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'

@@ -124,7 +124,7 @@ if [ "${PIPENV_ACTIVE:-0}" = "0" ]; then
    # if not in pipenv shell setup environment
     cat << EndOfMessage
 ================================================================================
-Building Contols Simulator
+Building Controls Simulator
 ================================================================================
 running configurable setting up commands in ${HOME}/.bashrc ...
 EndOfMessage
@@ -135,7 +135,7 @@ EndOfMessage
         . "${PACKAGE_DIR:?}/scripts/epvm.sh" "8-9-0"
     else
         echo "PACKAGE_DIR=${PACKAGE_DIR} does not exist. PACKAGE_DIR env var may be incorrect."
-        echo "Default value for PACKAGE_DIR is /home/bcs/lib/building-control-simulator"
+        echo "Default value for PACKAGE_DIR is /home/bcs/lib/building-controls-simulator"
         echo "If unsure how to fix this, restart container or rebuild image from Dockerfile."
     fi
 
