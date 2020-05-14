@@ -9,7 +9,7 @@ ENV LC_ALL="C.UTF-8"
 ENV DEBIAN_FRONTEND="noninteractive"
 ENV USER_NAME="bcs"
 ENV IS_DOCKER_ENV="true"
-ENV PACKAGE_NAME="building-control-simulator"
+ENV PACKAGE_NAME="building-controls-simulator"
 ENV PYENV_SHELL="bash"
 
 # dependent env vars

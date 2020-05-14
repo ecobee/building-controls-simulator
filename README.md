@@ -12,7 +12,7 @@ Ideally use SSH for git access. If you haven't set that up you can use HTTPS.
 
 ```bash
 git clone
-cd building-control-simulator
+cd building-controls-simulator
 ```
 
 ### Local Docker Setup
