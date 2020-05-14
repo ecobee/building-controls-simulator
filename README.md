@@ -127,14 +127,15 @@ readthedocs theme.
 
 ```
 cd docs/
-pip install -r requirements.txt
+make html
 ```
-You can then build the documentation by running ``make <format>`` from the
-``docs/`` folder. Run ``make`` to get a list of all available output formats.
+
+The html files are then available in `docs/build/html`. Open the root file `index.html` 
+in a web browser to view them locally.
 
 ## Contributing
 
-See CONTRIBUTING.md
+See notes on [CONTRIBUTING.md](CONTRIBUTING.md)
 
 ## Communication
 
@@ -142,4 +143,4 @@ GitHub issues: bug reports, feature requests, install issues, RFCs, thoughts, et
 
 ## License
 
-Building Controls Simulator is BSD-style licensed, as found in the [LICENSE](LICENSE) file.
+Building Controls Simulator is licensed under a BSD-3-clause style license found in the [LICENSE](LICENSE) file.
