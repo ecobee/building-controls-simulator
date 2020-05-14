@@ -15,6 +15,7 @@ idf-to-fmu-export-prep-linux
 Output_EPExport_Slave/
 Output_EPExport_Test FMI 1.0 CS/
 Output_EPExport_Model/
+output/
 data/
 weather/
 idf/

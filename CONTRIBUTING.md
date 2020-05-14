@@ -71,6 +71,11 @@ or run individual test suites, test files, or individual tests. For example:
 python -m pytest tests/python/IDFPreprocessor/test_IDFPreprocessor.py::TestIDFPreprocessor::test_preprocess
 ```
 
+Ideally all new code will be accompanied by unittests written by someone who has 
+full context of those changes. Usually this would be the person implementing the 
+changes. However, we appreciate WIP branches and PRs to illustrate ideas without 
+working unit tests.
+
 ## Writing documentation
 For documenation BCS uses [Sphinx](https://www.sphinx-doc.org/en/master/) with 
 [Google style](http://sphinxcontrib-napoleon.readthedocs.io/en/latest/example_google.html)
