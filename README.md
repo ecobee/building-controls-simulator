@@ -26,6 +26,13 @@ every EnergyPlus version in `scripts/setup/install_ep.sh` and not downloading
 all IECC 2018 IDF files in `scripts/setup/download_IECC_idfs.sh`. Simply comment 
 out the files you do not need if the extra 3GB is not available.
 
+#### Note: Docker build may fail if memory or network issues:
+Some issues that have occured on different machines are:
+- `apt-get install sudo` failing or other packages not being found by apt-get
+    - Verify network connection and build container again
+- ` jupyter lab build` failing
+    - try setting `--minimize=True`  in Dockerfile command `jupyter lab build --dev-build=False --minimize=False`
+
 ```bash
 # build container (only need to do this once!)
 # this will take ~40 minutes, mostly to download all desired versions of EnergyPlus
@@ -47,6 +54,24 @@ make run
 # unless you specifically delete this docker container it can be restarted with the setup already done
 # if you delete the container just go through the setup here again
 exit
+```
+#### Rebuilding the container
+
+Should something go wrong with the container or it experience an issue during the build
+remove the broken containers and images with these docker commands:
+
+```bash
+# first list all containers
+docker ps -a
+
+#remove containers related to failed build
+docker rm <container ID>
+
+# list docker images
+docker image ls
+
+# remove docker image
+docker rmi <image ID>
 ```
 
 ## Usage

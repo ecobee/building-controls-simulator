@@ -123,13 +123,16 @@ RUN sudo chown -R "${USER_NAME}":"${USER_NAME}" "${PACKAGE_DIR}" \
     && pipenv install --dev --skip-lock \
     && cd "${EXT_DIR}/PyFMI" \
     && . ${HOME}/.local/share/virtualenvs/$( ls "${HOME}/.local/share/virtualenvs/" | grep "${PACKAGE_NAME}" )/bin/activate \
-    && python "setup.py" install --fmil-home="${FMIL_HOME}" \
-    && cd "${PACKAGE_DIR}" \
+    && python "setup.py" install --fmil-home="${FMIL_HOME}"
+
+# install jupyter lab extensions for plotly
+RUN cd "${PACKAGE_DIR}" \
+    && . ${HOME}/.local/share/virtualenvs/$( ls "${HOME}/.local/share/virtualenvs/" | grep "${PACKAGE_NAME}" )/bin/activate \
     && export NODE_OPTIONS=--max-old-space-size=4096 \
     && jupyter labextension install @jupyter-widgets/jupyterlab-manager@2 --no-build \
     && jupyter labextension install jupyterlab-plotly --no-build \
     && jupyter labextension install plotlywidget@1.5.0 --no-build \
-    && jupyter lab build \
+    && jupyter lab build --dev-build=False --minimize=True \
     && unset NODE_OPTIONS \
     && cp "${PACKAGE_DIR}/scripts/setup/.bashrc" "$HOME/.bashrc" \
     && chmod +x "${PACKAGE_DIR}/scripts/setup/jupyter_lab_bkgrnd.sh"
