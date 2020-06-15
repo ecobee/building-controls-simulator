@@ -31,7 +31,7 @@ Some issues that have occured on different machines are:
 - `apt-get install sudo` failing or other packages not being found by apt-get
     - Verify network connection and build container again
 - ` jupyter lab build` failing
-    - try setting `--minimize=True`  in Dockerfile command `jupyter lab build --dev-build=False --minimize=False`
+    - try setting in Dockerfile command `jupyter lab build --dev-build=False --minimize=False`
 
 ```bash
 # build container (only need to do this once!)

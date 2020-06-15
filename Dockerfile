@@ -49,7 +49,6 @@ RUN sudo apt-get update && sudo apt-get upgrade -y \
     libncursesw5-dev \
     libreadline-dev \
     libsqlite3-dev \
-    # libssl1.0-dev \
     liblzma-dev \
     libssl-dev \
     llvm \
@@ -126,9 +125,10 @@ RUN sudo chown -R "${USER_NAME}":"${USER_NAME}" "${PACKAGE_DIR}" \
     && python "setup.py" install --fmil-home="${FMIL_HOME}"
 
 # install jupyter lab extensions for plotly
+# if jupyter lab build fails with webpack optimization, set --minimize=False
 RUN cd "${PACKAGE_DIR}" \
     && . ${HOME}/.local/share/virtualenvs/$( ls "${HOME}/.local/share/virtualenvs/" | grep "${PACKAGE_NAME}" )/bin/activate \
-    && export NODE_OPTIONS=--max-old-space-size=4096 \
+    && export NODE_OPTIONS=--max-old-space-size=8192 \
     && jupyter labextension install @jupyter-widgets/jupyterlab-manager@2 --no-build \
     && jupyter labextension install jupyterlab-plotly --no-build \
     && jupyter labextension install plotlywidget@1.5.0 --no-build \
