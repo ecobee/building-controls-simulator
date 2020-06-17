@@ -27,7 +27,7 @@ all IECC 2018 IDF files in `scripts/setup/download_IECC_idfs.sh`. Simply comment
 out the files you do not need if the extra 3GB is not available.
 
 #### Note: Docker build may fail if memory or network issues:
-Some issues that have occured on different machines are:
+Some issues that have occurred on different machines are:
 - `apt-get install sudo` failing or other packages not being found by apt-get
     - Verify network connection and build container again
 - ` jupyter lab build` failing
@@ -50,7 +50,7 @@ make run
 . scripts/setup/download_IECC_idfs.sh
 
 # you're done with setup! now exit container shell or just stop the docker container
-# the docker container can now be reattched to, stopped, and restarted when you need it again (see below for usage)
+# the docker container can now be reattached to, stopped, and restarted when you need it again (see below for usage)
 # unless you specifically delete this docker container it can be restarted with the setup already done
 # if you delete the container just go through the setup here again
 exit
@@ -78,7 +78,7 @@ docker rmi <image ID>
 
 ### Start Container
 
-You can pin the specific container to be restarted by editting the user variable 
+You can pin the specific container to be restarted by editing the user variable 
 `CONTAINER_ID` in `run.sh`. 
 This allows you to make any edits to a specific container and not need to rebuild.
 Some things are just easier to setup not using Docker, so this is a good place 
@@ -116,8 +116,11 @@ wget "${EPLUS_WEATHER_URL_USA}/${WEATHER_FILE}" -P "${WEATHER_DIR}"
 
 ### Run tests
 
+Test files are found in src/python directory alongside source code, they are identified by the naming convention `test_*.py`.
+The `pytest` framework used for testing, see https://docs.pytest.org/en/stable/ for details.
+
 ```bash
-python -m pytest tests/python
+python -m pytest src/python
 ```
 
 ### Jupyter-Lab Server
@@ -130,12 +133,12 @@ The PID is logged and the server can be stopped manually via:
 kill -15 "$(cat ${JUPYTER_LOG_DIR}/JUPYTER_SERVER_PID.txt)"
 ```
 
-Stopping or exitting the container will also shutdown the jupyter server.
+Stopping or exiting the container will also shutdown the jupyter server.
 
 ### Configuration
 
 The .bashrc at `scripts/setup/.bashrc` can be configured similar to any .bashrc file.
-It simply runs commands (rc) whenever an interctive bash shell is opened.
+It simply runs commands (rc) whenever an interactive bash shell is opened.
 
 For example removing the line `pipenv run jupyter_lab_bkgrnd` will cause the jupyter
 server to not be start in the background.
@@ -153,7 +156,7 @@ make html
 The html files are then available in `docs/build/html`. Open the root file `index.html` 
 in a web browser to view them locally.
 
-## Dependendcies
+## External Tools
 
 - EnergyPlus: https://github.com/NREL/EnergyPlus
 - PyFMI: https://github.com/modelon-community/PyFMI
