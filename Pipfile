@@ -10,6 +10,7 @@ black = "*"
 coverage = "*"
 sphinx = "*"
 sphinx-rtd-theme = "*"
+flake8 = "*"
 
 [packages]
 matplotlib = "*"
@@ -30,6 +31,8 @@ pandas-gbq = "*"
 tqdm = "*"
 BuildingControlsSimulator = {editable = true,path = "."}
 numba = "*"
+gcsfs = "*"
+dask = {extras = ["complete"],version = "*"}
 
 [requires]
 python_version = "3.7"

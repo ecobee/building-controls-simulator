@@ -123,6 +123,20 @@ The `pytest` framework used for testing, see https://docs.pytest.org/en/stable/ 
 python -m pytest src/python
 ```
 
+### Authentication with GCP
+
+Copy ${GOOGLE_APPLICATION_CREDENTIALS} into container.
+
+```bash
+# on local machine copy credentials to container
+make copy-creds
+```
+
+```bash
+# in container make sure bcs user can read credentials
+sudo chown -R "bcs":"bcs" ~/.config/application_default_credentials.json
+```
+
 ### Jupyter-Lab Server
 
 A jupyter-lab server is setup to run in `.bashrc` when the container starts.
