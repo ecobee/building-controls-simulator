@@ -51,15 +51,22 @@ make build-docker
 make run
 ```
 
+### Setting up VS Code IDE
+
+If you are unfamiliar with VS Code you can use your IDE/text editor of choice. If you have not yet decided on an IDE I recommend VS Code for development.
+The `Remote - Containers` extension allows you to attach to the running BCS container which can be used for writing, testing, and debugging. 
+
+For further detail on how to use VS Code see this tutorial: https://pycon.switowski.com/01-vscode/
+
 ## Codebase structure
 
 * [src](src) - Core library files
-* [tests/python](tests/python) - Unittests
-* [notebooks](noteoboks) - Jupyter notebooks used for interaxctive development, testing, and debugging
+* [src/python](src/python) - Python source code and tests
+* [notebooks](notebooks) - Jupyter notebooks used for interactive development, testing, and debugging
 
 ## Unit testing
 
-Tests are located under `test/`. Run the entire test suite with:
+Tests are located under `test/` and unit tests are co-located with modules in `src/`. Run the entire test suite with:
 
 ```bash
 python -m pytest
@@ -88,6 +95,7 @@ Generate the documentation HTML files. The generated files will be in `docs/buil
 
 ```bash
 cd docs
+make clean
 make html
 ```
 

@@ -1,7 +1,4 @@
-.. building-controls-simulator documentation master file, created by
-   sphinx-quickstart on Wed May 13 18:00:24 2020.
-   You can adapt this file completely to your liking, but it should at least
-   contain the root `toctree` directive.
+.. building-controls-simulator documentation master file
 
 :github_url: https://github.com/ecobee/building-controls-simulator
 
@@ -10,9 +7,11 @@ building-controls-simulator documentation
 
 building-controls-simulator is a cross-platform environment for simulating building HVAC controls.
 
+Github: https://github.com/ecobee/building-controls-simulator
+
 .. toctree::
     :glob:
-    :maxdepth: 1
+    :maxdepth: 2
     :caption: Notes
 
     notes/*
@@ -20,12 +19,20 @@ building-controls-simulator is a cross-platform environment for simulating build
 .. toctree::
     :glob:
     :maxdepth: 2
-    :caption: Models
+    :caption: Building Models
 
     BuildingModels
+
+.. toctree::
+    :glob:
+    :maxdepth: 2
+    :caption: Data Clients
+
+    DataClients
+    HVACClients
+    WeatherClients
 
 Indices and tables
 ==================
 
 * :ref:`genindex`
-* :ref:`modindex`
