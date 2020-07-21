@@ -10,7 +10,9 @@ import logging
 import pytest
 import pyfmi
 
-from BuildingControlsSimulator.BuildingModels.IDFPreprocessor import IDFPreprocessor
+from BuildingControlsSimulator.BuildingModels.IDFPreprocessor import (
+    IDFPreprocessor,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -19,15 +21,17 @@ class TestIDFPreprocessor:
     @classmethod
     def setup_class(cls):
         # basic IDF file found in all EnergyPlus installations
-        cls.eplus_dir = os.environ["EPLUS_DIR"]
+        cls.eplus_dir = os.environ.get("EPLUS_DIR")
         cls.dummy_idf_name = "Furnace.idf"
         cls.dummy_weather_name = "USA_IL_Chicago-OHare.Intl.AP.725300_TMY3.epw"
 
-        cls.test_data_dir = os.path.join(os.environ["PACKAGE_DIR"], "tests/data")
-        cls.ep_version = os.environ["ENERGYPLUS_INSTALL_VERSION"]
+        cls.test_data_dir = os.path.join(
+            os.environ.get("PACKAGE_DIR"), "tests/data"
+        )
+        cls.ep_version = os.environ.get("ENERGYPLUS_INSTALL_VERSION")
 
         # setup EnergyPlus env
-        cmd = "{}/scripts/epvm.sh {}".format(os.environ["PACKAGE_DIR"], cls.ep_version)
+        # cmd = "{}/scripts/epvm.sh {}".format(os.environ["PACKAGE_DIR"], cls.ep_version)
         # TODO: running environment script doesnt work
         # subprocess.run(shlex.split(cmd), stdout=subprocess.PIPE, shell=True)
 
@@ -43,7 +47,9 @@ class TestIDFPreprocessor:
 
         # make tests/data/ dirs
         os.makedirs(cls.test_idf_dir, exist_ok=True)
-        os.makedirs(os.path.join(cls.test_idf_dir, "preprocessed"), exist_ok=True)
+        os.makedirs(
+            os.path.join(cls.test_idf_dir, "preprocessed"), exist_ok=True
+        )
         os.makedirs(cls.test_fmu_dir, exist_ok=True)
         os.makedirs(cls.test_weather_dir, exist_ok=True)
 
@@ -55,11 +61,15 @@ class TestIDFPreprocessor:
 
         # if dummy files don't exist copy them from E+ installations
         if not os.path.isfile(cls.dummy_idf_file):
-            _fpath = os.path.join(cls.eplus_dir, "ExampleFiles", cls.dummy_idf_name)
+            _fpath = os.path.join(
+                cls.eplus_dir, "ExampleFiles", cls.dummy_idf_name
+            )
             shutil.copyfile(_fpath, cls.dummy_idf_file)
 
         if not os.path.isfile(cls.dummy_weather_file):
-            _fpath = os.path.join(cls.eplus_dir, "WeatherData", cls.dummy_weather_name)
+            _fpath = os.path.join(
+                cls.eplus_dir, "WeatherData", cls.dummy_weather_name
+            )
             shutil.copyfile(_fpath, cls.dummy_weather_file)
 
         cls.timesteps_per_hour = 12
@@ -80,8 +90,6 @@ class TestIDFPreprocessor:
         """
         pass
 
-    # @pytest.mark.parametrize("eplus_version", ["8-9-0"])
-    @pytest.mark.run(order=1)
     def test_preprocess(self):
         """
         test that preprocessing produces output file
@@ -94,7 +102,6 @@ class TestIDFPreprocessor:
         # test that preprocessing produces valid IDF output file
         assert self.idf_preproc.check_valid_idf(prep_idf) is True
 
-    @pytest.mark.run(order=2)
     def test_make_fmu(self):
         """
         test that make_fmu produces fmu file
@@ -102,14 +109,13 @@ class TestIDFPreprocessor:
         fmu = self.idf_preproc.make_fmu(weather=self.dummy_weather_file)
         assert os.path.exists(fmu)
 
-    @pytest.mark.run(order=3)
     def test_fmu_compliance(self):
         """
         test that fmu file is compliant with FMI.
         """
         # use `bash expect` to run non-interactive
         cmd = """
-        bash expect 'Press enter to continue.' {{ send '\r' }} | 
+        bash expect 'Press enter to continue.' {{ send '\r' }} |
         {}/FMUComplianceChecker/fmuCheck.linux64 -h {} -s 172800 -o {} {}
         """.format(
             os.environ["EXT_DIR"],
@@ -127,7 +133,6 @@ class TestIDFPreprocessor:
 
         assert out.returncode == 0
 
-    @pytest.mark.run(order=4)
     def test_pyfmi_load_fmu(self):
         """
         test that fmu can be loaded with pyfmi
@@ -135,7 +140,6 @@ class TestIDFPreprocessor:
         model = pyfmi.load_fmu(self.idf_preproc.fmu_path)
         assert model.get_version() == "1.0"
 
-    @pytest.mark.run(order=5)
     def test_simulate_fmu(self):
         """
         test that fmu can be simulated with pyfmi

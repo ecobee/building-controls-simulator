@@ -276,12 +276,12 @@ class WeatherClient:
 
         See README.md section on NSRDB 1991-2005 Archive Data:
 
-        The archived data contains the most recent TMY3 data with the fields 
-        required by the EPW format. Download the archive from: 
+        The archived data contains the most recent TMY3 data with the fields
+        required by the EPW format. Download the archive from:
         https://nsrdb.nrel.gov/data-sets/archives.html
 
-        Note: The archive is ~3 GB, but only the TMY data 
-        (~300MB compressed, 1.7 GB uncompressed) is required and 
+        Note: The archive is ~3 GB, but only the TMY data
+        (~300MB compressed, 1.7 GB uncompressed) is required and
         the hourly data can be deleted after download.
 
         :param lat: latitude
@@ -289,7 +289,7 @@ class WeatherClient:
         :param lon: longitude
         :type lon: float
         :return: TMY3 data
-        :rtype: pd.DataFrame 
+        :rtype: pd.DataFrame
         """
         # only need these columns
         tmy3_meta = pd.read_csv(

@@ -1,4 +1,5 @@
 # created by Tom Stesco tom.s@ecobee.com
+
 import logging
 from abc import ABC, abstractmethod
 

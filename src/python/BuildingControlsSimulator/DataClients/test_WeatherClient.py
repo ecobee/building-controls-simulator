@@ -17,8 +17,6 @@ class TestWeatherClient:
         # initialize with data to avoid pulling multiple times
 
         cls.weather = WeatherClient(
-            gcs_uri_base=os.environ.get("DYD_GCS_URI_BASE"),
-            gcp_project=os.environ.get("GOOGLE_CLOUD_PROJECT"),
             nrel_dev_api_key=os.environ.get("NREL_DEV_API_KEY"),
             nrel_dev_email=os.environ.get("NREL_DEV_EMAIL"),
             archive_tmy3_meta=os.environ.get("ARCHIVE_TMY3_META"),
@@ -34,7 +32,6 @@ class TestWeatherClient:
         """
         pass
 
-    @pytest.mark.run(order=1)
     def test_get_epw_tmy3(self):
         """
         test that preprocessing produces output file
@@ -57,23 +54,7 @@ class TestWeatherClient:
         assert cols == self.weather.epw_columns
 
     @pytest.mark.skip()
-    @pytest.mark.run(order=3)
     def test_get_archive_tmy3(self):
-        """
-        test that preprocessing produces output file
-        """
         lat = 33.481136
         lon = -112.078232
         self.weather.get_archive_tmy3(lat, lon)
-        logger.info("good")
-
-    @pytest.mark.skip()
-    @pytest.mark.run(order=4)
-    def test_get_tmy3(self):
-        """
-        test that preprocessing produces output file
-        """
-        logger.info("get data")
-
-        self.weather.get_tmy3(location=0)
-        logger.info("good")

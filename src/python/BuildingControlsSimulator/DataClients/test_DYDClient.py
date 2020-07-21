@@ -52,6 +52,21 @@ class TestDYDClient:
             end_utc=["2019-12-31", "2019-02-15", "2019-12-31"],
         )
 
+        cls.dyd.get_data(tstat_sim_config=cls.tstat_sim_config)
+        cls.tstat_sim_config["has_hvac_simulation_data"] = pd.Series(
+            cls.dyd.hvac.has_simulation_data(
+                cls.tstat_sim_config,
+                full_data_periods=cls.dyd.hvac.full_data_periods,
+            )
+        )
+
+        cls.tstat_sim_config["has_weather_simulation_data"] = pd.Series(
+            cls.dyd.weather.has_simulation_data(
+                cls.tstat_sim_config,
+                full_data_periods=cls.dyd.weather.full_data_periods,
+            )
+        )
+
     @classmethod
     def teardown_class(cls):
         """ teardown any state that was previously setup with a call to
@@ -59,35 +74,17 @@ class TestDYDClient:
         """
         pass
 
-    @pytest.mark.run(order=1)
     def test_has_simulation_data(self):
-
-        self.dyd.get_data(tstat_sim_config=self.tstat_sim_config)
-        self.tstat_sim_config["has_hvac_simulation_data"] = pd.Series(
-            self.dyd.hvac.has_simulation_data(
-                self.tstat_sim_config,
-                full_data_periods=self.dyd.hvac.full_data_periods,
-            )
-        )
-
-        self.tstat_sim_config["has_weather_simulation_data"] = pd.Series(
-            self.dyd.weather.has_simulation_data(
-                self.tstat_sim_config,
-                full_data_periods=self.dyd.weather.full_data_periods,
-            )
-        )
-
         # test HVAC data returns dict of non-empty pd.DataFrame
         for identifier, tstat in self.tstat_sim_config.iterrows():
             assert isinstance(self.dyd.hvac.data[identifier], pd.DataFrame)
             if tstat.has_hvac_simulation_data:
                 assert self.dyd.hvac.data[identifier].empty is False
 
-    @pytest.mark.run(order=3)
-    def test_read_back_epw_data(self):
+    def test_read_epw(self):
+        # read back cached filled epw files
         for identifier, tstat in self.tstat_sim_config.iterrows():
             if tstat["has_weather_simulation_data"]:
-                # read back cached filled epw files
                 data, meta, meta_lines = self.dyd.weather.read_epw(
                     self.dyd.weather.epw_fpaths[identifier]
                 )
@@ -98,7 +95,6 @@ class TestDYDClient:
                     + [self.dyd.weather.datetime_column]
                 )
 
-    @pytest.mark.run(order=4)
     def test_data_utc(self):
 
         for identifier, tstat in self.tstat_sim_config.iterrows():

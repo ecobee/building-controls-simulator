@@ -183,13 +183,22 @@ WEATHER_FILE="AZ/USA_AZ_Phoenix-Sky.Harbor.Intl.AP.722780_TMY3/USA_AZ_Phoenix-Sk
 wget "${EPLUS_WEATHER_URL_USA}/${WEATHER_FILE}" -P "${WEATHER_DIR}"
 ```
 
+### .env configuration
+
+The environment variables used by this platform can be configured from a `.env` file and `.test.env`
+
+These files can be sourced using bash:
+```bash
+set -a && .env && set +a
+```
+
 ### Run tests
 
 Test files are found in src/python directory alongside source code, they are identified by the naming convention `test_*.py`.
 The `pytest` framework used for testing, see https://docs.pytest.org/en/stable/ for details.
 
 ```bash
-python -m pytest src/python
+set -a && .test.env && set +a && python -m pytest src/python
 ```
 
 ### Authentication with GCP
