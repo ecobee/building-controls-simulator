@@ -74,6 +74,75 @@ docker image ls
 docker rmi <image ID>
 ```
 
+## Weather Data
+
+There are several data sources that can be used. The `WeatherClient` provides methods
+to get weather data required for simulations and preprocess it for use in simulation.
+
+The Energy Plus Weather (EPW) format is used and is described in the linked NREL 
+technical report: https://www.nrel.gov/docs/fy08osti/43156.pdf
+
+### EnergyPlus EPW Data
+
+The simpliest data source for EPW formated TMY data is from the EnergyPlus website:
+https://energyplus.net/weather.
+
+
+### NSRDB 1991-2005 Archive Data
+
+The archived data contains the most recent TMY3 data with the fields required by the EPW format.
+Download the archive from: https://nsrdb.nrel.gov/data-sets/archives.html
+
+Note: The archive is ~3 GB, but only the TMY data (~300MB compressed, 1.7 GB uncompressed) is required and the hourly data can be deleted after download.
+
+Example bash commands to download and extract TMY3 data (if archive format changes these will need to change accordingly):
+```bash
+cd $WEATHER_DIR
+wget https://gds-files.nrelcloud.org/rredc/1991-2005.zip
+unzip 1991-2005.zip
+cd 1991-2005
+rm -rf hourly
+cd tmy3
+mkdir tmy3_data
+mv allmy3a.zip tmy3_data
+cd tmy3_data
+# be careful, this archive dumps many TMY data files into current directory
+unzip allmy3a.zip
+cd $WEATHER_DIR
+# rename tmy3 directory
+mv 1991-2005/tmy3 archive_tmy3
+```
+
+your TMY3 cache should have the following structure:
+```bash
+~/lib/building-controls-simulator/weather/archive_tmy3$ ls
+TMY3_StationsMeta.csv  tmy3_data
+
+# and inside tmy3_data, the actual TMY3 data files
+~/lib/building-controls-simulator/weather/archive_tmy3$ ls tmy3_data/
+690150TYA.CSV  722435TYA.CSV  723540TYA.CSV  724675TYA.CSV  725520TYA.CSV  726685TYA.CSV
+690190TYA.CSV  722436TYA.CSV  723544TYA.CSV  724676TYA.CSV  725524TYA.CSV  726686TYA.CSV
+690230TYA.CSV  722445TYA.CSV  723545TYA.CSV  724677TYA.CSV  725525TYA.CSV  726700TYA.CSV
+699604TYA.CSV  722446TYA.CSV  723546TYA.CSV  724695TYA.CSV  725526TYA.CSV  726770TYA.CSV
+700197TYA.CSV  722448TYA.CSV  723550TYA.CSV  724698TYA.CSV  725527TYA.CSV  726776TYA.CSV
+700260TYA.CSV  722470TYA.CSV  723560TYA.CSV  724699TYA.CSV  725530TYA.CSV  726785TYA.CSV
+700637TYA.CSV  722480TYA.CSV  723565TYA.CSV  724723TYA.CSV  725533TYA.CSV  726797TYA.CSV
+...
+```
+
+### NREL NSRDB: 
+
+The current NSRDB has TMY and PSM3 data available through its developer API. 
+This however does not contain all fields required by the EPW format so those fields
+must be back filled with archive TMY3 data from the nearest weather station.
+
+NSRDB PSM3: https://developer.nrel.gov/docs/solar/nsrdb/psm3-download/
+NSRDB PSM3 TMY: https://developer.nrel.gov/docs/solar/nsrdb/psm3-tmy-download/
+
+### CDO: https://www.ncdc.noaa.gov/cdo-web/
+
+For potential future integration.
+
 ## Usage
 
 ### Start Container
@@ -164,6 +233,7 @@ readthedocs theme.
 
 ```
 cd docs/
+make clean
 make html
 ```
 
