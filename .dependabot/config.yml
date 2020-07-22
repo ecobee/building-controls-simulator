@@ -1,0 +1,21 @@
+# This is an example config
+# DOCS: https://dependabot.com/docs/config-file/
+version: 1 #required
+update_configs: #required
+  - package_manager: "javascript" #required - options: javascript, ruby:bundler, php:composer, python, go:modules, go:dep, java:maven, java:gradle, dotnet:nuget, rust:cargo, elixir:hex, docker, terraform, submodules, elm
+    directory: "/" #required
+    update_schedule: "live" #required - options: live (check docs for supported package_managers, daily (weekdays only), weekly, monthly
+    target_branch: "main" #optional (default is default branch)
+    default_reviewers: #optional
+      - ""
+    default_assignees: #optional
+      - ""
+    default_labels: #optional
+      - "dependencies"
+      - "dependabot"
+    default_milestone: 1 #optional
+    allowed_updates: #optional, please see docs
+    ignored_updates: #optional, plese see docs
+    automerged_updates: #optional, please see docs
+    version_requirements: #optional, please see docs
+    commit_message: #optional, please see docs
