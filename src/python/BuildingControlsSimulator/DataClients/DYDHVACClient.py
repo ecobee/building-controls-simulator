@@ -100,14 +100,18 @@ class DYDHVACClient(GCSDataSource, HVACClient):
         # if df has no records then there are no full_data_periods
         full_data_periods = []
         if len(df) > 0:
+            df = df.sort_values("datetime", ascending=True)
             diffs = df[self.datetime_column].diff()
 
             # check for missing records
-            missing_end_idx = diffs[
+            missing_start_idx = diffs[
                 diffs > pd.to_timedelta("5M")
             ].index.to_list()
 
-            missing_start_idx = [0] + [idx - 1 for idx in missing_end_idx]
+            missing_end_idx = [idx - 1 for idx in missing_start_idx] + [
+                len(df) - 1
+            ]
+            missing_start_idx = [0] + missing_start_idx
             # ensoure ascending before zip
             missing_start_idx.sort()
             missing_end_idx.sort()

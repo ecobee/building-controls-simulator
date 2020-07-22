@@ -80,8 +80,7 @@ class DYDClient(DataClient):
             tstat_sim_config, self.hvac.weather_data,
         )
 
-        # send back full data periods to hypervisor
-        return self.hvac.full_data_periods, self.weather.full_data_periods
-
     def get_metadata(self):
-        return pd.read_csv(self.meta_gs_uri)
+        return pd.read_csv(self.meta_gs_uri).drop_duplicates(
+            subset=["Identifier"]
+        )
