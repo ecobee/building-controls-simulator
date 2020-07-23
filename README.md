@@ -189,7 +189,7 @@ The environment variables used by this platform can be configured from a `.env` 
 
 These files can be sourced using bash:
 ```bash
-set -a && .env && set +a
+set -a && source .env && set +a
 ```
 
 ### Run tests
@@ -198,7 +198,7 @@ Test files are found in src/python directory alongside source code, they are ide
 The `pytest` framework used for testing, see https://docs.pytest.org/en/stable/ for details.
 
 ```bash
-set -a && .test.env && set +a && python -m pytest src/python
+set -a && source .test.env && set +a && python -m pytest src/python
 ```
 
 ### Authentication with GCP
