@@ -101,6 +101,9 @@ class DYDHVACClient(GCSDataSource, HVACClient):
         full_data_periods = []
         if len(df) > 0:
             df = df.sort_values("datetime", ascending=True)
+            # drop records that are incomplete
+            df = df[~df["HvacMode"].isnull()].reset_index()
+
             diffs = df[self.datetime_column].diff()
 
             # check for missing records
@@ -118,8 +121,12 @@ class DYDHVACClient(GCSDataSource, HVACClient):
 
             full_data_periods = list(
                 zip(
-                    df.datetime[missing_start_idx].values,
-                    df.datetime[missing_end_idx].values,
+                    pd.to_datetime(
+                        df.datetime[missing_start_idx].values, utc=True
+                    ),
+                    pd.to_datetime(
+                        df.datetime[missing_end_idx].values, utc=True
+                    ),
                 )
             )
 
@@ -208,15 +215,6 @@ class DYDHVACClient(GCSDataSource, HVACClient):
                 logging.error(f"identifier={identifier} has missing columns.")
 
         return cache_dict
-
-    def get_simulation_data(self, tstat_sim_config):
-        sim_data = {}
-        for identifier, tstat in tstat_sim_config[
-            tstat_sim_config.has_simulation_data
-        ].iterrows():
-            sim_data[identifier] = self.data[identifier]
-
-        return sim_data
 
     def put_cache(self):
         pass

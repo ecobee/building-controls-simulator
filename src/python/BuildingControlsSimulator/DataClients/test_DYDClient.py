@@ -46,25 +46,17 @@ class TestDYDClient:
                 "2df6959cdf502c23f04f3155758d7b678af0c631",  # full
                 "6e63291da5427ae87d34bb75022ee54ee3b1fc1a",  # file not found
             ],
-            latitude=[33.481136, 33.481136, 33.481136],
-            longitude=[-112.078232, -112.078232, -112.078232],
-            start_utc=["2019-01-01", "2019-01-01", "2019-01-01"],
-            end_utc=["2019-12-31", "2019-02-15", "2019-12-31"],
+            latitude=33.481136,
+            longitude=-112.078232,
+            start_utc="2019-01-01",
+            end_utc="2019-12-31",
+            min_sim_period="7D",
+            min_chunk_period="30D",
         )
 
         cls.dyd.get_data(tstat_sim_config=cls.tstat_sim_config)
-        cls.tstat_sim_config["has_hvac_simulation_data"] = pd.Series(
-            cls.dyd.hvac.has_simulation_data(
-                cls.tstat_sim_config,
-                full_data_periods=cls.dyd.hvac.full_data_periods,
-            )
-        )
-
-        cls.tstat_sim_config["has_weather_simulation_data"] = pd.Series(
-            cls.dyd.weather.has_simulation_data(
-                cls.tstat_sim_config,
-                full_data_periods=cls.dyd.weather.full_data_periods,
-            )
+        cls.sim_hvac_data, cls.sim_weather_data = cls.dyd.get_simulation_data(
+            cls.tstat_sim_config,
         )
 
     @classmethod
@@ -74,17 +66,26 @@ class TestDYDClient:
         """
         pass
 
-    def test_has_simulation_data(self):
+    def test_get_simulation_data(self):
         # test HVAC data returns dict of non-empty pd.DataFrame
         for identifier, tstat in self.tstat_sim_config.iterrows():
-            assert isinstance(self.dyd.hvac.data[identifier], pd.DataFrame)
-            if tstat.has_hvac_simulation_data:
-                assert self.dyd.hvac.data[identifier].empty is False
+            assert all(
+                [
+                    isinstance(p, pd.DataFrame)
+                    for p in self.sim_hvac_data[identifier]
+                ]
+            )
+            assert all(
+                [
+                    isinstance(p, pd.DataFrame)
+                    for p in self.sim_weather_data[identifier]
+                ]
+            )
 
     def test_read_epw(self):
         # read back cached filled epw files
         for identifier, tstat in self.tstat_sim_config.iterrows():
-            if tstat["has_weather_simulation_data"]:
+            if identifier in self.dyd.weather.epw_fpaths.keys():
                 data, meta, meta_lines = self.dyd.weather.read_epw(
                     self.dyd.weather.epw_fpaths[identifier]
                 )
@@ -94,6 +95,8 @@ class TestDYDClient:
                     == self.dyd.weather.epw_columns
                     + [self.dyd.weather.datetime_column]
                 )
+            else:
+                assert self.dyd.weather.data[identifier].empty
 
     def test_data_utc(self):
 

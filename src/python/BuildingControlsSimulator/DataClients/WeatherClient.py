@@ -379,14 +379,6 @@ class WeatherClient:
                 epw_data[self.datetime_column], utc=True
             )
 
-        # compute dewpoint from dry-bulb and relative humidity
-        if "temp_dew" not in epw_data.columns and all(
-            [c in epw_data.columns for c in ["temp_air", "relative_humidity"]]
-        ):
-            epw_data["temp_dew"] = WeatherClient.dewpoint(
-                epw_data["temp_air"], epw_data["relative_humidity"]
-            )
-
         # only need to resample if records not empty
         if len(epw_data) > 0:
             # resample to hourly data
@@ -396,6 +388,22 @@ class WeatherClient:
                 .resample("1H")
                 .mean()
                 .reset_index()
+            )
+
+            # fill forward missing weather data with previous day data
+            for idx in epw_data[
+                epw_data.temp_air.isnull()
+            ].index.sort_values():
+                epw_data.loc[
+                    idx, ["temp_air", "relative_humidity"]
+                ] = epw_data.loc[idx - 24, ["temp_air", "relative_humidity"]]
+
+        # compute dewpoint from dry-bulb and relative humidity
+        if "temp_dew" not in epw_data.columns and all(
+            [c in epw_data.columns for c in ["temp_air", "relative_humidity"]]
+        ):
+            epw_data["temp_dew"] = WeatherClient.dewpoint(
+                epw_data["temp_air"], epw_data["relative_humidity"]
             )
 
         epw_data["year"] = epw_data[self.datetime_column].dt.year

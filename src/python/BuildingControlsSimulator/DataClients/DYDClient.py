@@ -25,9 +25,6 @@ class DYDClient(DataClient):
     # meta_fname = attr.ib(default="meta_data.csv")
     meta_gs_uri = attr.ib(default=os.environ.get("DYD_METADATA_URI"))
 
-    weather = attr.ib()
-    hvac = attr.ib()
-
     # local or distributed caching
     local_data_dir = attr.ib(default=None)
 

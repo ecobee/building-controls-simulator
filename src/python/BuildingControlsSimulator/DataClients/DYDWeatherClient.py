@@ -79,6 +79,9 @@ class DYDWeatherClient(GCSDataSource, WeatherClient):
         full_data_periods = []
         if len(df) > 0:
             df = df.sort_values("datetime", ascending=True)
+            # drop records that are incomplete
+            df = df[~df["temp_air"].isnull()].reset_index()
+
             diffs = df[self.datetime_column].diff()
 
             # check for missing records
@@ -96,8 +99,12 @@ class DYDWeatherClient(GCSDataSource, WeatherClient):
 
             full_data_periods = list(
                 zip(
-                    df.datetime[missing_start_idx].values,
-                    df.datetime[missing_end_idx].values,
+                    pd.to_datetime(
+                        df.datetime[missing_start_idx].values, utc=True
+                    ),
+                    pd.to_datetime(
+                        df.datetime[missing_end_idx].values, utc=True
+                    ),
                 )
             )
 
