@@ -29,8 +29,8 @@ Github: https://github.com/ecobee/building-controls-simulator
     :caption: Data Clients
 
     DataClients
-    HVACClients
-    WeatherClients
+    HVACSource
+    WeatherSource
 
 Indices and tables
 ==================
