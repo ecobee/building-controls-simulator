@@ -6,6 +6,7 @@ import shlex
 import shutil
 import logging
 import fileinput
+import uuid
 
 import pandas as pd
 
@@ -39,13 +40,14 @@ class IDFPreprocessor(object):
     fmi_version = attr.ib(type=float, default=1.0)
 
     # first, terminate env vars, these will raise exceptions if undefined
-    ep_version = attr.ib(default=os.environ["ENERGYPLUS_INSTALL_VERSION"])
-    idf_dir = attr.ib(default=os.environ["IDF_DIR"])
-    idd_path = attr.ib(default=os.environ["EPLUS_IDD"])
-    fmu_dir = attr.ib(default=os.environ["FMU_DIR"])
+    ep_version = attr.ib(default=os.environ.get("ENERGYPLUS_INSTALL_VERSION"))
+    idf_dir = attr.ib(default=os.environ.get("IDF_DIR"))
+    idd_path = attr.ib(default=os.environ.get("EPLUS_IDD"))
+    fmu_dir = attr.ib(default=os.environ.get("FMU_DIR"))
     eplustofmu_path = attr.ib(
         default=os.path.join(
-            os.environ["EXT_DIR"], "EnergyPlusToFMU/Scripts/EnergyPlusToFMU.py"
+            os.environ.get("EXT_DIR"),
+            "EnergyPlusToFMU/Scripts/EnergyPlusToFMU.py",
         )
     )
 
@@ -68,7 +70,9 @@ class IDFPreprocessor(object):
         if not self.check_valid_idf(self.idf_file):
             raise ValueError(f"""{self.idf_file} is not a valid IDF file.""")
 
-        logger.info("IDFPreprocessor loading .idf file: {}".format(self.idf_file))
+        logger.info(
+            "IDFPreprocessor loading .idf file: {}".format(self.idf_file)
+        )
         self.ep_idf = IDF(self.idf_file)
         # select .idf output type
         self.ep_idf.outputtype = "standard"
@@ -131,7 +135,9 @@ class IDFPreprocessor(object):
         if preprocess_check and self.check_valid_idf(
             self.idf_prep_path, target_version=self.ep_version
         ):
-            logger.info(f"Found correct preprocessed IDF: {self.idf_prep_path}")
+            logger.info(
+                f"Found correct preprocessed IDF: {self.idf_prep_path}"
+            )
             logger.info(f"IDF version: {self.ep_version}")
         else:
             logger.info(f"Making new preprocessed IDF: {self.idf_prep_path}")
@@ -196,13 +202,19 @@ class IDFPreprocessor(object):
         return self.idf_prep_path
 
     def make_fmu(self, weather):
-        """make the fmu"""
+        """make the fmu
 
+        Calls FMU model generation script from https://github.com/lbl-srg/EnergyPlusToFMU.
+        This script litters temporary files of fixed names which get clobbered
+        if running in parallel. Need to fix scripts to be able to run in parallel.
+        """
         cmd = f"python2.7 {self.eplustofmu_path} -i {self.idd_path} -w {weather} -a {self.fmi_version} -d {self.idf_prep_path}"
 
         proc = subprocess.run(shlex.split(cmd), stdout=subprocess.PIPE)
         if not proc.stdout:
-            raise ValueError(f"Empty STDOUT. Invalid EnergyPlusToFMU cmd={cmd}")
+            raise ValueError(
+                f"Empty STDOUT. Invalid EnergyPlusToFMU cmd={cmd}"
+            )
 
         # EnergyPlusToFMU puts fmu in cwd always, move out of cwd
         shutil.move(
@@ -223,6 +235,7 @@ class IDFPreprocessor(object):
         # subprocess.run(cmd.split(), stdout=subprocess.PIPE)
         # if not proc.stdout:
         #     raise ValueError(f"Empty STDOUT. Invalid EnergyPlusToFMU cmd={cmd}")
+
         return self.fmu_path
 
     def prep_runtime(self):
@@ -365,22 +378,29 @@ class IDFPreprocessor(object):
         cur_version = self.get_idf_version(self.ep_idf)
 
         # check if current version above target
-        if int(cur_version.replace("-", "")) > int(target_version.replace("-", "")):
+        if int(cur_version.replace("-", "")) > int(
+            target_version.replace("-", "")
+        ):
             logger.error(
                 f".idf current_version={cur_version} above target_version={target_version}"
             )
         elif cur_version == target_version:
-            logger.info(f"Correct .idf version {cur_version}. Using {self.idf_file}")
+            logger.info(
+                f"Correct .idf version {cur_version}. Using {self.idf_file}"
+            )
         else:
             # first check for previous upgrade
-            transition_fpath = self.idf_file.replace(".idf", f"_{target_version}.idf")
+            transition_fpath = self.idf_file.replace(
+                ".idf", f"_{target_version}.idf"
+            )
             if not os.path.isfile(transition_fpath):
                 # upgrade .idf file repeatedly
                 first_transition = True
                 for i in range(len(conversion_dict)):
                     if cur_version != target_version:
                         transition_dir = os.path.join(
-                            os.environ["EPLUS_DIR"], "PreProcess/IDFVersionUpdater"
+                            os.environ["EPLUS_DIR"],
+                            "PreProcess/IDFVersionUpdater",
                         )
                         transistion_path = os.path.join(
                             transition_dir, conversion_dict[cur_version]
@@ -396,19 +416,24 @@ class IDFPreprocessor(object):
                         cmd = f"{transistion_path} {self.idf_file}"
 
                         # make transition call
-                        subprocess.call(shlex.split(cmd), stdout=subprocess.PIPE)
+                        subprocess.call(
+                            shlex.split(cmd), stdout=subprocess.PIPE
+                        )
                         os.chdir(original_wd)
 
                         cur_version = conversion_dict[cur_version][-5:]
                         if self.debug:
                             shutil.move(
                                 self.idf_file + "new",
-                                self.idf_file.replace(".idf", f"_{cur_version}.idf"),
+                                self.idf_file.replace(
+                                    ".idf", f"_{cur_version}.idf"
+                                ),
                             )
 
                         if first_transition:
                             shutil.move(
-                                self.idf_file + "old", self.idf_file + "original"
+                                self.idf_file + "old",
+                                self.idf_file + "original",
                             )
                             first_transition = False
 
@@ -423,6 +448,7 @@ class IDFPreprocessor(object):
                     os.remove(self.idf_file + "old")
             self.idf_file = transition_fpath
             # after running transition need to reload .idf file
+            print(self.idd_path)
             self.ep_idf = IDF(self.idf_file)
             logger.info(f"Upgrading complete. Using: {self.idf_file}")
 
@@ -556,7 +582,8 @@ class IDFPreprocessor(object):
         create external interface.
         """
         self.ep_idf.newidfobject(
-            "EXTERNALINTERFACE", Name_of_External_Interface="FunctionalMockupUnitExport"
+            "EXTERNALINTERFACE",
+            Name_of_External_Interface="FunctionalMockupUnitExport",
         )
 
     def get_heating_equipment(self):
@@ -686,7 +713,9 @@ class IDFPreprocessor(object):
     def popifdobject_by_name(self, idf_objs, name):
         """
         """
-        for i, s_obj in enumerate(self.ep_idf.idfobjects["ScheduleTypeLimits"]):
+        for i, s_obj in enumerate(
+            self.ep_idf.idfobjects["ScheduleTypeLimits"]
+        ):
             if "temperature" in s_obj.Name.lower():
                 self.ep_idf.popidfobject("ScheduleTypeLimits", i)
 
@@ -730,7 +759,9 @@ def fix_idf_version_line(idf_path, ep_version):
 
                 if line == "Version,\n":
                     output.write(
-                        line.replace("\n", "{};\n".format(ep_version.replace("-", ".")))
+                        line.replace(
+                            "\n", "{};\n".format(ep_version.replace("-", "."))
+                        )
                     )
                 elif "!- Version Identifier" not in line:
                     output.write(line)

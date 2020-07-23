@@ -4,7 +4,6 @@ import attr
 
 from BuildingControlsSimulator.ControlModels.ControlModel import ControlModel
 from BuildingControlsSimulator.ControlModels.ControlModel import HVAC_modes
-from BuildingControlsSimulator.BuildingModels import IDFPreprocessor
 
 
 @attr.s
@@ -22,6 +21,11 @@ class Deadband(ControlModel):
     stp_heat = attr.ib(default=21.0)
     stp_cool = attr.ib(default=25.0)
     deadband = attr.ib(default=2.0)
+
+    def initialize(self, start_time_seconds, final_time_seconds):
+        """
+        """
+        pass
 
     def output_keys(self):
         """
