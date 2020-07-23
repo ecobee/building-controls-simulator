@@ -7,14 +7,14 @@ import pandas as pd
 import attr
 import numpy as np
 
-from BuildingControlsSimulator.DataClients.WeatherClient import WeatherClient
+from BuildingControlsSimulator.DataClients.WeatherSource import WeatherSource
 from BuildingControlsSimulator.DataClients.GCSDataSource import GCSDataSource
 
 logger = logging.getLogger(__name__)
 
 
 @attr.s(kw_only=True)
-class DYDWeatherClient(GCSDataSource, WeatherClient):
+class DYDWeatherSource(GCSDataSource, WeatherSource):
 
     data_source_name = attr.ib(default="dyd")
 
@@ -25,8 +25,6 @@ class DYDWeatherClient(GCSDataSource, WeatherClient):
         # start with input data, DYD weather data is joined with HVAC
         self.data = weather_data
 
-        self.epw_data = {}
-        self.epw_meta = {}
         self.full_data_periods = {}
         for identifier, tstat in tstat_sim_config.iterrows():
             # should already be localized to UTC (DYD is in UTC)

@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 
 @attr.s(kw_only=True)
-class WeatherClient:
+class WeatherSource:
     """Client for weather data.
     """
 
@@ -402,7 +402,7 @@ class WeatherClient:
         if "temp_dew" not in epw_data.columns and all(
             [c in epw_data.columns for c in ["temp_air", "relative_humidity"]]
         ):
-            epw_data["temp_dew"] = WeatherClient.dewpoint(
+            epw_data["temp_dew"] = WeatherSource.dewpoint(
                 epw_data["temp_air"], epw_data["relative_humidity"]
             )
 

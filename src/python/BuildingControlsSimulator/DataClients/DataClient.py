@@ -18,15 +18,6 @@ class DataClient(ABC):
     gcs_cache = attr.ib(default=None)
     weather = attr.ib()
     hvac = attr.ib()
-    # tstat_sim_config_columns = attr.ib(
-    #     default=[
-    #         "identifiers",
-    #         "start_utc",
-    #         "end_utc",
-    #         "latitude",
-    #         "longitude",
-    #     ]
-    # )
 
     @abstractmethod
     def get_data(self, tstat_sim_config):

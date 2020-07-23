@@ -8,9 +8,9 @@ import pytz
 import os
 
 from BuildingControlsSimulator.DataClients.DYDClient import DYDClient
-from BuildingControlsSimulator.DataClients.DYDHVACClient import DYDHVACClient
-from BuildingControlsSimulator.DataClients.DYDWeatherClient import (
-    DYDWeatherClient,
+from BuildingControlsSimulator.DataClients.DYDHVACSource import DYDHVACSource
+from BuildingControlsSimulator.DataClients.DYDWeatherSource import (
+    DYDWeatherSource,
 )
 
 
@@ -22,11 +22,11 @@ class TestDYDClient:
     def setup_class(cls):
         # initialize with data to avoid pulling multiple times
         cls.dyd = DYDClient(
-            hvac=DYDHVACClient(
+            hvac=DYDHVACSource(
                 gcs_uri_base=os.environ.get("DYD_GCS_URI_BASE"),
                 gcp_project=os.environ.get("GOOGLE_CLOUD_PROJECT"),
             ),
-            weather=DYDWeatherClient(
+            weather=DYDWeatherSource(
                 gcs_uri_base=os.environ.get("DYD_GCS_URI_BASE"),
                 gcp_project=os.environ.get("GOOGLE_CLOUD_PROJECT"),
                 nrel_dev_api_key=os.environ.get("NREL_DEV_API_KEY"),

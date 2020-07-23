@@ -5,12 +5,12 @@ import pandas
 
 import pytest
 
-from BuildingControlsSimulator.DataClients.DYDHVACClient import DYDHVACClient
+from BuildingControlsSimulator.DataClients.DYDHVACSource import DYDHVACSource
 
 logger = logging.getLogger(__name__)
 
 
-class TestDYDHVACClient:
+class TestDYDHVACSource:
     @classmethod
     def setup_class(cls):
         pass

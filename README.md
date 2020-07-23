@@ -76,7 +76,7 @@ docker rmi <image ID>
 
 ## Weather Data
 
-There are several data sources that can be used. The `WeatherClient` provides methods
+There are several data sources that can be used. The `WeatherSource` provides methods
 to get weather data required for simulations and preprocess it for use in simulation.
 
 The Energy Plus Weather (EPW) format is used and is described in the linked NREL 

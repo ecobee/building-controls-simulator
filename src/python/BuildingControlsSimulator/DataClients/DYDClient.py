@@ -21,12 +21,7 @@ class DYDClient(DataClient):
     """
 
     data_source_name = attr.ib(default="dyd")
-
-    # meta_fname = attr.ib(default="meta_data.csv")
     meta_gs_uri = attr.ib(default=os.environ.get("DYD_METADATA_URI"))
-
-    # local or distributed caching
-    local_data_dir = attr.ib(default=None)
 
     def __attrs_post_init__(self):
         # first, post init class specification
@@ -71,7 +66,7 @@ class DYDClient(DataClient):
             )
 
         # HVAC and weather data are stored in same files in DYD
-        # DYDHVACClient performs read and feeds to weather.from_dyd_hvac()
+        # DYDHVACSource performs read and feeds to weather.from_dyd_hvac()
         self.hvac.get_data(tstat_sim_config)
         self.weather.get_data(
             tstat_sim_config, self.hvac.weather_data,

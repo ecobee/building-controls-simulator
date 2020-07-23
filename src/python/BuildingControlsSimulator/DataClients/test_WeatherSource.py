@@ -5,18 +5,18 @@ import logging
 import pytest
 import os
 
-from BuildingControlsSimulator.DataClients.WeatherClient import WeatherClient
+from BuildingControlsSimulator.DataClients.WeatherSource import WeatherSource
 
 
 logger = logging.getLogger(__name__)
 
 
-class TestWeatherClient:
+class TestWeatherSource:
     @classmethod
     def setup_class(cls):
         # initialize with data to avoid pulling multiple times
 
-        cls.weather = WeatherClient(
+        cls.weather = WeatherSource(
             nrel_dev_api_key=os.environ.get("NREL_DEV_API_KEY"),
             nrel_dev_email=os.environ.get("NREL_DEV_EMAIL"),
             archive_tmy3_meta=os.environ.get("ARCHIVE_TMY3_META"),

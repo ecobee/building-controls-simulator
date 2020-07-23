@@ -6,7 +6,7 @@ import pandas as pd
 import attr
 import numpy as np
 
-from BuildingControlsSimulator.DataClients.HVACClient import HVACClient
+from BuildingControlsSimulator.DataClients.HVACSource import HVACSource
 from BuildingControlsSimulator.DataClients.GCSDataSource import GCSDataSource
 
 
@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 
 @attr.s(kw_only=True)
-class DYDHVACClient(GCSDataSource, HVACClient):
+class DYDHVACSource(GCSDataSource, HVACSource):
 
     local_data_dir = attr.ib(default=None)
 
@@ -96,42 +96,6 @@ class DYDHVACClient(GCSDataSource, HVACClient):
             + self.weather_columns
         )
 
-    def get_full_data_periods(self, df):
-        # if df has no records then there are no full_data_periods
-        full_data_periods = []
-        if len(df) > 0:
-            df = df.sort_values("datetime", ascending=True)
-            # drop records that are incomplete
-            df = df[~df["HvacMode"].isnull()].reset_index()
-
-            diffs = df[self.datetime_column].diff()
-
-            # check for missing records
-            missing_start_idx = diffs[
-                diffs > pd.to_timedelta("5M")
-            ].index.to_list()
-
-            missing_end_idx = [idx - 1 for idx in missing_start_idx] + [
-                len(df) - 1
-            ]
-            missing_start_idx = [0] + missing_start_idx
-            # ensoure ascending before zip
-            missing_start_idx.sort()
-            missing_end_idx.sort()
-
-            full_data_periods = list(
-                zip(
-                    pd.to_datetime(
-                        df.datetime[missing_start_idx].values, utc=True
-                    ),
-                    pd.to_datetime(
-                        df.datetime[missing_end_idx].values, utc=True
-                    ),
-                )
-            )
-
-        return full_data_periods
-
     def get_data(self, tstat_sim_config):
         """
         """
@@ -142,7 +106,7 @@ class DYDHVACClient(GCSDataSource, HVACClient):
         self.data = {}
         self.full_data_periods = {}
         for tstat_id, data in all_data.items():
-            # weather will be further processed by DYDWeatherClient
+            # weather will be further processed by DYDWeatherSource
             self.weather_data[tstat_id] = data[
                 [self.dyd_datetime_column] + self.weather_columns
             ]
@@ -202,7 +166,7 @@ class DYDHVACClient(GCSDataSource, HVACClient):
 
             # convert all temperatures to degrees Celcius, DYD is in Fahrenheit
             for temp_col in self.temperatrue_columns:
-                cache_dict[identifier][temp_col] = DYDHVACClient.F2C(
+                cache_dict[identifier][temp_col] = DYDHVACSource.F2C(
                     cache_dict[identifier][temp_col]
                 )
             # check cache contains all expected columns
@@ -215,6 +179,42 @@ class DYDHVACClient(GCSDataSource, HVACClient):
                 logging.error(f"identifier={identifier} has missing columns.")
 
         return cache_dict
+
+    def get_full_data_periods(self, df):
+        # if df has no records then there are no full_data_periods
+        full_data_periods = []
+        if len(df) > 0:
+            df = df.sort_values("datetime", ascending=True)
+            # drop records that are incomplete
+            df = df[~df["HvacMode"].isnull()].reset_index()
+
+            diffs = df[self.datetime_column].diff()
+
+            # check for missing records
+            missing_start_idx = diffs[
+                diffs > pd.to_timedelta("5M")
+            ].index.to_list()
+
+            missing_end_idx = [idx - 1 for idx in missing_start_idx] + [
+                len(df) - 1
+            ]
+            missing_start_idx = [0] + missing_start_idx
+            # ensoure ascending before zip
+            missing_start_idx.sort()
+            missing_end_idx.sort()
+
+            full_data_periods = list(
+                zip(
+                    pd.to_datetime(
+                        df.datetime[missing_start_idx].values, utc=True
+                    ),
+                    pd.to_datetime(
+                        df.datetime[missing_end_idx].values, utc=True
+                    ),
+                )
+            )
+
+        return full_data_periods
 
     def put_cache(self):
         pass

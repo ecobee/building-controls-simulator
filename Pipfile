@@ -35,6 +35,7 @@ gcsfs = "*"
 dask = {extras = ["complete"],version = "*"}
 requests = "*"
 scikit-learn = "*"
+statsmodels = "*"
 
 [requires]
 python_version = "3.7"
