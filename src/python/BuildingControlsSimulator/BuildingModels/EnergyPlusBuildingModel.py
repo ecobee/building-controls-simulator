@@ -9,8 +9,12 @@ import numpy as np
 from eppy import modeleditor
 import pyfmi
 
-from BuildingControlsSimulator.BuildingModels.BuildingModel import BuildingModel
-from BuildingControlsSimulator.BuildingModels.IDFPreprocessor import IDFPreprocessor
+from BuildingControlsSimulator.BuildingModels.BuildingModel import (
+    BuildingModel,
+)
+from BuildingControlsSimulator.BuildingModels.IDFPreprocessor import (
+    IDFPreprocessor,
+)
 from BuildingControlsSimulator.ControlModels.ControlModel import HVAC_modes
 from BuildingControlsSimulator.ControlModels.ControlModel import ControlModel
 
@@ -43,7 +47,9 @@ class EnergyPlusBuildingModel(BuildingModel):
             self.weather_name = os.path.basename(self.weather_file)
         else:
             self.weather_name = self.weather_file
-            self.weather_file = os.path.join(self.weather_dir, self.weather_name)
+            self.weather_file = os.path.join(
+                self.weather_dir, self.weather_name
+            )
             if not os.path.isfile(self.weather_file):
                 raise ValueError(f"""{self.weather_file} is not a file.""")
 
@@ -76,7 +82,9 @@ class EnergyPlusBuildingModel(BuildingModel):
         """Gets occupiec zones from zones that have a tstat in them."""
         return [
             tstat.Zone_or_ZoneList_Name
-            for tstat in self.idf.ep_idf.idfobjects["zonecontrol:thermostat".upper()]
+            for tstat in self.idf.ep_idf.idfobjects[
+                "zonecontrol:thermostat".upper()
+            ]
         ]
 
     def actuate_HVAC_equipment_init_fmu(self, step_HVAC_mode, init_fmu):
@@ -84,18 +92,36 @@ class EnergyPlusBuildingModel(BuildingModel):
         """
         if self.cur_HVAC_mode != step_HVAC_mode:
             if step_HVAC_mode == HVAC_modes.SINGLE_HEATING_SETPOINT:
-                init_fmu.set(self.idf.FMU_control_type_name, int(step_HVAC_mode))
-                init_fmu.set(self.idf.FMU_control_heating_stp_name, self.T_heat_on)
-                init_fmu.set(self.idf.FMU_control_cooling_stp_name, self.T_cool_off)
+                init_fmu.set(
+                    self.idf.FMU_control_type_name, int(step_HVAC_mode)
+                )
+                init_fmu.set(
+                    self.idf.FMU_control_heating_stp_name, self.T_heat_on
+                )
+                init_fmu.set(
+                    self.idf.FMU_control_cooling_stp_name, self.T_cool_off
+                )
             elif step_HVAC_mode == HVAC_modes.SINGLE_COOLING_SETPOINT:
-                init_fmu.set(self.idf.FMU_control_type_name, int(step_HVAC_mode))
-                init_fmu.set(self.idf.FMU_control_heating_stp_name, self.T_heat_off)
-                init_fmu.set(self.idf.FMU_control_cooling_stp_name, self.T_cool_on)
+                init_fmu.set(
+                    self.idf.FMU_control_type_name, int(step_HVAC_mode)
+                )
+                init_fmu.set(
+                    self.idf.FMU_control_heating_stp_name, self.T_heat_off
+                )
+                init_fmu.set(
+                    self.idf.FMU_control_cooling_stp_name, self.T_cool_on
+                )
 
             elif step_HVAC_mode == HVAC_modes.UNCONTROLLED:
-                init_fmu.set(self.idf.FMU_control_type_name, int(step_HVAC_mode))
-                init_fmu.set(self.idf.FMU_control_heating_stp_name, self.T_heat_off)
-                init_fmu.set(self.idf.FMU_control_cooling_stp_name, self.T_cool_off)
+                init_fmu.set(
+                    self.idf.FMU_control_type_name, int(step_HVAC_mode)
+                )
+                init_fmu.set(
+                    self.idf.FMU_control_heating_stp_name, self.T_heat_off
+                )
+                init_fmu.set(
+                    self.idf.FMU_control_cooling_stp_name, self.T_cool_off
+                )
 
         self.cur_HVAC_mode = step_HVAC_mode
 
@@ -104,26 +130,41 @@ class EnergyPlusBuildingModel(BuildingModel):
         """
         if self.cur_HVAC_mode != step_HVAC_mode:
             if step_HVAC_mode == HVAC_modes.SINGLE_HEATING_SETPOINT:
-                self.fmu.set(self.idf.FMU_control_type_name, int(step_HVAC_mode))
-                self.fmu.set(self.idf.FMU_control_heating_stp_name, self.T_heat_on)
-                self.fmu.set(self.idf.FMU_control_cooling_stp_name, self.T_cool_off)
+                self.fmu.set(
+                    self.idf.FMU_control_type_name, int(step_HVAC_mode)
+                )
+                self.fmu.set(
+                    self.idf.FMU_control_heating_stp_name, self.T_heat_on
+                )
+                self.fmu.set(
+                    self.idf.FMU_control_cooling_stp_name, self.T_cool_off
+                )
             elif step_HVAC_mode == HVAC_modes.SINGLE_COOLING_SETPOINT:
-                self.fmu.set(self.idf.FMU_control_type_name, int(step_HVAC_mode))
-                self.fmu.set(self.idf.FMU_control_heating_stp_name, self.T_heat_off)
-                self.fmu.set(self.idf.FMU_control_cooling_stp_name, self.T_cool_on)
+                self.fmu.set(
+                    self.idf.FMU_control_type_name, int(step_HVAC_mode)
+                )
+                self.fmu.set(
+                    self.idf.FMU_control_heating_stp_name, self.T_heat_off
+                )
+                self.fmu.set(
+                    self.idf.FMU_control_cooling_stp_name, self.T_cool_on
+                )
 
             elif step_HVAC_mode == HVAC_modes.UNCONTROLLED:
-                self.fmu.set(self.idf.FMU_control_type_name, int(step_HVAC_mode))
-                self.fmu.set(self.idf.FMU_control_heating_stp_name, self.T_heat_off)
-                self.fmu.set(self.idf.FMU_control_cooling_stp_name, self.T_cool_off)
+                self.fmu.set(
+                    self.idf.FMU_control_type_name, int(step_HVAC_mode)
+                )
+                self.fmu.set(
+                    self.idf.FMU_control_heating_stp_name, self.T_heat_off
+                )
+                self.fmu.set(
+                    self.idf.FMU_control_cooling_stp_name, self.T_cool_off
+                )
 
         self.cur_HVAC_mode = step_HVAC_mode
 
     def initialize(self, start_time_seconds, final_time_seconds):
         """
         """
-        # self.fmu = pyfmi.load_fmu(fmu=self.idf.fmu_path)
-        # self.fmu.initialize(start_time_seconds, final_time_seconds)
-        fmu = pyfmi.load_fmu(fmu=self.idf.fmu_path)
-        fmu.initialize(start_time_seconds, final_time_seconds)
-        return fmu
+        self.fmu = pyfmi.load_fmu(fmu=self.idf.fmu_path)
+        self.fmu.initialize(start_time_seconds, final_time_seconds)

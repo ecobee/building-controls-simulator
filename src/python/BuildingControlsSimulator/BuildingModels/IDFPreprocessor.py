@@ -5,20 +5,18 @@ import subprocess
 import shlex
 import shutil
 import logging
-import fileinput
-import uuid
 
 import pandas as pd
-
 import attr
 import numpy as np
+
 from eppy.modeleditor import IDF
 
 logger = logging.getLogger(__name__)
 
 
 @attr.s(kw_only=True)
-class IDFPreprocessor(object):
+class IDFPreprocessor:
     """Converts IDFs (Input Data Files) for EnergyPlus into working IDFs.
     Example:
     ```python
@@ -53,10 +51,11 @@ class IDFPreprocessor(object):
 
     def __attrs_post_init__(self):
         """Initialize `IDFPreprocessor` with an IDF file and desired actions"""
-        # set energyplus dictionary version for eppy
+        # make output dirs
+        os.makedirs(self.idf_prep_dir, exist_ok=True)
 
+        # set energyplus dictionary version for eppy
         IDF.setiddname(self.idd_path)
-        # IDF.setiddname("/home/bcs/lib/external/EnergyPlus/EnergyPlus-9-3-0/PreProcess/IDFVersionUpdater/V8-6-0-Energy+.idd")
 
         # first make sure idf file exists
         if os.path.isfile(self.idf_file):

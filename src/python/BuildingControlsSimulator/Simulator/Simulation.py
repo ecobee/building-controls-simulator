@@ -3,12 +3,9 @@
 import os
 import logging
 
-import dask
 import pandas as pd
 import numpy as np
 import attr
-
-import pyfmi
 
 from BuildingControlsSimulator.BuildingModels.EnergyPlusBuildingModel import (
     EnergyPlusBuildingModel,
@@ -77,16 +74,7 @@ class Simulation(object):
     def building_model_output_keys_init(building_interface):
         return building_interface.get_model_variables().keys()
 
-    def build_models(self, preprocess_check=False):
-        self.building_model.idf.preprocess(
-            timesteps_per_hour=self.steps_per_hour,
-            preprocess_check=preprocess_check,
-        )
-        return self.building_model.create_model_fmu()
-
-    def build_fmu(self, preprocess_check=False):
-        """make .fmu files
-        """
+    def create_models(self, preprocess_check=False):
         self.building_model.idf.preprocess(
             timesteps_per_hour=self.steps_per_hour,
             preprocess_check=preprocess_check,
@@ -96,13 +84,12 @@ class Simulation(object):
     def initialize(self):
         """initialize FMU models
         """
-        building_interface = self.building_model.initialize(
+        self.building_model.initialize(
             self.start_time_seconds, self.final_time_seconds
         )
-        controller_interface = self.controller_model.initialize(
+        self.controller_model.initialize(
             self.start_time_seconds, self.final_time_seconds
         )
-        return building_interface, controller_interface
 
     def get_air_temp_vars(self, building_model_output):
         """
@@ -117,9 +104,7 @@ class Simulation(object):
             if k in air_temp_var_names
         ]
 
-    def get_air_temp_vars_init(
-        self, building_model_output, building_interface
-    ):
+    def get_air_temp_vars_init(self, building_model_output):
         """
         """
         air_temp_var_names = [
@@ -129,26 +114,23 @@ class Simulation(object):
         return [
             building_model_output[i]
             for i, k in enumerate(
-                building_interface.get_model_variables().keys()
+                self.building_model.fmu.get_model_variables().keys()
             )
             if k in air_temp_var_names
         ]
 
-    def calc_T_control(self, building_model_output, building_interface):
+    def calc_T_control(self, building_model_output):
         """
         """
-        return np.mean(
-            self.get_air_temp_vars_init(
-                building_model_output, building_interface
-            )
-        )
+        return np.mean(self.get_air_temp_vars_init(building_model_output))
 
-    @dask.delayed
     def run(self):
         """
         """
-        # self.build_fmu()
+        logger.info("Initializing FMU models ...")
         self.initialize()
+
+        logger.info("Running co-simulation ...")
         output = []
         t_ctrl = self.building_model.init_temperature
 
@@ -185,57 +167,6 @@ class Simulation(object):
 
         self.output_df = pd.DataFrame.from_records(
             output, columns=self.output_keys
-        )
-        return self.output_df
-
-    def run_simulation(self, client, building_interface, controller_interface):
-        output = []
-        t_ctrl = self.building_model.init_temperature
-
-        fake_controller_output_keys = ["HVAC_mode"]
-
-        for t_step_seconds in range(
-            self.start_time_seconds,
-            self.final_time_seconds,
-            self.step_size_seconds,
-        ):
-            controller_output = controller_interface.do_step(
-                current_t=0, step_size=300, new_step=True
-            )
-
-            self.building_model.actuate_HVAC_equipment_init_fmu(
-                self.controller_model.HVAC_mode, building_interface
-            )
-            step_status = building_interface.do_step(
-                current_t=t_step_seconds,
-                step_size=self.step_size_seconds,
-                new_step=True,
-            )
-            # save data as row
-            building_model_output = [
-                building_interface.get(k)[0]
-                for k in building_interface.get_model_variables().keys()
-            ]
-
-            t_ctrl = self.calc_T_control(
-                building_model_output, building_interface
-            )
-
-            step_output = (
-                [t_step_seconds, step_status, t_ctrl]
-                + [controller_output]
-                + building_model_output
-            )
-            output.append(step_output)
-            # TODO add multizone support
-
-        self.output_df = pd.DataFrame.from_records(
-            output,
-            columns=(
-                self.simulator_output_keys
-                + fake_controller_output_keys
-                + list(building_interface.get_model_variables().keys())
-            ),
         )
         return self.output_df
 
