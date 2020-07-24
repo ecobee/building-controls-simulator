@@ -33,10 +33,19 @@ class ControlModel(object):
     Example:
     ```python
     src.IDFPreprocessor.()
-
     ```
+    
+    """
 
-    # """
+    def initialize(self, start_time_seconds, final_time_seconds):
+        """
+        """
+        pass
+
+    def do_step(self):
+        """
+        """
+        pass
 
     # FMU_control_cooling_stp_name = attr.ib(kw_only=True)
     # FMU_control_heating_stp_name = attr.ib(kw_only=True)
