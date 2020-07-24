@@ -149,7 +149,7 @@ EndOfMessage
         echo "If jupyter server is inaccessible without password delete this file and re-run."
     fi
     # this is configured in Pipfile [scripts] to start headless jupyter server
-    pipenv run jupyter_lab_bkgrnd
+    # pipenv run jupyter_lab_bkgrnd
     pipenv shell
 fi
 
