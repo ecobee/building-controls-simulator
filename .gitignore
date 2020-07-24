@@ -18,8 +18,10 @@ Output_EPExport_Model/
 output/
 data/
 weather/
-idf/
-fmu/
+./idf/
+./fmu/
+!test/idf/v8-9-0/AZ_Phoenix_gasfurnace_crawlspace_IECC_2018_cycles.idf
+!test/fmu/fmu-models/deadband/deadband.fmu
 __pycache__/
 .pytest_cache/
 .ipynb_checkpoints/
