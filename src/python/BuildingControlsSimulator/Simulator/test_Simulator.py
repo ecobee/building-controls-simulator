@@ -5,6 +5,7 @@ import logging
 import pytest
 import pandas as pd
 import os
+import shutil
 
 from BuildingControlsSimulator.Simulator.Simulation import Simulation
 from BuildingControlsSimulator.BuildingModels.IDFPreprocessor import (
@@ -24,7 +25,24 @@ class TestSimulator:
     @classmethod
     def setup_class(cls):
         # initialize with data to avoid pulling multiple times
-        pass
+
+        EnergyPlusBuildingModel.make_directories()
+
+        weather_name = "USA_FL_Tampa.Intl.AP.722110_TMY3.epw"
+        cls.test_weather_path = os.path.join(
+            os.environ.get("WEATHER_DIR"), weather_name
+        )
+        if not os.path.isfile(cls.test_weather_path):
+            _fpath = os.path.join(
+                os.environ.get("EPLUS_DIR"), "WeatherData", weather_name,
+            )
+            shutil.copyfile(_fpath, cls.test_weather_path)
+
+        cls.idf_name = "AZ_Phoenix_gasfurnace_crawlspace_IECC_2018_cycles.idf"
+
+        cls.fmu_path = (
+            f"{os.environ.get('FMU_DIR')}/../fmu-models/deadband/deadband.fmu"
+        )
 
     @classmethod
     def teardown_class(cls):
@@ -38,10 +56,9 @@ class TestSimulator:
         s = Simulation(
             building_model=EnergyPlusBuildingModel(
                 idf=IDFPreprocessor(
-                    idf_file="AZ_Phoenix_gasfurnace_crawlspace_IECC_2018_cycles.idf",
-                    init_temperature=22.0,
+                    idf_file=self.idf_name, init_temperature=22.0,
                 ),
-                weather_file="USA_AZ_Phoenix-Sky.Harbor.Intl.AP.722780_TMY3.epw",
+                weather_file=self.test_weather_path,
             ),
             controller_model=Deadband(
                 deadband=2.0, stp_heat=21.0, stp_cool=24.0
@@ -58,13 +75,12 @@ class TestSimulator:
         s = Simulation(
             building_model=EnergyPlusBuildingModel(
                 idf=IDFPreprocessor(
-                    idf_file="AZ_Phoenix_gasfurnace_crawlspace_IECC_2018_cycles.idf",
-                    init_temperature=22.0,
+                    idf_file=self.idf_name, init_temperature=22.0,
                 ),
-                weather_file="USA_AZ_Phoenix-Sky.Harbor.Intl.AP.722780_TMY3.epw",
+                weather_file=self.test_weather_path,
             ),
             controller_model=FMIController(
-                fmu_path=f"{os.environ.get('FMU_DIR')}/../fmu-models/deadband/deadband.fmu",
+                fmu_path=self.fmu_path,
                 deadband=2.0,
                 stp_heat=21.0,
                 stp_cool=24.0,

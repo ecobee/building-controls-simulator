@@ -197,5 +197,3 @@ class DataClient(ABC):
         os.makedirs(os.environ.get("ARCHIVE_TMY3_DATA_DIR"), exist_ok=True)
         os.makedirs(os.environ.get("EP_TMY3_CACHE_DIR"), exist_ok=True)
         os.makedirs(os.environ.get("SIMULATION_EPW_DIR"), exist_ok=True)
-        os.makedirs(os.environ.get("FMU_DIR"), exist_ok=True)
-        os.makedirs(os.environ.get("IDF_DIR"), exist_ok=True)
