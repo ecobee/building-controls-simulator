@@ -30,7 +30,7 @@ class EnergyPlusBuildingModel(BuildingModel):
     """
 
     idf = attr.ib()
-    weather_dir = attr.ib(default=os.environ["WEATHER_DIR"])
+    weather_dir = attr.ib(default=os.environ.get("WEATHER_DIR"))
     # user must supply a weather file as either 1) full path, or 2) a file in self.idf_dir
     weather_file = attr.ib()
     fmu = attr.ib(default=None)
@@ -168,3 +168,14 @@ class EnergyPlusBuildingModel(BuildingModel):
         """
         self.fmu = pyfmi.load_fmu(fmu=self.idf.fmu_path)
         self.fmu.initialize(start_time_seconds, final_time_seconds)
+
+    @staticmethod
+    def make_directories():
+        os.makedirs(os.environ.get("IDF_DIR"), exist_ok=True)
+        os.makedirs(
+            os.path.join(os.environ.get("IDF_DIR"), "preprocessed"),
+            exist_ok=True,
+        )
+        os.makedirs(os.environ.get("FMU_DIR"), exist_ok=True)
+        os.makedirs(os.environ.get("WEATHER_DIR"), exist_ok=True)
+        os.makedirs(os.environ.get("OUTPUT_DIR"), exist_ok=True)

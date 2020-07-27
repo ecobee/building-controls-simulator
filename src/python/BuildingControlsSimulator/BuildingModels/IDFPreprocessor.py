@@ -42,12 +42,7 @@ class IDFPreprocessor:
     idf_dir = attr.ib(default=os.environ.get("IDF_DIR"))
     idd_path = attr.ib(default=os.environ.get("EPLUS_IDD"))
     fmu_dir = attr.ib(default=os.environ.get("FMU_DIR"))
-    eplustofmu_path = attr.ib(
-        default=os.path.join(
-            os.environ.get("EXT_DIR"),
-            "EnergyPlusToFMU/Scripts/EnergyPlusToFMU.py",
-        )
-    )
+    eplustofmu_path = attr.ib(default=os.environ.get("ENERGYPLUSTOFMUSCRIPT"))
 
     def __attrs_post_init__(self):
         """Initialize `IDFPreprocessor` with an IDF file and desired actions"""
@@ -207,7 +202,11 @@ class IDFPreprocessor:
         This script litters temporary files of fixed names which get clobbered
         if running in parallel. Need to fix scripts to be able to run in parallel.
         """
-        cmd = f"python2.7 {self.eplustofmu_path} -i {self.idd_path} -w {weather} -a {self.fmi_version} -d {self.idf_prep_path}"
+        cmd = f"python2.7 {self.eplustofmu_path}"
+        cmd += f" -i {self.idd_path}"
+        cmd += f" -w {weather}"
+        cmd += f" -a {self.fmi_version}"
+        cmd += f" -d {self.idf_prep_path}"
 
         proc = subprocess.run(shlex.split(cmd), stdout=subprocess.PIPE)
         if not proc.stdout:
@@ -257,61 +256,61 @@ class IDFPreprocessor:
         From V8-9-0-Energy+.idd:
 
         SimulationControl,
-          unique-object
-          memo Note that the following 3 fields are related to the Sizing:Zone, Sizing:System,
-          memo and Sizing:Plant objects.  Having these fields set to Yes but no corresponding
-          memo Sizing object will not cause the sizing to be done. However, having any of these
-          memo fields set to No, the corresponding Sizing object is ignored.
-          memo Note also, if you want to do system sizing, you must also do zone sizing in the same
-          memo run or an error will result.
-          min-fields 5
+            unique-object
+            memo Note that the following 3 fields are related to the Sizing:Zone, Sizing:System,
+            memo and Sizing:Plant objects.  Having these fields set to Yes but no corresponding
+            memo Sizing object will not cause the sizing to be done. However, having any of these
+            memo fields set to No, the corresponding Sizing object is ignored.
+            memo Note also, if you want to do system sizing, you must also do zone sizing in the same
+            memo run or an error will result.
+            min-fields 5
         A1, field Do Zone Sizing Calculation
-          note If Yes, Zone sizing is accomplished from corresponding Sizing:Zone objects
-          note and autosize fields.
-          type choice
-          key Yes
-          key No
-          default No
+            note If Yes, Zone sizing is accomplished from corresponding Sizing:Zone objects
+            note and autosize fields.
+            type choice
+            key Yes
+            key No
+            default No
         A2, field Do System Sizing Calculation
-          note If Yes, System sizing is accomplished from corresponding Sizing:System objects
-          note and autosize fields.
-          note If Yes, Zone sizing (previous field) must also be Yes.
-          type choice
-          key Yes
-          key No
-          default No
+            note If Yes, System sizing is accomplished from corresponding Sizing:System objects
+            note and autosize fields.
+            note If Yes, Zone sizing (previous field) must also be Yes.
+            type choice
+            key Yes
+            key No
+            default No
         A3 field Do Plant Sizing Calculation
-          note If Yes, Plant sizing is accomplished from corresponding Sizing:Plant objects
-          note and autosize fields.
-          type choice
-          key Yes
-          key No
-          default No
+            note If Yes, Plant sizing is accomplished from corresponding Sizing:Plant objects
+            note and autosize fields.
+            type choice
+            key Yes
+            key No
+            default No
         A4, field Run Simulation for Sizing Periods
-          note If Yes, SizingPeriod:* objects are executed and results from those may be displayed..
-          type choice
-          key Yes
-          key No
-          default Yes
+            note If Yes, SizingPeriod:* objects are executed and results from those may be displayed..
+            type choice
+            key Yes
+            key No
+            default Yes
         A5, field Run Simulation for Weather File Run Periods
-          note If Yes, RunPeriod:* objects are executed and results from those may be displayed..
-          type choice
-          key Yes
-          key No
-          default Yes
+            note If Yes, RunPeriod:* objects are executed and results from those may be displayed..
+            type choice
+            key Yes
+            key No
+            default Yes
         A6, field Do HVAC Sizing Simulation for Sizing Periods
-          note If Yes, SizingPeriod:* objects are exectuted additional times for advanced sizing.
-          note Currently limited to use with coincident plant sizing, see Sizing:Plant object
-          type choice
-          key Yes
-          key No
-          default No
+            note If Yes, SizingPeriod:* objects are exectuted additional times for advanced sizing.
+            note Currently limited to use with coincident plant sizing, see Sizing:Plant object
+            type choice
+            key Yes
+            key No
+            default No
         N1; field Maximum Number of HVAC Sizing Simulation Passes
-          note the entire set of SizingPeriod:* objects may be repeated to fine tune size results
-          note this input sets a limit on the number of passes that the sizing algorithms can repeate the set
-          type integer
-          minimum 1
-          default 1
+            note the entire set of SizingPeriod:* objects may be repeated to fine tune size results
+            note this input sets a limit on the number of passes that the sizing algorithms can repeate the set
+            type integer
+            minimum 1
+            default 1
         """
         self.popallidfobjects("SimulationControl")
         self.ep_idf.newidfobject(
@@ -328,7 +327,6 @@ class IDFPreprocessor:
     def prep_timesteps(self, timesteps_per_hour):
         """
         From V8-9-0-Energy+.idd:
-         
         Timestep,
             memo Specifies the "basic" timestep for the simulation. The
             memo value entered here is also known as the Zone Timestep.  This is used in
@@ -447,7 +445,6 @@ class IDFPreprocessor:
                     os.remove(self.idf_file + "old")
             self.idf_file = transition_fpath
             # after running transition need to reload .idf file
-            print(self.idd_path)
             self.ep_idf = IDF(self.idf_file)
             logger.info(f"Upgrading complete. Using: {self.idf_file}")
 
