@@ -21,22 +21,22 @@ from BuildingControlsSimulator.OutputAnalysis.OutputAnalysis import (
 logger = logging.getLogger(__name__)
 
 
-@attr.s
-class Simulation(object):
+@attr.s(kw_only=True)
+class Simulation:
     """Converts IDFs (Input Data Files) for EnergyPlus into working IDFs.
     """
 
-    building_model = attr.ib(kw_only=True)
-    controller_model = attr.ib(kw_only=True)
+    building_model = attr.ib()
+    controller_model = attr.ib()
     # TODO add validator
-    step_size_minutes = attr.ib(kw_only=True)
-    start_time_days = attr.ib(kw_only=True)
-    final_time_days = attr.ib(kw_only=True)
+    step_size_minutes = attr.ib()
+    start_time_days = attr.ib()
+    final_time_days = attr.ib()
     output_data_dir = attr.ib(
-        default=os.path.join(os.environ["PACKAGE_DIR"], "output/data")
+        default=os.path.join(os.environ.get("OUTPUT_DIR"), "data")
     )
     output_plot_dir = attr.ib(
-        default=os.path.join(os.environ["PACKAGE_DIR"], "output/plot")
+        default=os.path.join(os.environ.get("OUTPUT_DIR"), "plot")
     )
 
     @property
@@ -71,9 +71,6 @@ class Simulation(object):
     def building_model_output_keys(self):
         return self.building_model.fmu.get_model_variables().keys()
 
-    def building_model_output_keys_init(building_interface):
-        return building_interface.get_model_variables().keys()
-
     def create_models(self, preprocess_check=False):
         self.building_model.idf.preprocess(
             timesteps_per_hour=self.steps_per_hour,
@@ -91,7 +88,7 @@ class Simulation(object):
             self.start_time_seconds, self.final_time_seconds
         )
 
-    def get_air_temp_vars(self, building_model_output):
+    def get_air_temp_output_idx(self):
         """
         """
         air_temp_var_names = [
@@ -99,30 +96,17 @@ class Simulation(object):
             for z in self.building_model.occupied_zones()
         ]
         return [
-            building_model_output[i]
-            for i, k in enumerate(self.building_model_output_keys)
-            if k in air_temp_var_names
-        ]
-
-    def get_air_temp_vars_init(self, building_model_output):
-        """
-        """
-        air_temp_var_names = [
-            "FMU_" + z + "_Zone_Air_Temperature"
-            for z in self.building_model.occupied_zones()
-        ]
-        return [
-            building_model_output[i]
+            i
             for i, k in enumerate(
                 self.building_model.fmu.get_model_variables().keys()
             )
             if k in air_temp_var_names
         ]
 
-    def calc_T_control(self, building_model_output):
+    def calc_T_control(self, building_model_output, air_temp_output_idx):
         """
         """
-        return np.mean(self.get_air_temp_vars_init(building_model_output))
+        return np.mean(building_model_output[air_temp_output_idx])
 
     def run(self):
         """
@@ -133,6 +117,7 @@ class Simulation(object):
         logger.info("Running co-simulation ...")
         output = []
         t_ctrl = self.building_model.init_temperature
+        air_temp_output_idx = self.get_air_temp_output_idx()
 
         for t_step_seconds in range(
             self.start_time_seconds,
@@ -150,17 +135,21 @@ class Simulation(object):
                 new_step=True,
             )
             # save data as row
-            building_model_output = [
-                self.building_model.fmu.get(k)[0]
-                for k in self.building_model_output_keys
-            ]
+            building_model_output = np.array(
+                [
+                    self.building_model.fmu.get(k)[0]
+                    for k in self.building_model_output_keys
+                ]
+            )
 
-            t_ctrl = self.calc_T_control(building_model_output)
+            t_ctrl = self.calc_T_control(
+                building_model_output, air_temp_output_idx
+            )
 
             step_output = (
                 [t_step_seconds, step_status, t_ctrl]
                 + controller_output
-                + building_model_output
+                + list(building_model_output)
             )
             output.append(step_output)
             # TODO add multizone support

@@ -79,7 +79,7 @@ class EnergyPlusBuildingModel(BuildingModel):
         return self.idf.fmu_path
 
     def occupied_zones(self):
-        """Gets occupiec zones from zones that have a tstat in them."""
+        """Gets occupied zones from zones that have a tstat in them."""
         return [
             tstat.Zone_or_ZoneList_Name
             for tstat in self.idf.ep_idf.idfobjects[
