@@ -4,6 +4,7 @@ import logging
 from abc import ABC, abstractmethod
 
 import attr
+import numpy as np
 
 logger = logging.getLogger(__name__)
 
@@ -26,3 +27,7 @@ class DataSource(ABC):
     @abstractmethod
     def put_cache(self, tstat_ids, start_utc, end_utc):
         pass
+
+    @staticmethod
+    def F2C(temp_F):
+        return (temp_F - 32) * 5 / 9

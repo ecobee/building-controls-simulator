@@ -12,3 +12,5 @@ class HVACSource:
 
     data = attr.ib(default=None)
     datetime_column = attr.ib(default="datetime")
+
+    hvac_column_map = attr.ib(default={"DateTime": "datetime"})

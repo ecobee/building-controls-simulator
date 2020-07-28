@@ -130,9 +130,16 @@ class DYDHVACSource(GCSDataSource, HVACSource):
         )
 
     def to_internal_format(self, df):
-        df = df.rename(
-            columns={self.dyd_datetime_column: self.datetime_column}
+        df = df.rename(columns=self.hvac_column_map)
+
+        # set datetime column, DYD is in UTC
+        df[self.datetime_column] = pd.to_datetime(
+            df[self.datetime_column], utc=True
         )
+
+        # convert all temperatures to degrees Celcius, DYD is in Fahrenheit
+        for temp_col in self.temperatrue_columns:
+            df[temp_col] = DYDHVACSource.F2C(df[temp_col])
         df = df.sort_values(by=self.datetime_column, ascending=True)
         return df
 
@@ -159,16 +166,6 @@ class DYDHVACSource(GCSDataSource, HVACSource):
                 )
                 cache_dict[identifier] = self.get_empty_hvac_df()
 
-            # set datetime column, DYD is in UTC
-            cache_dict[identifier]["DateTime"] = pd.to_datetime(
-                cache_dict[identifier]["DateTime"], utc=True
-            )
-
-            # convert all temperatures to degrees Celcius, DYD is in Fahrenheit
-            for temp_col in self.temperatrue_columns:
-                cache_dict[identifier][temp_col] = DYDHVACSource.F2C(
-                    cache_dict[identifier][temp_col]
-                )
             # check cache contains all expected columns
             if any(
                 [
@@ -218,7 +215,3 @@ class DYDHVACSource(GCSDataSource, HVACSource):
 
     def put_cache(self):
         pass
-
-    @staticmethod
-    def F2C(temp_F):
-        return (temp_F - 32) * 5 / 9

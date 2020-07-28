@@ -21,22 +21,22 @@ from BuildingControlsSimulator.OutputAnalysis.OutputAnalysis import (
 logger = logging.getLogger(__name__)
 
 
-@attr.s
-class Simulation(object):
+@attr.s(kw_only=True)
+class Simulation:
     """Converts IDFs (Input Data Files) for EnergyPlus into working IDFs.
     """
 
-    building_model = attr.ib(kw_only=True)
-    controller_model = attr.ib(kw_only=True)
+    building_model = attr.ib()
+    controller_model = attr.ib()
     # TODO add validator
-    step_size_minutes = attr.ib(kw_only=True)
-    start_time_days = attr.ib(kw_only=True)
-    final_time_days = attr.ib(kw_only=True)
+    step_size_minutes = attr.ib()
+    start_time_days = attr.ib()
+    final_time_days = attr.ib()
     output_data_dir = attr.ib(
-        default=os.path.join(os.environ["OUTPUT_DIR"], "data")
+        default=os.path.join(os.environ.get("OUTPUT_DIR"), "data")
     )
     output_plot_dir = attr.ib(
-        default=os.path.join(os.environ["OUTPUT_DIR"], "plot")
+        default=os.path.join(os.environ.get("OUTPUT_DIR"), "plot")
     )
 
     @property
