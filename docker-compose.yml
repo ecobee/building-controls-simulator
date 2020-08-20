@@ -1,0 +1,17 @@
+version: '3.0'
+services:
+  building-controls-simulator:
+    build: 
+      context: ./
+      dockerfile: ./Dockerfile
+    image: ${DOCKER_IMAGE}:${VERSION_TAG}
+    container_name: ${DOCKER_IMAGE}-v${VERSION_TAG}
+    ports:
+      - "8888:8888" # map 8888 port for jupyter lab
+    user: "bcs"
+    volumes:
+    - ${LOCAL_PACKAGE_DIR}:${DOCKER_PACKAGE_DIR}:delegated
+    command: sh -c "bash"
+    stdin_open: true # docker run -i
+    tty: true        # docker run -t
+    env_file: .env

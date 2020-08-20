@@ -17,29 +17,43 @@ cd building-controls-simulator
 
 ### Local Docker Setup
 
-You're going to need Docker installed, if not see https://www.docker.com/.
-The bash script `run.sh` provides a minimal CLI to manage the service.
+You're going to need Docker Desktop installed, if not see https://www.docker.com/. Docker Compose is used to manage the containers and is included by default in the desktop versions of docker for all systems.
 
-#### Note: Docker images may use up to 8 GB of disk space - make sure you have this available before building.
-The size of the container image can be reduced by roughly 3 GB by not installing
+#### Note: Docker images may use up to 12 GB of disk space - make sure you have this available before building.
+The size of the container image can be reduced to roughly 5 GB by not installing
 every EnergyPlus version in `scripts/setup/install_ep.sh` and not downloading 
-all IECC 2018 IDF files in `scripts/setup/download_IECC_idfs.sh`. Simply comment 
-out the files you do not need if the extra 3GB is not available.
+all IECC 2018 IDF files in `scripts/setup/download_IECC_idfs.sh`. Simply comment
+out the files you do not need.
 
 #### Note: Docker build may fail if memory or network issues:
 Some issues that have occurred on different machines are:
-- `apt-get install sudo` failing or other packages not being found by apt-get
+- `apt-get install` failing or other packages not being found by apt-get
     - Verify network connection and build container again
-- ` jupyter lab build` failing
-    - try setting in Dockerfile command `jupyter lab build --dev-build=False --minimize=False`
+- `jupyter lab build` failing
+    - try setting in Dockerfile command `jupyter lab build --dev-build=False --minimize=False`.
+
+### Run with Docker-Compose
+
+`docker-compose.yml` defines the Dockerfile and image to use, ports to map, and volumes to mount. It also defins the env file `.env` to inject environment variables that are needed both to build the container and to be used inside the container. As a user all you need to know is that any API keys or GCP variables are stored here (safely) the default EnergyPlus version is 8-9-0, and this can be changed later very easily. 
+
+Edit `.env` for the following if you want to use these external services:
+```bash
+...
+DYD_GCS_URI_BASE=<Donate your data Google Cloud Service bucket>
+DYD_METADATA_URI=<Donate your data meta_data file Google Cloud Service URI>
+NREL_DEV_API_KEY=<your key>
+NREL_DEV_EMAIL=<your email>
+...
+```
+
+The `docker-compose run` command does most of the set up and can be used again 
+to run the container after it is built.
 
 ```bash
-# build container (only need to do this once!)
-# this will take ~40 minutes, mostly to download all desired versions of EnergyPlus
-make build-docker
-
-# run container in interactive mode for first time to set it up with mounted volumes
-make run
+# this command runs the container and builds it if it cannot be found (only need to do this once!)
+# this will take ~30 minutes, mostly to download all desired versions of EnergyPlus
+# perfect opportunity for a coffee, water, or exercise break
+docker-compose run building-controls-simulator
 
 # select the version of EnergyPlus to use in current environment, this can be changed at any time
 # EnergyPlus Version Manager (epvm) script changes env variables and symbolic links to hot-swap version
@@ -52,23 +66,27 @@ make run
 # you're done with setup! now exit container shell or just stop the docker container
 # the docker container can now be reattached to, stopped, and restarted when you need it again (see below for usage)
 # unless you specifically delete this docker container it can be restarted with the setup already done
-# if you delete the container just go through the setup here again
 exit
 ```
-#### Rebuilding the container
 
-Should something go wrong with the container or it experience an issue during the build
-remove the broken containers and images with these docker commands:
+If you delete the container just go through the setup here again to rebuild it.
+
+#### Deleting and rebuilding the container
+
+Should something go wrong with the container or it experience an issue during the build remove the broken containers and images with these docker commands:
 
 ```bash
 # first list all containers
 docker ps -a
 
-#remove containers related to failed build
+# stop containers if they are still running and inaccessible
+docker stop <container ID>
+
+# remove containers related to failed build
 docker rm <container ID>
 
 # list docker images
-docker image ls
+docker images
 
 # remove docker image
 docker rmi <image ID>
@@ -183,11 +201,11 @@ WEATHER_FILE="AZ/USA_AZ_Phoenix-Sky.Harbor.Intl.AP.722780_TMY3/USA_AZ_Phoenix-Sk
 wget "${EPLUS_WEATHER_URL_USA}/${WEATHER_FILE}" -P "${WEATHER_DIR}"
 ```
 
-### .env configuration
+### .env configuration within container
 
-The environment variables used by this platform can be configured from a `.env` file and `.test.env`
+The environment variables used by this platform can be configured as mentioned above from a `.env` file and `.test.env`
 
-These files can be sourced using bash:
+These files can be sourced dynamically using bash:
 ```bash
 set -a && source .env && set +a
 ```
@@ -203,11 +221,12 @@ set -a && source .test.env && set +a && python -m pytest src/python
 
 ### Authentication with GCP
 
-Copy ${GOOGLE_APPLICATION_CREDENTIALS} into container.
+First authenticate normally to GCP, e.g. using ` gcloud auth`. Then copy `${GOOGLE_APPLICATION_CREDENTIALS}` into the container to access GCP resources with 
+the same permissions.
 
 ```bash
-# on local machine copy credentials to container
-make copy-creds
+# on local machine source .env and copy credentials to container
+docker cp ${GOOGLE_APPLICATION_CREDENTIALS} <container ID>:/home/bcs/.config/application_default_credentials.json
 ```
 
 ```bash

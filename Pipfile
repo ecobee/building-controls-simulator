@@ -38,7 +38,7 @@ scikit-learn = "*"
 statsmodels = "*"
 
 [requires]
-python_version = "3.7"
+python_version = "3.7.6"
 
 [scripts]
 jupyter_lab_bkgrnd = "${PACKAGE_DIR:?}/scripts/setup/jupyter_lab_bkgrnd.sh"

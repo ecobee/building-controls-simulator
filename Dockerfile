@@ -6,7 +6,6 @@ MAINTAINER Tom Stesco <tom.s@ecobee.com>
 # Use C.UTF-8 locale to avoid issues with ASCII encoding
 ENV LANG="C.UTF-8"
 ENV LC_ALL="C.UTF-8"
-ENV DEBIAN_FRONTEND="noninteractive"
 ENV USER_NAME="bcs"
 ENV IS_DOCKER_ENV="true"
 ENV PACKAGE_NAME="building-controls-simulator"
@@ -27,12 +26,11 @@ ARG DEBIAN_FRONTEND=noninteractive
 
 # create application user and give user ownership of $HOME
 RUN apt-get update && apt-get install -y --no-install-recommends sudo \
-  && groupadd --gid 3434 "${USER_NAME}" \
-  && useradd --uid 3434 --gid "${USER_NAME}" --shell /bin/bash --create-home "${USER_NAME}" \
-  && echo 'bcs ALL=NOPASSWD: ALL' >> "/etc/sudoers.d/50-${USER_NAME}" \
-  && echo 'Defaults    env_keep += "DEBIAN_FRONTEND"' >> /etc/sudoers.d/env_keep \
-  && echo "Set disable_coredump false" >> /etc/sudo.conf \
-  && chown -R "${USER_NAME}":"${USER_NAME}" "${HOME}"
+    && adduser "${USER_NAME}" --shell /bin/bash --disabled-password --gecos "" \
+    && adduser "${USER_NAME}" sudo \
+    && echo '%sudo ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers \
+    && echo 'Defaults    env_keep += "DEBIAN_FRONTEND"' >> "/etc/sudoers.d/env_keep" \
+    && chown -R "${USER_NAME}" "${HOME}"
 
 USER "${USER_NAME}"
 
@@ -65,7 +63,7 @@ RUN sudo apt-get update && sudo apt-get upgrade -y \
     python3-dev \
     python3-distutils \
     subversion \
-    sudo
+    p7zip-full
 
 # install nodejs and npm (for plotly)
 # install pip
@@ -84,9 +82,9 @@ RUN curl -sL https://deb.nodesource.com/setup_12.x | sudo bash - \
     && pip3 install pipenv \
     && mkdir "${LIB_DIR}" && mkdir "${EXT_DIR}" \
     && cd "${EXT_DIR}" \
-    && wget https://github.com/modelon-community/fmi-library/archive/2.1.zip \
-    && unzip 2.1.zip && mv fmi-library-2.1 FMIL \
-    && rm -rf 2.1.zip \
+    && wget https://github.com/modelon-community/fmi-library/archive/2.2.zip \
+    && unzip 2.2.zip && mv fmi-library-2.2 FMIL \
+    && rm -rf 2.2.zip \
     && cd FMIL \
     && mkdir build-fmil; cd build-fmil \
     && cmake -DFMILIB_INSTALL_PREFIX=./ ../ \
@@ -100,10 +98,10 @@ RUN curl -sL https://deb.nodesource.com/setup_12.x | sudo bash - \
     && cd "${EXT_DIR}" \
     && git clone https://github.com/lbl-srg/EnergyPlusToFMU.git  \
     && cd "${EXT_DIR}" \
-    && wget "https://github.com/modelon-community/PyFMI/archive/PyFMI-2.7.tar.gz" \
-    && tar -xzf "PyFMI-2.7.tar.gz" \
-    && mv "${EXT_DIR}/PyFMI-PyFMI-2.7" "${EXT_DIR}/PyFMI" \
-    && rm -rf "${EXT_DIR}/PyFMI-PyFMI-2.7" "PyFMI-2.7.tar.gz" \
+    && wget "https://github.com/modelon-community/PyFMI/archive/PyFMI-2.7.4.tar.gz" \
+    && tar -xzf "PyFMI-2.7.4.tar.gz" \
+    && mv "${EXT_DIR}/PyFMI-PyFMI-2.7.4" "${EXT_DIR}/PyFMI" \
+    && rm -rf "${EXT_DIR}/PyFMI-PyFMI-2.7.4" "PyFMI-2.7.4.tar.gz" \
     && mkdir "${PACKAGE_DIR}" \
     && sudo rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
@@ -114,7 +112,7 @@ COPY ./ "${PACKAGE_DIR}"
 # install energyplus versions desired in `scripts/setup/install_ep.sh`
 # install python dev environment
 # copy .bashrc file to user home for use on startup. This can be further configured by user.
-RUN sudo chown -R "${USER_NAME}":"${USER_NAME}" "${PACKAGE_DIR}" \
+RUN sudo chown -R "${USER_NAME}" "${PACKAGE_DIR}" \
     && cd "${PACKAGE_DIR}" \
     && sudo chmod +x "./scripts/setup/install_ep.sh" \
     && sudo ./scripts/setup/install_ep.sh "${ENERGYPLUS_INSTALL_DIR}" \
