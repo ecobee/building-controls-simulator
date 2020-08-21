@@ -19,20 +19,7 @@ cd building-controls-simulator
 
 You're going to need Docker Desktop installed, if not see https://www.docker.com/. Docker Compose is used to manage the containers and is included by default in the desktop versions of docker for all systems.
 
-#### Note: Docker images may use up to 12 GB of disk space - make sure you have this available before building.
-The size of the container image can be reduced to roughly 5 GB by not installing
-every EnergyPlus version in `scripts/setup/install_ep.sh` and not downloading 
-all IECC 2018 IDF files in `scripts/setup/download_IECC_idfs.sh`. Simply comment
-out the files you do not need.
-
-#### Note: Docker build may fail if memory or network issues:
-Some issues that have occurred on different machines are:
-- `apt-get install` failing or other packages not being found by apt-get
-    - Verify network connection and build container again
-- `jupyter lab build` failing
-    - try setting in Dockerfile command `jupyter lab build --dev-build=False --minimize=False`.
-
-### Run with Docker-Compose
+### Using Docker-Compose
 
 `docker-compose.yml` defines the Dockerfile and image to use, ports to map, and volumes to mount. It also defins the env file `.env` to inject environment variables that are needed both to build the container and to be used inside the container. As a user all you need to know is that any API keys or GCP variables are stored here (safely) the default EnergyPlus version is 8-9-0, and this can be changed later very easily. 
 
@@ -45,6 +32,7 @@ NREL_DEV_API_KEY=<your key>
 NREL_DEV_EMAIL=<your email>
 ...
 ```
+
 #### Run with bash (recommended first time setup)
 
 The `docker-compose run` command does most of the set up and can be used again 
@@ -74,14 +62,32 @@ exit    # second exit to get out of container shell
 
 If you delete the container just go through the setup here again to rebuild it.
 
-#### Run Jupyter Lab Server
+##### Note: Docker images may use up to 12 GB of disk space - make sure you have this available before building.
+The size of the container image can be reduced to roughly 5 GB by not installing
+every EnergyPlus version in `scripts/setup/install_ep.sh` and not downloading 
+all IECC 2018 IDF files in `scripts/setup/download_IECC_idfs.sh`. Simply comment
+out the files you do not need.
 
-This command will also build the image if it does not exist already, and then run `scripts/setup/jupyter_lab.sh`.
+##### Note: Docker build may fail if memory or network issues:
+Some issues that have occurred on different machines are:
+- `apt-get install` failing or other packages not being found by apt-get
+    - Verify network connection and build container again
+- `jupyter lab build` failing
+    - try setting in Dockerfile command `jupyter lab build --dev-build=False --minimize=False`.
+
+### Run Jupyter Lab Server
+
+A jupyter-lab server is setup to run when the container is brought up by `dockef-compose up`.
+This is accessible locally at: http://localhost:8888/lab
+
+Stopping or exiting the container will also shutdown the jupyter server.
 
 ```bash
 docker-compose up
 ```
-The container can be shutdown using another terminal running:
+
+`dockef-compose up` will also build the image if it does not exist already, and then run `scripts/setup/jupyter_lab.sh`.
+The container can be shutdown using another terminal on the host via:
 
 ```bash
 docker-compose down
@@ -98,7 +104,7 @@ pipenv shell
 . scripts/setup/jupyter_lab_bkgrnd.sh
 ```
 
-#### Development setup - Using VS Code Remote Containers
+### Development setup - Using VS Code Remote Containers
 
 Highly recommend VS Code IDE for development: https://code.visualstudio.com/download
 If you're not familar with VS Code for Python develpoment check out this guide and [PyCon talk](https://youtu.be/WkUBx3g2QfQ) and guide at: https://pycon.switowski.com/01-vscode/
@@ -109,7 +115,7 @@ The Remote Containers extension adds the Remote Explorer tool bar. This can be u
 3. Install necessary extensions within container: e.g. "Python" extension. The container will be accessible now in "Dev Containers" section within Remote Explorer so the installation only occurs once per container.
 4. Use the VS Code terminal to build and run tests, and edit files in VS code as you would on your host machine.
 
-#### Deleting and rebuilding the container
+### Deleting and rebuilding the container
 
 Should something go wrong with the container or it experience an issue during the build remove the broken containers and images with these docker commands:
 
@@ -228,7 +234,7 @@ These files can be sourced dynamically using bash:
 set -a && source .env && set +a
 ```
 
-### Run tests
+## Run tests
 
 Test files are found in src/python directory alongside source code, they are identified by the naming convention `test_*.py`.
 The `pytest` framework used for testing, see https://docs.pytest.org/en/stable/ for details.
@@ -237,7 +243,7 @@ The `pytest` framework used for testing, see https://docs.pytest.org/en/stable/ 
 set -a && source .test.env && set +a && python -m pytest src/python
 ```
 
-### Authentication with GCP
+## Authentication with GCP
 
 First authenticate normally to GCP, e.g. using ` gcloud auth`. Then copy `${GOOGLE_APPLICATION_CREDENTIALS}` into the container to access GCP resources with 
 the same permissions.
@@ -252,17 +258,7 @@ docker cp ${GOOGLE_APPLICATION_CREDENTIALS} <container ID>:/home/bcs/.config/app
 sudo chown -R "bcs":"bcs" ~/.config/application_default_credentials.json
 ```
 
-### Jupyter-Lab Server
 
-A jupyter-lab server is setup to run in `.bashrc` when the container starts.
-This is accessible locally at: http://localhost:8888/lab
-
-The PID is logged and the server can be stopped manually via:
-```bash
-kill -15 "$(cat ${JUPYTER_LOG_DIR}/JUPYTER_SERVER_PID.txt)"
-```
-
-Stopping or exiting the container will also shutdown the jupyter server.
 
 ### Configuration
 
