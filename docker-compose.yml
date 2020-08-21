@@ -7,11 +7,13 @@ services:
     image: ${DOCKER_IMAGE}:${VERSION_TAG}
     container_name: ${DOCKER_IMAGE}-v${VERSION_TAG}
     ports:
-      - "8888:8888" # map 8888 port for jupyter lab
+      - "8888-8890:8888-8890" # map 8888 to 8890 port for jupyter lab
     user: "bcs"
     volumes:
     - ${LOCAL_PACKAGE_DIR}:${DOCKER_PACKAGE_DIR}:delegated
-    command: sh -c "bash"
+    # for running with docker-compose up use jupyter lab setup script
+    # docker-compose run will override this
+    command: bash ${PACKAGE_DIR}/scripts/setup/jupyter_lab.sh
     stdin_open: true # docker run -i
     tty: true        # docker run -t
     env_file: .env

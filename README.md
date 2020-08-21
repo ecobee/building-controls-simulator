@@ -45,15 +45,17 @@ NREL_DEV_API_KEY=<your key>
 NREL_DEV_EMAIL=<your email>
 ...
 ```
+#### Run with bash (recommended first time setup)
 
 The `docker-compose run` command does most of the set up and can be used again 
-to run the container after it is built.
+to run the container after it is built. The `--service-ports` flag should be set 
+to allow access on your host machine to jupyter-lab, see: https://docs.docker.com/compose/reference/run/
 
 ```bash
 # this command runs the container and builds it if it cannot be found (only need to do this once!)
 # this will take ~30 minutes, mostly to download all desired versions of EnergyPlus
 # perfect opportunity for a coffee, water, or exercise break
-docker-compose run building-controls-simulator
+docker-compose run --service-ports building-controls-simulator bash
 
 # select the version of EnergyPlus to use in current environment, this can be changed at any time
 # EnergyPlus Version Manager (epvm) script changes env variables and symbolic links to hot-swap version
@@ -66,10 +68,46 @@ docker-compose run building-controls-simulator
 # you're done with setup! now exit container shell or just stop the docker container
 # the docker container can now be reattached to, stopped, and restarted when you need it again (see below for usage)
 # unless you specifically delete this docker container it can be restarted with the setup already done
-exit
+exit    # first exit to get out of pipenv shell
+exit    # second exit to get out of container shell
 ```
 
 If you delete the container just go through the setup here again to rebuild it.
+
+#### Run Jupyter Lab Server
+
+This command will also build the image if it does not exist already, and then run `scripts/setup/jupyter_lab.sh`.
+
+```bash
+docker-compose up
+```
+The container can be shutdown using another terminal running:
+
+```bash
+docker-compose down
+```
+
+There is also a background script `scripts/setup/jupyter_lab_bkgrnd.sh` if you would like
+to keep your bash tty available.
+
+```bash
+docker-compose run --service-ports building-controls-simulator bash
+# in container, enter virtual env
+pipenv shell
+# then start jupyter lab server in background
+. scripts/setup/jupyter_lab_bkgrnd.sh
+```
+
+#### Development setup - Using VS Code Remote Containers
+
+Highly recommend VS Code IDE for development: https://code.visualstudio.com/download
+If you're not familar with VS Code for Python develpoment check out this guide and [PyCon talk](https://youtu.be/WkUBx3g2QfQ) and guide at: https://pycon.switowski.com/01-vscode/
+
+The Remote Containers extension adds the Remote Explorer tool bar. This can be used to inspect and connect to available Docker containers.
+1. `docker-compose up` to run the `building-controls-simulator` container.
+2. Right click on `building-controls-simulator` container (will be in "Other Containers" first time) and select "Attach to Container". This will install VS Code inside the container.
+3. Install necessary extensions within container: e.g. "Python" extension. The container will be accessible now in "Dev Containers" section within Remote Explorer so the installation only occurs once per container.
+4. Use the VS Code terminal to build and run tests, and edit files in VS code as you would on your host machine.
 
 #### Deleting and rebuilding the container
 
@@ -163,26 +201,6 @@ For potential future integration.
 
 ## Usage
 
-### Start Container
-
-You can pin the specific container to be restarted by editing the user variable 
-`CONTAINER_ID` in `run.sh`. 
-This allows you to make any edits to a specific container and not need to rebuild.
-Some things are just easier to setup not using Docker, so this is a good place 
-for those things.
-
-```bash
-# restart a pre-built container with interactive bash shell
-make start
-```
-
-The default `.bashrc` file should start a jupyter lab server in background and 
-then start a pipenv shell with the installed python development environment.
-
-You can check everything is in good working order by running the hello world notebook 
-and the tests below or just start using the package and EnergyPlus environment 
-using your favourite python IDE or jupyter-lab.
-
 ### Example Notebook (Hello World)
 
 This requires that you downloaded the IECC .idf files or have some preexisting building model to work with.
@@ -250,9 +268,6 @@ Stopping or exiting the container will also shutdown the jupyter server.
 
 The .bashrc at `scripts/setup/.bashrc` can be configured similar to any .bashrc file.
 It simply runs commands (rc) whenever an interactive bash shell is opened.
-
-For example removing the line `pipenv run jupyter_lab_bkgrnd` will cause the jupyter
-server to not be start in the background.
 
 ## Building the Documentation
 
