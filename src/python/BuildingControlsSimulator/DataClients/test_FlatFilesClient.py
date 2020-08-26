@@ -7,19 +7,12 @@ import pandas as pd
 import pytz
 import os
 
-from BuildingControlsSimulator.DataClients.FlatFilesClient import (
-    FlatFilesClient,
-)
+from BuildingControlsSimulator.DataClients.DataClient import DataClient
 from BuildingControlsSimulator.DataClients.GCSFlatFilesSource import (
     GCSFlatFilesSource,
 )
-
-# from BuildingControlsSimulator.DataClients.GCSWeatherSource import (
-#     ISMWeatherSource,
-# )
 from BuildingControlsSimulator.DataClients.DataSpec import EnergyPlusWeather
 
-from BuildingControlsSimulator.DataClients.DataSpec import FlatFilesSpec
 
 logger = logging.getLogger(__name__)
 
@@ -28,7 +21,7 @@ class TestFlatFilesClient:
     @classmethod
     def setup_class(cls):
         # initialize with data to avoid pulling multiple times
-        cls.dc = FlatFilesClient(
+        cls.dc = DataClient(
             sources=[
                 GCSFlatFilesSource(
                     gcp_project=os.environ.get("GOOGLE_CLOUD_PROJECT"),
@@ -42,8 +35,6 @@ class TestFlatFilesClient:
             ep_tmy3_cache_dir=os.environ.get("EP_TMY3_CACHE_DIR"),
             simulation_epw_dir=os.environ.get("SIMULATION_EPW_DIR"),
         )
-
-        # ISMClient.make_data_directories()
 
         cls.tstat_sim_config = cls.dc.make_tstat_sim_config(
             identifier=[

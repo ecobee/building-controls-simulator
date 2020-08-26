@@ -43,8 +43,10 @@ class Spec:
     def columns(self):
         return list(self.spec.keys())
 
-    def get_dtype_mapper(self):
-        return {k: v["dtype"] for k, v in self.spec.items()}
+    def get_dtype_mapper(self, _df_columns):
+        return {
+            k: v["dtype"] for k, v in self.spec.items() if k in _df_columns
+        }
 
     def get_rename_mapper(self):
         return {k: v["internal_name"] for k, v in self.spec.items()}
@@ -56,6 +58,26 @@ class Internal:
     For details of string dtype aliases see: 
     https://pandas.pydata.org/pandas-docs/stable/user_guide/basics.html#basics-dtypes
     """
+
+    def remove_columns(self, _df_columns):
+        self.datetime.spec = {
+            k: v for k, v in self.datetime.spec.items() if k in _df_columns
+        }
+        self.hvac.spec = {
+            k: v for k, v in self.hvac.spec.items() if k in _df_columns
+        }
+        self.sensors.spec = {
+            k: v for k, v in self.sensors.spec.items() if k in _df_columns
+        }
+        self.weather.spec = {
+            k: v for k, v in self.weather.spec.items() if k in _df_columns
+        }
+        self.full.spec = {
+            **self.datetime.spec,
+            **self.hvac.spec,
+            **self.sensors.spec,
+            **self.weather.spec,
+        }
 
     # TODO: remove .name property if unneeded
     N_ROOM_SENSORS = 10
@@ -314,7 +336,8 @@ class Internal:
     def convert_to_internal(_df, _spec):
         _df = Internal.convert_units_to_internal(_df, _spec.spec)
         _df = _df.rename(columns=_spec.get_rename_mapper())
-        _df = _df.astype(dtype=Internal.full.get_dtype_mapper())
+        _df = _df.astype(dtype=Internal.full.get_dtype_mapper(_df.columns))
+        _df = _df.sort_values(Internal.datetime_column, ascending=True)
         return _df
 
     @staticmethod
@@ -556,237 +579,204 @@ class FlatFilesSpec:
     )
 
 
-# class CACHE_ISM_COLUMNS:
+@attr.s(frozen=True)
+class DonateYourDataSpec:
+    datetime_format = "utc"
+    datetime_column = "DateTime"
+    N_ROOM_SENSORS = 10
+    datetime = Spec(
+        datetime_column=datetime_column,
+        null_check_column=datetime_column,
+        spec={
+            datetime_column: {
+                "internal_name": "date_time",
+                "dtype": "datetime64[ns, utc]",
+                "channel": Channels.DATETIME,
+                "unit": Units.DATETIME,
+            },
+        },
+    )
+    hvac = Spec(
+        datetime_column=datetime_column,
+        null_check_column="HvacMode",
+        spec={
+            "HvacMode": {
+                "internal_name": "hvac_mode",
+                "dtype": "category",
+                "channel": Channels.HVAC,
+                "unit": Units.OTHER,
+            },
+            "Event": {
+                "internal_name": "calendar_event",
+                "dtype": "category",
+                "channel": Channels.HVAC,
+                "unit": Units.OTHER,
+            },
+            "Schedule": {
+                "internal_name": "climate",
+                "dtype": "category",
+                "channel": Channels.HVAC,
+                "unit": Units.OTHER,
+            },
+            "T_ctrl": {
+                "internal_name": "temperature_ctrl",
+                "dtype": "Int16",
+                "channel": Channels.HVAC,
+                "unit": Units.FARHENHEIT,
+            },
+            "T_stp_cool": {
+                "internal_name": "temperature_stp_cool",
+                "dtype": "Int16",
+                "channel": Channels.HVAC,
+                "unit": Units.FARHENHEIT,
+            },
+            "T_stp_heat": {
+                "internal_name": "temperature_stp_heat",
+                "dtype": "Int16",
+                "channel": Channels.HVAC,
+                "unit": Units.FARHENHEIT,
+            },
+            "Humidity": {
+                "internal_name": "humidity",
+                "dtype": "Float32",
+                "channel": Channels.HVAC,
+                "unit": Units.RELATIVE_HUMIDITY,
+            },
+            "HumidityExpectedLow": {
+                "internal_name": "humidity_expected_low",
+                "dtype": "Float32",
+                "channel": Channels.HVAC,
+                "unit": Units.RELATIVE_HUMIDITY,
+            },
+            "HumidityExpectedHigh": {
+                "internal_name": "humidity_expected_high",
+                "dtype": "Float32",
+                "channel": Channels.HVAC,
+                "unit": Units.RELATIVE_HUMIDITY,
+            },
+            "auxHeat1": {
+                "internal_name": "auxHeat1",
+                "dtype": "Int16",
+                "channel": Channels.HVAC,
+                "unit": Units.SECONDS,
+            },
+            "auxHeat2": {
+                "internal_name": "auxHeat2",
+                "dtype": "Int16",
+                "channel": Channels.HVAC,
+                "unit": Units.SECONDS,
+            },
+            "auxHeat3": {
+                "internal_name": "auxHeat3",
+                "dtype": "Int16",
+                "channel": Channels.HVAC,
+                "unit": Units.SECONDS,
+            },
+            "compCool1": {
+                "internal_name": "compCool1",
+                "dtype": "Int16",
+                "channel": Channels.HVAC,
+                "unit": Units.SECONDS,
+            },
+            "compCool2": {
+                "internal_name": "compCool2",
+                "dtype": "Int16",
+                "channel": Channels.HVAC,
+                "unit": Units.SECONDS,
+            },
+            "compHeat1": {
+                "internal_name": "compHeat1",
+                "dtype": "Int16",
+                "channel": Channels.HVAC,
+                "unit": Units.SECONDS,
+            },
+            "compHeat2": {
+                "internal_name": "compHeat2",
+                "dtype": "Int16",
+                "channel": Channels.HVAC,
+                "unit": Units.SECONDS,
+            },
+            "fan": {
+                "internal_name": "fan",
+                "dtype": "Int16",
+                "channel": Channels.HVAC,
+                "unit": Units.SECONDS,
+            },
+        },
+    )
 
-#     WEATHER = ["Temperature", "RelativeHumidity"]
-#     DATETIME = "date_time"
+    sensors = Spec(
+        datetime_column=datetime_column,
+        null_check_column="Thermostat_Temperature",
+        spec={
+            "Thermostat_Temperature": {
+                "internal_name": "thermostat_temperature",
+                "dtype": "Int16",
+                "channel": Channels.TEMPERATURE_SENSOR,
+                "unit": Units.FARHENHEIT,
+            },
+            "Humidity": {
+                "internal_name": "thermostat_humidity",
+                "dtype": "Int16",
+                "channel": Channels.HUMIDITY_SENSOR,
+                "unit": Units.RELATIVE_HUMIDITY,
+            },
+            "Thermostat_Motion": {
+                "internal_name": "thermostat_motion",
+                "dtype": "boolean",
+                "channel": Channels.OCCUPANCY_SENSOR,
+                "unit": Units.OTHER,
+            },
+            **{
+                "Remote_Sensor_{}_Temperature".format(i): {
+                    "internal_name": "rs{}_temperature".format(i),
+                    "dtype": "Int16",
+                    "channel": Channels.TEMPERATURE_SENSOR,
+                    "unit": Units.CELSIUS,
+                }
+                for i in range(1, N_ROOM_SENSORS)
+            },
+            **{
+                "Remote_Sensor_{}_Motion".format(i): {
+                    "internal_name": "rs{}_occupancy".format(i),
+                    "dtype": "boolean",
+                    "channel": Channels.OCCUPANCY_SENSOR,
+                    "unit": Units.OTHER,
+                }
+                for i in range(1, N_ROOM_SENSORS)
+            },
+        },
+    )
 
-#     OCCUPANCY = [
-#         "SensorOcc000",
-#         "SensorOcc100",
-#         "SensorOcc101",
-#         "SensorOcc102",
-#         "SensorOcc103",
-#         "SensorOcc104",
-#         "SensorOcc105",
-#         "SensorOcc106",
-#         "SensorOcc107",
-#         "SensorOcc108",
-#         "SensorOcc109",
-#         # "SensorOcc110",
-#         # "SensorOcc111",
-#         # "SensorOcc112",
-#         # "SensorOcc113",
-#         # "SensorOcc114",
-#         # "SensorOcc115",
-#         # "SensorOcc116",
-#         # "SensorOcc117",
-#         # "SensorOcc118",
-#         # "SensorOcc119",
-#         # "SensorOcc120",
-#         # "SensorOcc121",
-#         # "SensorOcc122",
-#         # "SensorOcc123",
-#         # "SensorOcc124",
-#         # "SensorOcc125",
-#         # "SensorOcc126",
-#         # "SensorOcc127",
-#         # "SensorOcc128",
-#         # "SensorOcc129",
-#         # "SensorOcc130",
-#         # "SensorOcc131",
-#     ]
-#     HVAC = [
-#         "HvacMode",
-#         "SystemMode",
-#         "CalendarEvent",
-#         "Climate",
-#         "Temperature_ctrl",
-#         "TemperatureExpectedCool",
-#         "TemperatureExpectedHeat",
-#         "Humidity",
-#         "HumidityExpectedLow",
-#         "HumidityExpectedHigh",
-#         "auxHeat1",
-#         "auxHeat2",
-#         "auxHeat3",
-#         "compCool1",
-#         "compCool2",
-#         "compHeat1",
-#         "compHeat2",
-#         "dehumidifier",
-#         "economizer",
-#         "fan",
-#         "humidifier",
-#         "ventilator",
-#         "SensorHum000",
-#         "SensorTemp000",
-#         "SensorTemp100",
-#         "SensorTemp101",
-#         "SensorTemp102",
-#         "SensorTemp103",
-#         "SensorTemp104",
-#         "SensorTemp105",
-#         "SensorTemp106",
-#         "SensorTemp107",
-#         "SensorTemp108",
-#         "SensorTemp109",
-#         # "SensorTemp110",
-#         # "SensorTemp111",
-#         # "SensorTemp112",
-#         # "SensorTemp113",
-#         # "SensorTemp114",
-#         # "SensorTemp115",
-#         # "SensorTemp116",
-#         # "SensorTemp117",
-#         # "SensorTemp118",
-#         # "SensorTemp119",
-#         # "SensorTemp120",
-#         # "SensorTemp121",
-#         # "SensorTemp122",
-#         # "SensorTemp123",
-#         # "SensorTemp124",
-#         # "SensorTemp125",
-#         # "SensorTemp126",
-#         # "SensorTemp127",
-#         # "SensorTemp128",
-#         # "SensorTemp129",
-#         # "SensorTemp130",
-#         # "SensorTemp131",
-#     ]
+    weather = Spec(
+        datetime_column=datetime_column,
+        null_check_column="Temperature",
+        spec={
+            "T_out": {
+                "internal_name": "outdoor_temperature",
+                "dtype": "Int16",
+                "channel": Channels.WEATHER,
+                "unit": Units.FARHENHEIT,
+            },
+            "RH_out": {
+                "internal_name": "outdoor_relative_humidity",
+                "dtype": "Float32",
+                "channel": Channels.WEATHER,
+                "unit": Units.RELATIVE_HUMIDITY,
+            },
+        },
+    )
 
-#     INTERNAL_MAP = {
-#         DATETIME: "datetime",
-#         "HvacMode": "HvacMode",
-#         "CalendarEvent": "Event",
-#         "Climate": "Schedule",
-#         "Temperature_ctrl": "T_ctrl",
-#         "TemperatureExpectedCool": "T_stp_cool",
-#         "TemperatureExpectedHeat": "T_stp_heat",
-#         "Humidity": "Thermostat_Humidity",
-#         # "HumidityExpectedLow",
-#         # "HumidityExpectedHigh",
-#         # "auxHeat1",
-#         # "auxHeat2",
-#         # "auxHeat3",
-#         # "compCool1",
-#         # "compCool2",
-#         # "compHeat1",
-#         # "compHeat2",
-#         # "dehumidifier",
-#         # "economizer",
-#         # "fan",
-#         # "humidifier",
-#         # "ventilator",
-#         "SensorTemp000": "Thermostat_Temperature",
-#         "SensorHum000": "Thermostat_Humidity",
-#         "SensorTemp100": "Remote_Sensor_1_Temperature",
-#         "SensorTemp101": "Remote_Sensor_2_Temperature",
-#         "SensorTemp102": "Remote_Sensor_3_Temperature",
-#         "SensorTemp103": "Remote_Sensor_4_Temperature",
-#         "SensorTemp104": "Remote_Sensor_5_Temperature",
-#         "SensorTemp105": "Remote_Sensor_6_Temperature",
-#         "SensorTemp106": "Remote_Sensor_7_Temperature",
-#         "SensorTemp107": "Remote_Sensor_8_Temperature",
-#         "SensorTemp108": "Remote_Sensor_9_Temperature",
-#         "SensorTemp109": "Remote_Sensor_10_Temperature",
-#     }
-
-#     TEMPERATURE = [
-#         "T_ctrl",
-#         "T_stp_cool",
-#         "T_stp_heat",
-#         "Thermostat_Temperature",
-#         "Remote_Sensor_1_Temperature",
-#         "Remote_Sensor_2_Temperature",
-#         "Remote_Sensor_3_Temperature",
-#         "Remote_Sensor_4_Temperature",
-#         "Remote_Sensor_5_Temperature",
-#         "Remote_Sensor_6_Temperature",
-#         "Remote_Sensor_7_Temperature",
-#         "Remote_Sensor_8_Temperature",
-#         "Remote_Sensor_9_Temperature",
-#         "Remote_Sensor_10_Temperature",
-#         "temp_air",
-#     ]
-
-#     ALL = [DATETIME] + WEATHER + HVAC
-
-
-# class CACHE_DYD_COLUMNS:
-#     WEATHER = ["T_out", "RH_out"]
-#     DATETIME = "DateTime"
-#     OCCUPANCY = [
-#         "Thermostat_Motion",
-#         "Remote_Sensor_1_Motion",
-#         "Remote_Sensor_2_Motion",
-#         "Remote_Sensor_3_Motion",
-#         "Remote_Sensor_4_Motion",
-#         "Remote_Sensor_5_Motion",
-#         "Remote_Sensor_6_Motion",
-#         "Remote_Sensor_7_Motion",
-#         "Remote_Sensor_8_Motion",
-#         "Remote_Sensor_9_Motion",
-#         "Remote_Sensor_10_Motion",
-#     ]
-#     HVAC = [
-#         "HvacMode",
-#         "Event",
-#         "Schedule",
-#         "T_ctrl",
-#         "T_stp_cool",
-#         "T_stp_heat",
-#         "Humidity",
-#         "HumidityExpectedLow",
-#         "HumidityExpectedHigh",
-#         "auxHeat1",
-#         "auxHeat2",
-#         "auxHeat3",
-#         "compCool1",
-#         "compCool2",
-#         "compHeat1",
-#         "compHeat2",
-#         "fan",
-#         "Thermostat_Temperature",
-#         "Remote_Sensor_1_Temperature",
-#         "Remote_Sensor_2_Temperature",
-#         "Remote_Sensor_3_Temperature",
-#         "Remote_Sensor_4_Temperature",
-#         "Remote_Sensor_5_Temperature",
-#         "Remote_Sensor_6_Temperature",
-#         "Remote_Sensor_7_Temperature",
-#         "Remote_Sensor_8_Temperature",
-#         "Remote_Sensor_9_Temperature",
-#         "Remote_Sensor_10_Temperature",
-#     ]
-
-#     TEMPERATURE = [
-#         "T_ctrl",
-#         "T_stp_cool",
-#         "T_stp_heat",
-#         "Thermostat_Temperature",
-#         "Remote_Sensor_1_Temperature",
-#         "Remote_Sensor_2_Temperature",
-#         "Remote_Sensor_3_Temperature",
-#         "Remote_Sensor_4_Temperature",
-#         "Remote_Sensor_5_Temperature",
-#         "Remote_Sensor_6_Temperature",
-#         "Remote_Sensor_7_Temperature",
-#         "Remote_Sensor_8_Temperature",
-#         "Remote_Sensor_9_Temperature",
-#         "Remote_Sensor_10_Temperature",
-#         "temp_air",
-#     ]
-
-#     INTERNAL_MAP = {DATETIME: "datetime", "Humidity": "Thermostat_Humidity"}
-
-#     ALL = [DATETIME] + WEATHER + HVAC
-
-
-# class HVAC_COLUMNS:
-#     DATETIME = "datetime"
-
-#     ALL = [DATETIME]
+    full = Spec(
+        datetime_column=datetime_column,
+        null_check_column=[
+            datetime.null_check_column
+            + hvac.null_check_column
+            + sensors.null_check_column
+            + weather.null_check_column
+        ],
+        spec={**datetime.spec, **hvac.spec, **sensors.spec, **weather.spec,},
+    )
 
 
 class EnergyPlusWeather:

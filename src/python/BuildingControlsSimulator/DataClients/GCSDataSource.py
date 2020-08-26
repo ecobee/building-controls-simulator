@@ -34,11 +34,12 @@ class GCSDataSource(DataSource, ABC):
                 if not cache_dict[identifier].empty:
                     # if downloaded the data file put it in local cache
                     self.put_cache(cache_dict[identifier], identifier)
-
             # convert to input format spec
             # do dtype conversion after read, it sometimes fails on read
             cache_dict[identifier] = cache_dict[identifier].astype(
-                self.data_spec.full.get_dtype_mapper()
+                self.data_spec.full.get_dtype_mapper(
+                    cache_dict[identifier].columns
+                )
             )
 
             # convert to internal spec
