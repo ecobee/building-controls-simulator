@@ -9,16 +9,19 @@ import numpy as np
 
 from BuildingControlsSimulator.DataClients.WeatherSource import WeatherSource
 from BuildingControlsSimulator.DataClients.GCSDataSource import GCSDataSource
+from BuildingControlsSimulator.DataClients.DataColumns import CACHE_DYD_COLUMNS
+from BuildingControlsSimulator.DataClients.DataColumns import CACHE_ISM_COLUMNS
+
 
 logger = logging.getLogger(__name__)
 
 
 @attr.s(kw_only=True)
-class DYDWeatherSource(GCSDataSource, WeatherSource):
+class GCSWeatherSource(GCSDataSource, WeatherSource):
 
-    data_source_name = attr.ib(default="dyd")
-    weather_columns = attr.ib(default=["temp_air", "relative_humidity"])
-    temperatrue_columns = attr.ib(default=["temp_air"])
+    data_source_name = attr.ib()
+    weather_columns = attr.ib()
+    temperature_columns = attr.ib()
 
     def get_data(self, tstat_sim_config, weather_data):
         """
@@ -47,7 +50,7 @@ class DYDWeatherSource(GCSDataSource, WeatherSource):
                     + f"_{identifier}"
                     + f"_{fill_epw_fname}",
                 )
-                if not os.path.exists(self.epw_fpaths[identifier]):
+                if True or not os.path.exists(self.epw_fpaths[identifier]):
                     (
                         fill_epw_data,
                         self.epw_meta[identifier],
@@ -81,28 +84,33 @@ class DYDWeatherSource(GCSDataSource, WeatherSource):
         # should already be localized to UTC (DYD is in UTC)
         # set datetime column, DYD is in UTC
         df[self.datetime_column] = pd.to_datetime(
-            df[self.datetime_column], utc=True
+            df[self.datetime_column], utc=True, infer_datetime_format=True
         )
 
         # convert all temperatures to degrees Celcius, DYD is in Fahrenheit
-        for temp_col in self.temperatrue_columns:
+        for temp_col in [
+            c for c in self.temperature_columns if c in self.weather_columns
+        ]:
             df[temp_col] = DYDWeatherSource.F2C(df[temp_col])
         df = df.sort_values(by=self.datetime_column, ascending=True)
         return df
 
-    def get_full_data_periods(self, df):
+    def get_full_data_periods(self, df, expected_period):
         # if df has no records then there are no full_data_periods
         full_data_periods = []
         if len(df) > 0:
             df = df.sort_values(self.datetime_column, ascending=True)
             # drop records that are incomplete
-            df = df[~df[self.temperatrue_columns[0]].isnull()].reset_index()
+            weather_column = [
+                self.epw_column_map[c] for c in self.weather_columns
+            ][0]
+            df = df[~df[weather_column].isnull()].reset_index()
 
             diffs = df[self.datetime_column].diff()
 
             # check for missing records
             missing_start_idx = diffs[
-                diffs > pd.to_timedelta("5M")
+                diffs > pd.to_timedelta(expected_period)
             ].index.to_list()
 
             missing_end_idx = [idx - 1 for idx in missing_start_idx] + [
@@ -131,3 +139,19 @@ class DYDWeatherSource(GCSDataSource, WeatherSource):
 
     def put_cache(self):
         pass
+
+
+@attr.s(kw_only=True)
+class DYDWeatherSource(GCSWeatherSource):
+
+    data_source_name = attr.ib(default="dyd")
+    weather_columns = attr.ib(default=CACHE_DYD_COLUMNS.WEATHER)
+    temperature_columns = attr.ib(default=CACHE_DYD_COLUMNS.TEMPERATURE)
+
+
+@attr.s(kw_only=True)
+class ISMWeatherSource(GCSWeatherSource):
+
+    data_source_name = attr.ib(default="ism")
+    weather_columns = attr.ib(default=CACHE_ISM_COLUMNS.WEATHER)
+    temperature_columns = attr.ib(default=CACHE_ISM_COLUMNS.TEMPERATURE)

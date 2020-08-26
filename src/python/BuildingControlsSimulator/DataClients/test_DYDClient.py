@@ -8,8 +8,8 @@ import pytz
 import os
 
 from BuildingControlsSimulator.DataClients.DYDClient import DYDClient
-from BuildingControlsSimulator.DataClients.DYDHVACSource import DYDHVACSource
-from BuildingControlsSimulator.DataClients.DYDWeatherSource import (
+from BuildingControlsSimulator.DataClients.GCSHVACSource import DYDHVACSource
+from BuildingControlsSimulator.DataClients.GCSWeatherSource import (
     DYDWeatherSource,
 )
 
@@ -22,6 +22,7 @@ class TestDYDClient:
     def setup_class(cls):
         # initialize with data to avoid pulling multiple times
         cls.dyd = DYDClient(
+            gcs_uri_base=os.environ.get("DYD_GCS_URI_BASE"),
             hvac=DYDHVACSource(
                 gcs_uri_base=os.environ.get("DYD_GCS_URI_BASE"),
                 gcp_project=os.environ.get("GOOGLE_CLOUD_PROJECT"),
@@ -40,7 +41,7 @@ class TestDYDClient:
 
         DYDClient.make_data_directories()
 
-        cls.tstat_sim_config = DYDClient.make_tstat_sim_config(
+        cls.tstat_sim_config = cls.dyd.make_tstat_sim_config(
             identifier=[
                 "f2254479e14daf04089082d1cd9df53948f98f1e",  # missing data
                 "2df6959cdf502c23f04f3155758d7b678af0c631",  # full

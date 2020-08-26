@@ -16,15 +16,18 @@ class DataClient(ABC):
 
     local_cache = attr.ib(default=None)
     gcs_cache = attr.ib(default=None)
-    weather = attr.ib()
-    hvac = attr.ib()
+
+    # data channels
+    hvac = attr.ib(default={})
+    sensors = attr.ib(default={})
+    weather = attr.ib(default={})
 
     @abstractmethod
     def get_data(self, tstat_sim_config):
         pass
 
-    @staticmethod
     def make_tstat_sim_config(
+        self,
         identifier,
         latitude,
         longitude,
@@ -99,7 +102,7 @@ class DataClient(ABC):
                     f"min_chunk_period[{i}]: {min_chunk_period[i]} is not convertable to pd.Timedelta."
                 )
 
-        return pd.DataFrame.from_dict(
+        _df = pd.DataFrame.from_dict(
             {
                 "identifier": identifier,
                 "latitude": latitude,
@@ -111,6 +114,8 @@ class DataClient(ABC):
             }
         ).set_index("identifier")
 
+        return _df
+
     def get_simulation_data(self, tstat_sim_config):
         sim_hvac_data = {}
         sim_weather_data = {}
@@ -120,8 +125,8 @@ class DataClient(ABC):
 
             # iterate through data sources
             data_source_periods = [
-                self.hvac.full_data_periods[identifier],
-                self.weather.full_data_periods[identifier],
+                self.hvac[identifier].full_data_periods,
+                self.weather[identifier].full_data_periods,
             ]
 
             # check for missing data sources
@@ -132,7 +137,8 @@ class DataClient(ABC):
                 # create list of data source idxs to keep track of place for each
                 ds_idx = [0 for d in data_source_periods]
                 data_periods = []
-                while p_start < tstat.end_utc:
+                end_time = np.min([d[-1][1] for d in data_source_periods])
+                while p_start < end_time:
                     ds_p_start = []
                     ds_p_end = []
 
@@ -156,16 +162,20 @@ class DataClient(ABC):
                 for p_start, p_end in data_periods:
                     if (p_end - p_start) > tstat.min_sim_period:
                         sim_hvac_data[identifier].append(
-                            self.hvac.data[identifier][
+                            self.hvac[identifier].data[
                                 (
-                                    self.hvac.data[identifier][
-                                        self.hvac.datetime_column
+                                    self.hvac[identifier].data[
+                                        self.hvac[
+                                            identifier
+                                        ].spec.datetime_column
                                     ]
                                     >= p_start
                                 )
                                 & (
-                                    self.hvac.data[identifier][
-                                        self.hvac.datetime_column
+                                    self.hvac[identifier].data[
+                                        self.hvac[
+                                            identifier
+                                        ].spec.datetime_column
                                     ]
                                     <= p_end
                                 )
@@ -173,16 +183,20 @@ class DataClient(ABC):
                         )
 
                         sim_weather_data[identifier].append(
-                            self.weather.data[identifier][
+                            self.weather[identifier].data[
                                 (
-                                    self.weather.data[identifier][
-                                        self.weather.datetime_column
+                                    self.weather[identifier].data[
+                                        self.weather[
+                                            identifier
+                                        ].spec.datetime_column
                                     ]
                                     >= p_start
                                 )
                                 & (
-                                    self.weather.data[identifier][
-                                        self.weather.datetime_column
+                                    self.weather[identifier].data[
+                                        self.weather[
+                                            identifier
+                                        ].spec.datetime_column
                                     ]
                                     <= p_end
                                 )

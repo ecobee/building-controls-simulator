@@ -8,93 +8,30 @@ import numpy as np
 
 from BuildingControlsSimulator.DataClients.HVACSource import HVACSource
 from BuildingControlsSimulator.DataClients.GCSDataSource import GCSDataSource
-
+from BuildingControlsSimulator.DataClients.DataSpec import (
+    Internal,
+    FlatFiles,
+    # DYD,
+)
 
 logger = logging.getLogger(__name__)
 
 
 @attr.s(kw_only=True)
-class DYDHVACSource(GCSDataSource, HVACSource):
+class GCSHVACSource(GCSDataSource, HVACSource):
 
     local_data_dir = attr.ib(default=None)
 
     # list of columns
-    dyd_datetime_column = attr.ib(default="DateTime")
-    weather_columns = attr.ib(default=["T_out", "RH_out"])
-    hvac_columns = attr.ib(
-        default=[
-            "HvacMode",
-            "Event",
-            "Schedule",
-            "T_ctrl",
-            "T_stp_cool",
-            "T_stp_heat",
-            "Humidity",
-            "HumidityExpectedLow",
-            "HumidityExpectedHigh",
-            "auxHeat1",
-            "auxHeat2",
-            "auxHeat3",
-            "compCool1",
-            "compCool2",
-            "compHeat1",
-            "compHeat2",
-            "fan",
-            "Thermostat_Temperature",
-            "Thermostat_Motion",
-            "Remote_Sensor_1_Temperature",
-            "Remote_Sensor_1_Motion",
-            "Remote_Sensor_2_Temperature",
-            "Remote_Sensor_2_Motion",
-            "Remote_Sensor_3_Temperature",
-            "Remote_Sensor_3_Motion",
-            "Remote_Sensor_4_Temperature",
-            "Remote_Sensor_4_Motion",
-            "Remote_Sensor_5_Temperature",
-            "Remote_Sensor_5_Motion",
-            "Remote_Sensor_6_Temperature",
-            "Remote_Sensor_6_Motion",
-            "Remote_Sensor_7_Temperature",
-            "Remote_Sensor_7_Motion",
-            "Remote_Sensor_8_Temperature",
-            "Remote_Sensor_8_Motion",
-            "Remote_Sensor_9_Temperature",
-            "Remote_Sensor_9_Motion",
-            "Remote_Sensor_10_Temperature",
-            "Remote_Sensor_10_Motion",
-        ]
-    )
-
-    temperatrue_columns = attr.ib(
-        default=[
-            "T_ctrl",
-            "T_stp_cool",
-            "T_stp_heat",
-            "Thermostat_Temperature",
-            "Remote_Sensor_1_Temperature",
-            "Remote_Sensor_2_Temperature",
-            "Remote_Sensor_3_Temperature",
-            "Remote_Sensor_4_Temperature",
-            "Remote_Sensor_5_Temperature",
-            "Remote_Sensor_6_Temperature",
-            "Remote_Sensor_7_Temperature",
-            "Remote_Sensor_8_Temperature",
-            "Remote_Sensor_9_Temperature",
-            "Remote_Sensor_10_Temperature",
-        ]
-    )
+    input_datetime_column = attr.ib()
+    weather_columns = attr.ib()
+    hvac_columns = attr.ib()
+    temperature_columns = attr.ib()
+    internal_column_map = attr.ib()
+    data_spec = attr.ib()
 
     data = attr.ib(default=None)
-
     weather_data = attr.ib(default=None)
-
-    def __attrs_post_init__(self):
-        # DYD contains hvac and weather data
-        self.expected_columns = (
-            [self.dyd_datetime_column]
-            + self.hvac_columns
-            + self.weather_columns
-        )
 
     def get_data(self, tstat_sim_config):
         """
@@ -108,12 +45,13 @@ class DYDHVACSource(GCSDataSource, HVACSource):
         for tstat_id, data in all_data.items():
             # weather will be further processed by DYDWeatherSource
             self.weather_data[tstat_id] = data[
-                [self.dyd_datetime_column] + self.weather_columns
+                [self.input_datetime_column]
+                + self.data_spec.get_columns(self.data_spec.weather_spec)
             ]
 
             # normalize data to internal format
             self.data[tstat_id] = self.to_internal_format(
-                data[[self.dyd_datetime_column] + self.hvac_columns]
+                data[[self.input_datetime_column] + self.data_spec.get_columns(self.data_spec.hvac_spec)
             )
 
             # find consecutive periods of data
@@ -122,23 +60,21 @@ class DYDHVACSource(GCSDataSource, HVACSource):
             )
 
     def get_empty_hvac_df(self):
-        return pd.DataFrame(
-            [],
-            columns=[self.dyd_datetime_column]
-            + self.hvac_columns
-            + self.weather_columns,
-        )
+        return pd.DataFrame([], columns=self.all_columns,)
 
     def to_internal_format(self, df):
-        df = df.rename(columns=self.hvac_column_map)
+        Internal.convert_to_internal(df=df, spec=self.spec)
+        df = df.rename(columns=self.internal_column_map)
 
         # set datetime column, DYD is in UTC
         df[self.datetime_column] = pd.to_datetime(
-            df[self.datetime_column], utc=True
+            df[self.datetime_column], utc=True, infer_datetime_format=True
         )
 
         # convert all temperatures to degrees Celcius, DYD is in Fahrenheit
-        for temp_col in self.temperatrue_columns:
+        for temp_col in [
+            c for c in self.temperature_columns if c in self.all_columns
+        ]:
             df[temp_col] = DYDHVACSource.F2C(df[temp_col])
         df = df.sort_values(by=self.datetime_column, ascending=True)
         return df
@@ -148,29 +84,31 @@ class DYDHVACSource(GCSDataSource, HVACSource):
         cache_dict = {}
         for identifier, tstat in tstat_sim_config.iterrows():
 
-            gs_uri_partial = f"{self.gcs_uri_base}/{tstat.start_utc.year}"
+            # gs_uri_partial = f"{self.gcs_uri_base}/{tstat.start_utc.year}"
 
             # read cache
             try:
                 cache_dict[identifier] = pd.read_csv(
-                    f"{gs_uri_partial}/{identifier}.csv.zip",
-                    compression="zip",
+                    tstat.gcs_uri,
+                    usecols=spec.get_columns(spec.full),
+                    dtype=spec.get_spec_dtype_mapper(spec.full),
                 )
             except FileNotFoundError:
                 # file not found in DYD
                 logging.error(
-                    (
-                        f"File: {gs_uri_partial}/{identifier}.csv.zip",
-                        " not found in DYD dataset.",
-                    )
+                    (f"File: {tstat.gcs_uri}", " not found in DYD dataset.",)
                 )
                 cache_dict[identifier] = self.get_empty_hvac_df()
+
+            cache_dict[identifier] = cache_dict[identifier].astype(
+                spec.get_spec_dtype_mapper(spec.full)
+            )
 
             # check cache contains all expected columns
             if any(
                 [
                     c not in cache_dict[identifier].columns
-                    for c in self.expected_columns
+                    for c in self.all_columns
                 ]
             ):
                 logging.error(f"identifier={identifier} has missing columns.")
@@ -215,3 +153,27 @@ class DYDHVACSource(GCSDataSource, HVACSource):
 
     def put_cache(self):
         pass
+
+
+@attr.s(kw_only=True)
+class DYDHVACSource(GCSHVACSource):
+
+    # list of columns
+    input_datetime_column = attr.ib(default=CACHE_DYD_COLUMNS.DATETIME)
+    weather_columns = attr.ib(default=CACHE_DYD_COLUMNS.WEATHER)
+    hvac_columns = attr.ib(default=CACHE_DYD_COLUMNS.HVAC)
+    temperature_columns = attr.ib(default=CACHE_DYD_COLUMNS.TEMPERATURE)
+    internal_column_map = attr.ib(default=CACHE_DYD_COLUMNS.INTERNAL_MAP)
+    spec = attr.ib(default=DYD)
+
+
+@attr.s(kw_only=True)
+class ISMHVACSource(GCSHVACSource):
+
+    # list of columns
+    input_datetime_column = attr.ib(default=CACHE_ISM_COLUMNS.DATETIME)
+    weather_columns = attr.ib(default=CACHE_ISM_COLUMNS.WEATHER)
+    hvac_columns = attr.ib(default=CACHE_ISM_COLUMNS.HVAC)
+    temperature_columns = attr.ib(default=CACHE_ISM_COLUMNS.TEMPERATURE)
+    internal_column_map = attr.ib(default=CACHE_ISM_COLUMNS.INTERNAL_MAP)
+    spec = attr.ib(default=FlatFiles)
