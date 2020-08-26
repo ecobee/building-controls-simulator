@@ -1,13 +1,16 @@
 # created by Tom Stesco tom.s@ecobee.com
+
 import logging
-import os
 
 import pytest
 import pandas as pd
 import pytz
+import os
 
 from BuildingControlsSimulator.DataClients.DataClient import DataClient
-from BuildingControlsSimulator.DataClients.GCSDYDSource import GCSDYDSource
+from BuildingControlsSimulator.DataClients.GCSFlatFilesSource import (
+    GCSFlatFilesSource,
+)
 from BuildingControlsSimulator.DataClients.DataSpec import EnergyPlusWeather
 
 
@@ -20,9 +23,9 @@ class TestFlatFilesClient:
         # initialize with data to avoid pulling multiple times
         cls.dc = DataClient(
             sources=[
-                GCSDYDSource(
+                GCSFlatFilesSource(
                     gcp_project=os.environ.get("GOOGLE_CLOUD_PROJECT"),
-                    gcs_uri_base=os.environ.get("DYD_GCS_URI_BASE"),
+                    gcs_uri_base=os.environ.get("ISM_GCS_URI_BASE"),
                 )
             ],
             nrel_dev_api_key=os.environ.get("NREL_DEV_API_KEY"),
@@ -35,14 +38,14 @@ class TestFlatFilesClient:
 
         cls.tstat_sim_config = cls.dc.make_tstat_sim_config(
             identifier=[
-                "f2254479e14daf04089082d1cd9df53948f98f1e",  # missing thermostat_temperature data
-                "2df6959cdf502c23f04f3155758d7b678af0c631",  # has full data periods
-                "6e63291da5427ae87d34bb75022ee54ee3b1fc1a",  # file not found
+                "311019762466",  # missing data
+                "310106342367",  # full
+                "17676",  # file not found
             ],
             latitude=33.481136,
             longitude=-112.078232,
-            start_utc="2019-01-01",
-            end_utc="2019-12-31",
+            start_utc="2018-01-01",
+            end_utc="2018-12-31",
             min_sim_period="7D",
             min_chunk_period="30D",
         )

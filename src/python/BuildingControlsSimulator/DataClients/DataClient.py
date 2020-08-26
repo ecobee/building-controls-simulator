@@ -1,30 +1,139 @@
 # created by Tom Stesco tom.s@ecobee.com
 import os
 import logging
-from abc import ABC, abstractmethod
+
+# from abc import ABC, abstractmethod
 from collections.abc import Iterable
 
 import attr
 import pandas as pd
 import numpy as np
 
+from BuildingControlsSimulator.DataClients.DataSpec import Internal
+from BuildingControlsSimulator.DataClients.SensorsChannel import SensorsChannel
+from BuildingControlsSimulator.DataClients.HVACChannel import HVACChannel
+from BuildingControlsSimulator.DataClients.WeatherChannel import WeatherChannel
+
 logger = logging.getLogger(__name__)
 
 
 @attr.s(kw_only=True)
-class DataClient(ABC):
+class DataClient:
 
-    local_cache = attr.ib(default=None)
-    gcs_cache = attr.ib(default=None)
-    weather = attr.ib()
-    hvac = attr.ib()
+    # data channels
+    hvac = attr.ib(default={})
+    sensors = attr.ib(default={})
+    weather = attr.ib(default={})
 
-    @abstractmethod
+    # input variables
+    nrel_dev_api_key = attr.ib(default=None)
+    nrel_dev_email = attr.ib(default=None)
+    archive_tmy3_meta = attr.ib(default=None)
+    archive_tmy3_data_dir = attr.ib(
+        default=os.environ.get("ARCHIVE_TMY3_DATA_DIR")
+    )
+    ep_tmy3_cache_dir = attr.ib(default=os.environ.get("EP_TMY3_CACHE_DIR"))
+    simulation_epw_dir = attr.ib(default=os.environ.get("SIMULATION_EPW_DIR"))
+    weather_dir = attr.ib(default=os.environ.get("WEATHER_DIR"))
+
+    # state variabels
+    meta_gs_uri = attr.ib(default=None)
+    sources = attr.ib()
+
+    def __attrs_post_init__(self):
+        # first, post init class specification
+        self.make_data_directories()
+
+    def make_data_directories(self):
+        os.makedirs(self.weather_dir, exist_ok=True)
+        os.makedirs(self.archive_tmy3_data_dir, exist_ok=True)
+        os.makedirs(self.ep_tmy3_cache_dir, exist_ok=True)
+        os.makedirs(self.simulation_epw_dir, exist_ok=True)
+
     def get_data(self, tstat_sim_config):
-        pass
 
-    @staticmethod
+        # check for invalid start/end combination
+        invalid = tstat_sim_config[
+            tstat_sim_config["end_utc"] <= tstat_sim_config["start_utc"]
+        ]
+
+        if not invalid.empty:
+            raise ValueError(
+                "tstat_sim_config contains invalid start_utc >= end_utc."
+            )
+
+        _data = {
+            identifier: pd.DataFrame([], columns=[Internal.datetime_column])
+            for identifier in tstat_sim_config.index
+        }
+        for _s in self.sources:
+            # load from cache or download data from source
+            _data_dict = _s.get_data(tstat_sim_config)
+            for tstat, _df in _data_dict.items():
+                # joining on datetime column with the initial empty df having
+                # only the datetime_column causes new columns to be added
+                # and handles missing data in any data sets
+                if not _df.empty:
+                    _data[tstat] = _data[tstat].merge(
+                        _df, how="outer", on=Internal.datetime_column,
+                    )
+                else:
+                    logging.info(
+                        "EMPTY SOURCE: tstat={}, source={}".format(tstat, _s)
+                    )
+                    if _data[tstat].empty:
+                        _data[tstat] = Internal.get_empty_df()
+
+        # finally create the data channel objs for usage during simulation
+        for identifier, tstat in tstat_sim_config.iterrows():
+
+            _internal_spec = Internal()
+            _internal_spec.remove_columns(_data[identifier].columns)
+
+            self.hvac[identifier] = HVACChannel(
+                data=_data[identifier][
+                    [_internal_spec.datetime_column]
+                    + _internal_spec.hvac.columns
+                ],
+                spec=_internal_spec.hvac,
+            )
+            self.hvac[identifier].get_full_data_periods(expected_period="5M")
+
+            self.sensors[identifier] = SensorsChannel(
+                data=_data[identifier][
+                    [_internal_spec.datetime_column]
+                    + _internal_spec.sensors.columns
+                ],
+                spec=_internal_spec.sensors,
+            )
+            self.sensors[identifier].get_full_data_periods(
+                expected_period="5M"
+            )
+
+            self.weather[identifier] = WeatherChannel(
+                data=_data[identifier][
+                    [_internal_spec.datetime_column]
+                    + _internal_spec.weather.columns
+                ],
+                spec=_internal_spec.weather,
+                archive_tmy3_data_dir=self.archive_tmy3_data_dir,
+                ep_tmy3_cache_dir=self.ep_tmy3_cache_dir,
+                simulation_epw_dir=self.simulation_epw_dir,
+            )
+            self.weather[identifier].get_full_data_periods(
+                expected_period="5M"
+            )
+
+            # post-processing of data channels
+            self.weather[identifier].make_epw_file(tstat=tstat)
+
+    def get_metadata(self):
+        return pd.read_csv(self.meta_gs_uri).drop_duplicates(
+            subset=["Identifier"]
+        )
+
     def make_tstat_sim_config(
+        self,
         identifier,
         latitude,
         longitude,
@@ -99,7 +208,7 @@ class DataClient(ABC):
                     f"min_chunk_period[{i}]: {min_chunk_period[i]} is not convertable to pd.Timedelta."
                 )
 
-        return pd.DataFrame.from_dict(
+        _df = pd.DataFrame.from_dict(
             {
                 "identifier": identifier,
                 "latitude": latitude,
@@ -111,6 +220,8 @@ class DataClient(ABC):
             }
         ).set_index("identifier")
 
+        return _df
+
     def get_simulation_data(self, tstat_sim_config):
         sim_hvac_data = {}
         sim_weather_data = {}
@@ -120,8 +231,8 @@ class DataClient(ABC):
 
             # iterate through data sources
             data_source_periods = [
-                self.hvac.full_data_periods[identifier],
-                self.weather.full_data_periods[identifier],
+                self.hvac[identifier].full_data_periods,
+                self.weather[identifier].full_data_periods,
             ]
 
             # check for missing data sources
@@ -132,7 +243,8 @@ class DataClient(ABC):
                 # create list of data source idxs to keep track of place for each
                 ds_idx = [0 for d in data_source_periods]
                 data_periods = []
-                while p_start < tstat.end_utc:
+                end_time = np.min([d[-1][1] for d in data_source_periods])
+                while p_start < end_time:
                     ds_p_start = []
                     ds_p_end = []
 
@@ -156,16 +268,20 @@ class DataClient(ABC):
                 for p_start, p_end in data_periods:
                     if (p_end - p_start) > tstat.min_sim_period:
                         sim_hvac_data[identifier].append(
-                            self.hvac.data[identifier][
+                            self.hvac[identifier].data[
                                 (
-                                    self.hvac.data[identifier][
-                                        self.hvac.datetime_column
+                                    self.hvac[identifier].data[
+                                        self.hvac[
+                                            identifier
+                                        ].spec.datetime_column
                                     ]
                                     >= p_start
                                 )
                                 & (
-                                    self.hvac.data[identifier][
-                                        self.hvac.datetime_column
+                                    self.hvac[identifier].data[
+                                        self.hvac[
+                                            identifier
+                                        ].spec.datetime_column
                                     ]
                                     <= p_end
                                 )
@@ -173,16 +289,20 @@ class DataClient(ABC):
                         )
 
                         sim_weather_data[identifier].append(
-                            self.weather.data[identifier][
+                            self.weather[identifier].data[
                                 (
-                                    self.weather.data[identifier][
-                                        self.weather.datetime_column
+                                    self.weather[identifier].data[
+                                        self.weather[
+                                            identifier
+                                        ].spec.datetime_column
                                     ]
                                     >= p_start
                                 )
                                 & (
-                                    self.weather.data[identifier][
-                                        self.weather.datetime_column
+                                    self.weather[identifier].data[
+                                        self.weather[
+                                            identifier
+                                        ].spec.datetime_column
                                     ]
                                     <= p_end
                                 )
@@ -191,9 +311,3 @@ class DataClient(ABC):
 
         return sim_hvac_data, sim_weather_data
 
-    @staticmethod
-    def make_data_directories():
-        os.makedirs(os.environ.get("WEATHER_DIR"), exist_ok=True)
-        os.makedirs(os.environ.get("ARCHIVE_TMY3_DATA_DIR"), exist_ok=True)
-        os.makedirs(os.environ.get("EP_TMY3_CACHE_DIR"), exist_ok=True)
-        os.makedirs(os.environ.get("SIMULATION_EPW_DIR"), exist_ok=True)
