@@ -5,95 +5,79 @@ import logging
 import re
 
 import pandas as pd
+import numpy as np
 import attr
 import requests
-import numpy as np
 from sklearn.metrics.pairwise import haversine_distances
 
-# from pvlib.forecast import GFS, NAM, HRRR, RAP, NDFD
+from BuildingControlsSimulator.DataClients.DataSpec import EnergyPlusWeather
+
+from BuildingControlsSimulator.DataClients.DataChannel import DataChannel
+
+
 logger = logging.getLogger(__name__)
 
 
 @attr.s(kw_only=True)
-class WeatherSource:
+class WeatherChannel(DataChannel):
     """Client for weather data.
     """
 
-    data = attr.ib(default={})
-    epw_fpaths = attr.ib(default={})
+    epw_fpath = attr.ib(default=None)
     epw_data = attr.ib(default={})
     epw_meta = attr.ib(default={})
 
     # env variables
     nrel_dev_api_key = attr.ib(default=None)
     nrel_dev_email = attr.ib(default=None)
-    archive_tmy3_meta = attr.ib()
+    archive_tmy3_meta = attr.ib(default=None)
     archive_tmy3_data_dir = attr.ib()
     ep_tmy3_cache_dir = attr.ib()
     simulation_epw_dir = attr.ib()
 
     # column names
-    datetime_column = attr.ib(default="datetime")
-    epw_columns = attr.ib(
-        default=[
-            "year",
-            "month",
-            "day",
-            "hour",
-            "minute",
-            "data_source_unct",
-            "temp_air",
-            "temp_dew",
-            "relative_humidity",
-            "atmospheric_pressure",
-            "etr",
-            "etrn",
-            "ghi_infrared",
-            "ghi",
-            "dni",
-            "dhi",
-            "global_hor_illum",
-            "direct_normal_illum",
-            "diffuse_horizontal_illum",
-            "zenith_luminance",
-            "wind_direction",
-            "wind_speed",
-            "total_sky_cover",
-            "opaque_sky_cover",
-            "visibility",
-            "ceiling_height",
-            "present_weather_observation",
-            "present_weather_codes",
-            "precipitable_water",
-            "aerosol_optical_depth",
-            "snow_depth",
-            "days_since_last_snowfall",
-            "albedo",
-            "liquid_precipitation_depth",
-            "liquid_precipitation_quantity",
-        ]
-    )
-    epw_column_map = attr.ib(
-        default={
-            "T_out": "temp_air",
-            "RH_out": "relative_humidity",
-            "DateTime": "datetime",
-        }
-    )
-    epw_meta_keys = attr.ib(
-        default=[
-            "line_name",
-            "city",
-            "state-prov",
-            "country",
-            "data_type",
-            "WMO_code",
-            "latitude",
-            "longitude",
-            "TZ",
-            "altitude",
-        ]
-    )
+    datetime_column = attr.ib(default=EnergyPlusWeather.datetime_column)
+    epw_columns = attr.ib(default=EnergyPlusWeather.epw_columns)
+    epw_meta_keys = attr.ib(default=EnergyPlusWeather.epw_meta)
+    epw_column_map = attr.ib(default=EnergyPlusWeather.output_rename_dict)
+
+    def get_epw_path(self, identifier, fill_epw_fname):
+        os.path.join(
+            self.simulation_epw_dir,
+            f"{self.data_source_name}"
+            + f"_{identifier}"
+            + f"_{fill_epw_fname}",
+        )
+
+    def make_epw_file(self, tstat):
+        _epw_fpath = None
+        # attempt to get .epw data from NREL
+        fill_epw_fpath, fill_epw_fname = self.get_epw_from_nrel(
+            tstat.latitude, tstat.longitude
+        )
+        (fill_epw_data, epw_meta, meta_lines,) = self.read_epw(fill_epw_fpath)
+
+        if not fill_epw_data.empty:
+            _epw_fpath = os.path.join(
+                self.simulation_epw_dir,
+                "NREL_EPLUS" + f"_{tstat.name}" + f"_{fill_epw_fname}",
+            )
+
+            # fill any missing fields in epw
+            # need to pass in original dyd datetime column name
+            epw_data = self.fill_epw(self.data, fill_epw_data,)
+
+            # save to file
+            self.to_epw(
+                epw_data=epw_data,
+                meta=epw_meta,
+                meta_lines=meta_lines,
+                fpath=_epw_fpath,
+            )
+
+            self.epw_fpath = _epw_fpath
+        else:
+            logger.error("failed to retrieve .epw fill data.")
 
     def read_epw(self, fpath):
         """
@@ -135,7 +119,6 @@ class WeatherSource:
         meta = dict(
             zip(self.epw_meta_keys, meta_epw_lines[0].rstrip("\n").split(","))
         )
-
         meta["altitude"] = float(meta["altitude"])
         meta["latitude"] = float(meta["latitude"])
         meta["longitude"] = float(meta["longitude"])
@@ -356,7 +339,7 @@ class WeatherSource:
         data = pd.read_csv(url_tmy, skiprows=2).reset_index()
         return data, meta
 
-    def fill_epw(self, epw_data, fill_data, datetime_column):
+    def fill_epw(self, epw_data, fill_data):
         """Any missing fields required by EnergyPlus should be filled with
         defaults from Typical Meteorological Year 3 data sets for nearest city.
         All data is internally in UTC.
@@ -371,67 +354,90 @@ class WeatherSource:
         epw_data = epw_data.copy(deep=True)
 
         # set date time columns from DateTime
-        if datetime_column:
-            epw_data.rename(
-                columns={datetime_column: self.datetime_column}, inplace=True
-            )
-            epw_data[self.datetime_column] = pd.to_datetime(
-                epw_data[self.datetime_column], utc=True
-            )
+        # epw_data = epw_data.rename(
+        #     columns=EnergyPlusWeather.output_rename_dict,
+        # )
+        # breakpoint()
+        # epw_data[self.datetime_column] = pd.to_datetime(
+        #     epw_data[self.datetime_column], utc=True
+        # )
 
         # only need to resample if records not empty
         if len(epw_data) > 0:
+            # if first hour missing
+            # beginning_missing = epw_data[
+            #     self.spec.datetime_column
+            # ].min() - pd.Timestamp(
+            #     str(epw_data[self.spec.datetime_column].min().year), tz="utc"
+            # )
+            # if beginning_missing > pd.Timedelta("1H"):
+            #     # TODO: fill with TMY
+            #     print("fill with TMY")
+
             # resample to hourly data
             # the minute value has no meaning, it being 60 is not meaningful
             epw_data = (
-                epw_data.set_index(epw_data.datetime)
+                epw_data.set_index(epw_data[self.spec.datetime_column])
                 .resample("1H")
                 .mean()
                 .reset_index()
             )
+            epw_data["year"] = epw_data[self.spec.datetime_column].dt.year
+            epw_data["month"] = epw_data[self.spec.datetime_column].dt.month
+            epw_data["day"] = epw_data[self.spec.datetime_column].dt.day
+            epw_data["hour"] = epw_data[self.spec.datetime_column].dt.hour
+            # average minutes is incorrect, should just be 0
+            epw_data["minute"] = 0
+
+            # compare fill_data and real weather data
+            fill_data = fill_data.merge(
+                epw_data[["month", "day", "hour"] + self.spec.columns],
+                how="outer",
+                on=["month", "day", "hour"],
+            )
+            # loop over spec columns and replace missing values
+            for _col in self.spec.columns:
+                fill_data.loc[fill_data[_col].isnull(), _col,] = fill_data[
+                    EnergyPlusWeather.output_rename_dict[_col]
+                ]
+
+                fill_data[
+                    EnergyPlusWeather.output_rename_dict[_col]
+                ] = fill_data[_col]
+
+                fill_data = fill_data.drop(columns=[_col])
+
+            # epw_data[epw_data.date_time.diff() > pd.Timedelta("1h")]
 
             # fill forward missing weather data with previous day data
-            for idx in epw_data[
-                epw_data.temp_air.isnull()
-            ].index.sort_values():
-                epw_data.loc[
-                    idx, ["temp_air", "relative_humidity"]
-                ] = epw_data.loc[idx - 24, ["temp_air", "relative_humidity"]]
+            # for idx in epw_data[
+            #     epw_data[self.spec.null_check_column].isnull()
+            # ].index.sort_values():
+            #     epw_data.loc[
+            #         idx, ["temp_air", "relative_humidity"]
+            #     ] = epw_data.loc[idx - 24, ["temp_air", "relative_humidity"]]
 
-        # compute dewpoint from dry-bulb and relative humidity
-        if "temp_dew" not in epw_data.columns and all(
-            [c in epw_data.columns for c in ["temp_air", "relative_humidity"]]
-        ):
-            epw_data["temp_dew"] = WeatherSource.dewpoint(
-                epw_data["temp_air"], epw_data["relative_humidity"]
+            # compute dewpoint from dry-bulb and relative humidity
+            # if "temp_dew" not in epw_data.columns and all(
+            #     [c in epw_data.columns for c in ["temp_air", "relative_humidity"]]
+            # ):
+            fill_data["temp_dew"] = WeatherChannel.dewpoint(
+                fill_data["temp_air"], fill_data["relative_humidity"]
             )
 
-        epw_data["year"] = epw_data[self.datetime_column].dt.year
-        epw_data["month"] = epw_data[self.datetime_column].dt.month
-        epw_data["day"] = epw_data[self.datetime_column].dt.day
-        epw_data["hour"] = epw_data[self.datetime_column].dt.hour
-        # average minutes is incorrect, should just be 0
-        epw_data["minute"] = 0
-
-        # date time columns can be smaller dtypes
-        epw_data = epw_data.astype(
-            {
-                "year": "Int16",
-                "month": "Int8",
-                "day": "Int8",
-                "hour": "Int8",
-                "minute": "Int8",
-            },
-        )
-
-        # fill from fill data
-        missing_cols = [
-            c for c in self.epw_columns if c not in epw_data.columns
-        ]
-        epw_data = pd.concat([epw_data, fill_data[missing_cols]], axis=1)
+            # date time columns can be smaller dtypes
+            fill_data = fill_data.astype(
+                {
+                    "year": "Int16",
+                    "month": "Int8",
+                    "day": "Int8",
+                    "hour": "Int8",
+                    "minute": "Int8",
+                },
+            )
 
         # reorder return columns
-        return epw_data[self.epw_columns]
+        return fill_data[self.epw_columns]
 
     def to_epw(self, epw_data, meta, meta_lines, fpath):
 
@@ -449,9 +455,9 @@ class WeatherSource:
 
         return fpath
 
-    def epw_datetime(self, dt_column):
-        pd.to_datetime(dt_column)
-        # convert date time to epw format: year, month, day, hour, minute
+    # def epw_datetime(self, dt_column):
+    #     pd.to_datetime(dt_column)
+    # convert date time to epw format: year, month, day, hour, minute
 
     @staticmethod
     def dewpoint(temp_air, relative_humidity):

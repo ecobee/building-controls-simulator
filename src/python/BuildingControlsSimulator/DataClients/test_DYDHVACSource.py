@@ -5,7 +5,7 @@ import pandas
 
 import pytest
 
-from BuildingControlsSimulator.DataClients.DYDHVACSource import DYDHVACSource
+from BuildingControlsSimulator.DataClients.GCSHVACSource import DYDHVACSource
 
 logger = logging.getLogger(__name__)
 

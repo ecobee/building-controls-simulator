@@ -248,11 +248,13 @@ set -a && source .test.env && set +a && python -m pytest src/python
 First authenticate normally to GCP, e.g. using ` gcloud auth`. Then copy `${GOOGLE_APPLICATION_CREDENTIALS}` into the container to access GCP resources with 
 the same permissions.
 
+On host machine:
 ```bash
 # on local machine source .env and copy credentials to container
 docker cp ${GOOGLE_APPLICATION_CREDENTIALS} <container ID>:/home/bcs/.config/application_default_credentials.json
 ```
 
+Within container:
 ```bash
 # in container make sure bcs user can read credentials
 sudo chown -R "bcs":"bcs" ~/.config/application_default_credentials.json
