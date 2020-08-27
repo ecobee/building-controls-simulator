@@ -42,19 +42,28 @@ class GCSDataSource(DataSource, ABC):
                 )
             )
 
+            # check cache contains all expected columns
+            missing_cols = [
+                c
+                for c in self.data_spec.full.columns
+                if c not in cache_dict[identifier].columns
+            ]
+            if missing_cols:
+                logging.error(
+                    "tstat: {} has _missing_ columns: {}".format(
+                        identifier, missing_cols
+                    )
+                )
+                logging.error(
+                    "tstat: {} has columns: {}".format(
+                        identifier, cache_dict[identifier].columns
+                    )
+                )
+
             # convert to internal spec
             cache_dict[identifier] = Internal.convert_to_internal(
                 cache_dict[identifier], self.data_spec.full
             )
-
-            # check cache contains all expected columns
-            if any(
-                [
-                    c not in cache_dict[identifier].columns
-                    for c in self.data_spec.full.columns
-                ]
-            ):
-                logging.error(f"tstat has missing columns.")
 
         return cache_dict
 
