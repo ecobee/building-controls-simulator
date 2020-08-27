@@ -13,4 +13,4 @@ logger = logging.getLogger(__name__)
 
 @attr.s(kw_only=True)
 class SensorsChannel(DataChannel):
-    extra = attr.ib(default=None)
+    _placeholder = attr.ib(default=None)
