@@ -59,26 +59,6 @@ class Internal:
     https://pandas.pydata.org/pandas-docs/stable/user_guide/basics.html#basics-dtypes
     """
 
-    def remove_columns(self, _df_columns):
-        self.datetime.spec = {
-            k: v for k, v in self.datetime.spec.items() if k in _df_columns
-        }
-        self.hvac.spec = {
-            k: v for k, v in self.hvac.spec.items() if k in _df_columns
-        }
-        self.sensors.spec = {
-            k: v for k, v in self.sensors.spec.items() if k in _df_columns
-        }
-        self.weather.spec = {
-            k: v for k, v in self.weather.spec.items() if k in _df_columns
-        }
-        self.full.spec = {
-            **self.datetime.spec,
-            **self.hvac.spec,
-            **self.sensors.spec,
-            **self.weather.spec,
-        }
-
     # TODO: remove .name property if unneeded
     N_ROOM_SENSORS = 10
     datetime_column = "date_time"
@@ -309,10 +289,14 @@ class Internal:
     )
 
     @staticmethod
-    def convert_units_to_internal(df, spec):
+    def intersect_columns(_df_columns, _spec):
+        return [c for c in _df_columns if c in _spec.keys()]
+
+    @staticmethod
+    def convert_units_to_internal(df, _spec):
         """This method must be able to evaluate multiple sources should
         a channel be composed from multiple sources."""
-        for k, v in spec.items():
+        for k, v in _spec.items():
             if v["unit"] != Internal.full.spec[v["internal_name"]]["unit"]:
                 print(
                     "Convert: {} to {}".format(
@@ -349,7 +333,7 @@ class Internal:
         return pd.DataFrame([], columns=Internal.full.columns)
 
 
-@attr.s(frozen=True)
+@attr.s()
 class FlatFilesSpec:
     datetime_format = "utc"
     datetime_column = "date_time"
@@ -579,7 +563,7 @@ class FlatFilesSpec:
     )
 
 
-@attr.s(frozen=True)
+@attr.s()
 class DonateYourDataSpec:
     datetime_format = "utc"
     datetime_column = "DateTime"
@@ -781,27 +765,6 @@ class DonateYourDataSpec:
 
 class EnergyPlusWeather:
     datetime_column = "datetime"
-    # full = Spec(
-    #     {
-    #         "year": {
-    #             "internal_name": "year",
-    #             "dtype": "Float32",
-    #             "channel": Channels.WEATHER,
-    #             "unit": Units.CELSIUS,
-    #         },
-    #         "month": {
-    #             "internal_name": "month",
-    #             "dtype": "Float32",
-    #             "channel": Channels.WEATHER,
-    #             "unit": Units.RELATIVE_HUMIDITY,
-    #         },
-    #         "month": {
-    #             "internal_name": "month",
-    #             "dtype": "Float32",
-    #             "channel": Channels.WEATHER,
-    #             "unit": Units.RELATIVE_HUMIDITY,
-    #         },
-    #     }[
 
     epw_columns = [
         "year",

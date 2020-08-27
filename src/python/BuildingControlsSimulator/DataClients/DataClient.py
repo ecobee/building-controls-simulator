@@ -1,8 +1,6 @@
 # created by Tom Stesco tom.s@ecobee.com
 import os
 import logging
-
-# from abc import ABC, abstractmethod
 from collections.abc import Iterable
 
 import attr
@@ -87,24 +85,25 @@ class DataClient:
         # finally create the data channel objs for usage during simulation
         for identifier, tstat in tstat_sim_config.iterrows():
 
-            _internal_spec = Internal()
-            _internal_spec.remove_columns(_data[identifier].columns)
-
             self.hvac[identifier] = HVACChannel(
                 data=_data[identifier][
-                    [_internal_spec.datetime_column]
-                    + _internal_spec.hvac.columns
+                    [Internal.datetime_column]
+                    + Internal.intersect_columns(
+                        _data[identifier].columns, Internal.hvac.spec
+                    )
                 ],
-                spec=_internal_spec.hvac,
+                spec=Internal.hvac,
             )
             self.hvac[identifier].get_full_data_periods(expected_period="5M")
 
             self.sensors[identifier] = SensorsChannel(
                 data=_data[identifier][
-                    [_internal_spec.datetime_column]
-                    + _internal_spec.sensors.columns
+                    [Internal.datetime_column]
+                    + Internal.intersect_columns(
+                        _data[identifier].columns, Internal.sensors.spec
+                    )
                 ],
-                spec=_internal_spec.sensors,
+                spec=Internal.sensors,
             )
             self.sensors[identifier].get_full_data_periods(
                 expected_period="5M"
@@ -112,10 +111,12 @@ class DataClient:
 
             self.weather[identifier] = WeatherChannel(
                 data=_data[identifier][
-                    [_internal_spec.datetime_column]
-                    + _internal_spec.weather.columns
+                    [Internal.datetime_column]
+                    + Internal.intersect_columns(
+                        _data[identifier].columns, Internal.weather.spec
+                    )
                 ],
-                spec=_internal_spec.weather,
+                spec=Internal.weather,
                 archive_tmy3_data_dir=self.archive_tmy3_data_dir,
                 ep_tmy3_cache_dir=self.ep_tmy3_cache_dir,
                 simulation_epw_dir=self.simulation_epw_dir,

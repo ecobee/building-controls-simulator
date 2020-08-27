@@ -52,7 +52,7 @@ class WeatherChannel(DataChannel):
     def make_epw_file(self, tstat):
         _epw_fpath = None
         # attempt to get .epw data from NREL
-        fill_epw_fpath, fill_epw_fname = self.get_epw_from_nrel(
+        fill_epw_fpath, fill_epw_fname = self.get_tmy_epw(
             tstat.latitude, tstat.longitude
         )
         (fill_epw_data, epw_meta, meta_lines,) = self.read_epw(fill_epw_fpath)
@@ -210,8 +210,7 @@ class WeatherChannel(DataChannel):
         # )
         pass
 
-    def get_epw_from_nrel(self, lat, lon):
-
+    def get_tmy_epw(self, lat, lon):
         # convert query point to radians and set dimensionality to (2,1)
         qp = np.radians(np.atleast_2d(np.array([lat, lon])))
 
@@ -297,10 +296,8 @@ class WeatherChannel(DataChannel):
             f"{self.archive_tmy3_data_dir}/{usaf_code}TYA.CSV", skiprows=1
         )
 
-    def get_tmy3(self, location):
-        # Declare all variables as strings. Spaces must be replaced with '+',
-        # i.e., change 'John Smith' to 'John+Smith'.
-        # Define the lat, long of the location and the year
+    def get_psm3_tmy3(self, location):
+        # TODO: finish implementing
         lat = 43.83452
         lon = -99.49218
         # attributes to extract (e.g., dhi, ghi, etc.), separated by commas.
@@ -353,26 +350,8 @@ class WeatherChannel(DataChannel):
         # edit unique copy of input df
         epw_data = epw_data.copy(deep=True)
 
-        # set date time columns from DateTime
-        # epw_data = epw_data.rename(
-        #     columns=EnergyPlusWeather.output_rename_dict,
-        # )
-        # breakpoint()
-        # epw_data[self.datetime_column] = pd.to_datetime(
-        #     epw_data[self.datetime_column], utc=True
-        # )
-
-        # only need to resample if records not empty
+        # only need to resample and fill if records not empty
         if len(epw_data) > 0:
-            # if first hour missing
-            # beginning_missing = epw_data[
-            #     self.spec.datetime_column
-            # ].min() - pd.Timestamp(
-            #     str(epw_data[self.spec.datetime_column].min().year), tz="utc"
-            # )
-            # if beginning_missing > pd.Timedelta("1H"):
-            #     # TODO: fill with TMY
-            #     print("fill with TMY")
 
             # resample to hourly data
             # the minute value has no meaning, it being 60 is not meaningful
@@ -407,20 +386,7 @@ class WeatherChannel(DataChannel):
 
                 fill_data = fill_data.drop(columns=[_col])
 
-            # epw_data[epw_data.date_time.diff() > pd.Timedelta("1h")]
-
-            # fill forward missing weather data with previous day data
-            # for idx in epw_data[
-            #     epw_data[self.spec.null_check_column].isnull()
-            # ].index.sort_values():
-            #     epw_data.loc[
-            #         idx, ["temp_air", "relative_humidity"]
-            #     ] = epw_data.loc[idx - 24, ["temp_air", "relative_humidity"]]
-
             # compute dewpoint from dry-bulb and relative humidity
-            # if "temp_dew" not in epw_data.columns and all(
-            #     [c in epw_data.columns for c in ["temp_air", "relative_humidity"]]
-            # ):
             fill_data["temp_dew"] = WeatherChannel.dewpoint(
                 fill_data["temp_air"], fill_data["relative_humidity"]
             )
@@ -454,10 +420,6 @@ class WeatherChannel(DataChannel):
             epw_data.to_csv(f, header=False, index=False)
 
         return fpath
-
-    # def epw_datetime(self, dt_column):
-    #     pd.to_datetime(dt_column)
-    # convert date time to epw format: year, month, day, hour, minute
 
     @staticmethod
     def dewpoint(temp_air, relative_humidity):
