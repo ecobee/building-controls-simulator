@@ -298,12 +298,6 @@ class Internal:
         a channel be composed from multiple sources."""
         for k, v in _spec.items():
             if v["unit"] != Internal.full.spec[v["internal_name"]]["unit"]:
-                print(
-                    "Convert: {} to {}".format(
-                        v["unit"],
-                        Internal.full.spec[v["internal_name"]]["unit"],
-                    )
-                )
                 if (v["unit"] == Units.FARHENHEIT) and (
                     Internal.full.spec[v["internal_name"]]["unit"]
                     == Units.CELSIUS
@@ -314,6 +308,13 @@ class Internal:
                     == Units.CELSIUS
                 ):
                     df[k] = Internal.F2C(df[k] / 10.0)
+                else:
+                    logger.error(
+                        "Unsupported conversion: {} to {}".format(
+                            v["unit"],
+                            Internal.full.spec[v["internal_name"]]["unit"],
+                        )
+                    )
         return df
 
     @staticmethod
