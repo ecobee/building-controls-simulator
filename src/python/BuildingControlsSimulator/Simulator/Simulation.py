@@ -124,6 +124,9 @@ class Simulation:
             self.final_time_seconds,
             self.step_size_seconds,
         ):
+            # TODO: generalize controller_model.do_step to translate between
+            # controller model inputs and outputs, i.e. use input time series
+            # occupancy, setpoint changes, hvac mode changes
             controller_output = self.controller_model.do_step(t_ctrl)
 
             self.building_model.actuate_HVAC_equipment(

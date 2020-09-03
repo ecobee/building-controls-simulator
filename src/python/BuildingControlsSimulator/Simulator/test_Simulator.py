@@ -40,9 +40,11 @@ class TestSimulator:
 
         cls.idf_name = "AZ_Phoenix_gasfurnace_crawlspace_IECC_2018_cycles.idf"
 
-        cls.fmu_path = (
+        cls.deadband_fmu_path = (
             f"{os.environ.get('FMU_DIR')}/../fmu-models/deadband/deadband.fmu"
         )
+
+        cls.idtm_fmu_path = f"{os.environ.get('FMU_DIR')}/../fmu-models/idtm.0f94bb5d90d898380ff165b5caf1a70171c3bacc.fmu"
 
     @classmethod
     def teardown_class(cls):
@@ -51,6 +53,7 @@ class TestSimulator:
         """
         pass
 
+    @pytest.mark.skip()
     def test_deadband_fmu_simulation_equivalence(self):
         # test HVAC data returns dict of non-empty pd.DataFrame
         s = Simulation(
@@ -80,7 +83,7 @@ class TestSimulator:
                 weather_file=self.test_weather_path,
             ),
             controller_model=FMIController(
-                fmu_path=self.fmu_path,
+                fmu_path=self.deadband_fmu_path,
                 deadband=2.0,
                 stp_heat=21.0,
                 stp_cool=24.0,
@@ -94,5 +97,30 @@ class TestSimulator:
         s.create_models(preprocess_check=True)
 
         output_df_fmi = s.run()
-
         assert output_df_python.equals(output_df_fmi)
+
+    @pytest.mark.skip()
+    def test_idmt_fmu_simulation(self):
+        s = Simulation(
+            building_model=EnergyPlusBuildingModel(
+                idf=IDFPreprocessor(
+                    idf_file=self.idf_name, init_temperature=22.0,
+                ),
+                weather_file=self.test_weather_path,
+            ),
+            controller_model=FMIController(
+                fmu_path=self.idtm_fmu_path,
+                deadband=2.0,
+                stp_heat=21.0,
+                stp_cool=24.0,
+            ),
+            step_size_minutes=5,
+            start_time_days=182,
+            final_time_days=189,
+        )
+
+        # don't need to recreate EnergyPlus FMU
+        s.create_models(preprocess_check=True)
+
+        output_df_fmi = s.run()
+        print("ok")

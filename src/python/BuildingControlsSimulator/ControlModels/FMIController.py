@@ -1,10 +1,13 @@
 # created by Tom Stesco tom.s@ecobee.com
 
+from abc import ABC, abstractmethod
+import logging
+
 import attr
+import pyfmi
 
 from BuildingControlsSimulator.ControlModels.ControlModel import ControlModel
 from BuildingControlsSimulator.ControlModels.ControlModel import HVAC_modes
-import pyfmi
 
 
 @attr.s(kw_only=True)
@@ -19,10 +22,13 @@ class FMIController(ControlModel):
     """
 
     fmu_path = attr.ib()
+    output_keys = attr.ib()
+    input_keys = attr.ib()
     HVAC_mode = attr.ib(default=HVAC_modes.UNCONTROLLED)
     stp_heat = attr.ib(default=21.0)
     stp_cool = attr.ib(default=25.0)
-    deadband = attr.ib(default=2.0)
+    input_map = attr.ib(default={"HVACmode": "HVACmode", "Tctrl": "Tctrl"})
+    output_map = attr.ib(default={"nextHVACmode": "nextHVACmode"})
 
     def __attrs_post_init__(self):
         """
@@ -30,31 +36,33 @@ class FMIController(ControlModel):
         # self.fmu = pyfmi.load_fmu(self.fmu_path)
         pass
 
-    def initialize(self, start_time_seconds, final_time_seconds):
+    def initialize(self, t_start, t_end):
         """
         """
-        self.fmu = pyfmi.load_fmu(self.fmu_path)
-        self.fmu.initialize(start_time_seconds, final_time_seconds)
+        self.fmu = pyfmi.load_fmu(self.fmu_path, kind="CS", log_level=7)
+        self.fmu.initialize(t_start, t_end)
 
-    def output_keys(self):
-        """
-        Data to return in output.
-        """
-        return ["HVAC_mode", "stp_heat", "stp_cool", "deadband"]
+    # def output_keys(self):
+    #     """
+    #     Data to return in output.
+    #     """
+    #     # return ["HVAC_mode", "stp_heat", "stp_cool", "deadband"]
+    #     pass
 
-    def do_step(self, t_ctrl):
-        """
-        Simulate controller time step.
-        Before building model step `HVAC_mode` is the HVAC_mode for the step
-        """
-        self.HVAC_mode = self.next_HVAC_mode(t_ctrl)
-        output = [getattr(self, k) for k in self.output_keys()]
-        return output
+    # def do_step(self, t_ctrl):
+    #     """
+    #     Simulate controller time step.
+    #     Before building model step `HVAC_mode` is the HVAC_mode for the step
+    #     """
+    #     self.HVAC_mode = self.next_HVAC_mode(t_ctrl)
+    #     output = [getattr(self, k) for k in self.output_keys()]
+    #     return output
 
     def next_HVAC_mode(self, t_ctrl):
         """
         Calculate HVAC mode based on current temperature. 
         """
+        # take output record and parse to FMU
         self.fmu.set("HVACmode", self.HVAC_mode)
         self.fmu.set("Tctrl", t_ctrl)
         self.fmu.set("Thstp", self.stp_heat)

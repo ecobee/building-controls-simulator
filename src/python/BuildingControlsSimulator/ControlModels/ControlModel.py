@@ -1,14 +1,12 @@
 # created by Tom Stesco tom.s@ecobee.com
 
-import os
-import abc
+from abc import ABC, abstractmethod
 from enum import IntEnum
 import logging
 
 import attr
 import pandas as pd
 import numpy as np
-from eppy import modeleditor
 
 
 class HVAC_modes(IntEnum):
@@ -27,7 +25,7 @@ class HVAC_modes(IntEnum):
 
 
 @attr.s
-class ControlModel(object):
+class ControlModel(ABC):
     """ABC for control models
 
     Example:
@@ -37,13 +35,17 @@ class ControlModel(object):
     
     """
 
+    @abstractmethod
     def initialize(self, start_time_seconds, final_time_seconds):
         """
+        Run on first setup and not again.
         """
         pass
 
+    @abstractmethod
     def do_step(self):
         """
+        Defines sequence of step internals.
         """
         pass
 
