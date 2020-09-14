@@ -18,61 +18,153 @@ class Deadband(ControlModel):
     """
 
     HVAC_mode = attr.ib(default=HVAC_modes.UNCONTROLLED)
-    stp_heat = attr.ib(default=21.0)
-    stp_cool = attr.ib(default=25.0)
-    deadband = attr.ib(default=2.0)
+    # stp_heat = attr.ib(default=21.0)
+    # stp_cool = attr.ib(default=25.0)
+    deadband = attr.ib(default=1.0)
+    input_spec = attr.ib(
+        default={
+            "tstat_temperature": {
+                "input_name": "tstat_temperature",
+                "dtype": "float32",
+            },
+            "cool_set_point": {
+                "input_name": "cool_set_point",
+                "dtype": "float32",
+            },
+            "heat_set_point": {
+                "input_name": "heat_set_point",
+                "dtype": "float32",
+            },
+        }
+    )
 
-    def initialize(self, start_time_seconds, final_time_seconds):
-        """
-        """
-        pass
+    output_spec = attr.ib(
+        default={
+            "heat_stage_one": {
+                "output_name": "heat_stage_one",
+                "dtype": "bool",
+            },
+            "heat_stage_two": {
+                "output_name": "heat_stage_two",
+                "dtype": "bool",
+            },
+            "heat_stage_three": {
+                "output_name": "heat_stage_three",
+                "dtype": "bool",
+            },
+            "compressor_cool_stage_one": {
+                "output_name": "compressor_cool_stage_one",
+                "dtype": "bool",
+            },
+            "compressor_cool_stage_two": {
+                "output_name": "compressor_cool_stage_two",
+                "dtype": "bool",
+            },
+            "compressor_cool_stage_three": {
+                "output_name": "compressor_cool_stage_three",
+                "dtype": "bool",
+            },
+            "fan_stage_one": {
+                "output_name": "fan_stage_one",
+                "dtype": "bool",
+            },
+            "fan_stage_two": {
+                "output_name": "fan_stage_two",
+                "dtype": "bool",
+            },
+            "fan_stage_three": {
+                "output_name": "fan_stage_three",
+                "dtype": "bool",
+            },
+        }
+    )
+    step_output = attr.ib(
+        default={
+            "heat_stage_one": False,
+            "heat_stage_two": False,
+            "heat_stage_three": False,
+            "compressor_cool_stage_one": False,
+            "compressor_cool_stage_two": False,
+            "compressore_cool_stage_one": False,
+            "compressor_cool_stage_three": False,
+            "fan_stage_one": False,
+            "fan_stage_two": False,
+            "fan_stage_three": False,
+        }
+    )
 
-    def output_keys(self):
-        """
-        Data to return in output.
-        """
-        return ["HVAC_mode", "stp_heat", "stp_cool", "deadband"]
+    output = attr.ib(default={})
+    current_t_idx = attr.ib(default=0)
 
-    def do_step(self, t_ctrl):
+    def initialize(self, t_start, t_end, ts):
+        """
+        """
+        self.output = {}
+
+        # add fmu state variables
+        for k, v, in self.output_spec.items():
+            if v["dtype"] == "bool":
+                self.output[k] = np.full(n_s, False, dtype="bool")
+            elif v["dtype"] == "float32":
+                self.output[k] = np.full(n_s, -999, dtype="float32")
+            else:
+                raise ValueError(
+                    "Unsupported output_map dtype: {}".format(v["dtype"])
+                )
+
+        self.output["time"] = time
+        self.output["status"] = np.full(n_s, False, dtype="bool")
+
+    def get_t_ctrl(self, tstat_temperature):
+        """
+        """
+        return np.mean(tstat_temperature)
+
+    def do_step(self, step_input):
         """
         Simulate controller time step.
         Before building model step `HVAC_mode` is the HVAC_mode for the step
         """
-        self.HVAC_mode = self.next_HVAC_mode(t_ctrl)
-        output = [getattr(self, k) for k in self.output_keys()]
-        return output
+        t_ctrl = self.get_t_ctrl(step_input["tstat_temperature"])
 
-    def next_HVAC_mode(self, t_ctrl):
-        """
-        Calculate HVAC mode based on current temperature. 
-        """
-        next_HVAC_mode = self.HVAC_mode
         if (
-            t_ctrl < (self.stp_heat - self.deadband)
-            and self.HVAC_mode != HVAC_modes.SINGLE_HEATING_SETPOINT
+            t_ctrl < (step_input["heat_set_point"] - self.deadband)
+            and not self.step_output["heat_stage_one"]
         ):
             # turn on heat
-            next_HVAC_mode = HVAC_modes.SINGLE_HEATING_SETPOINT
+            self.step_output["heat_stage_one"] = True
+            self.step_output["fan_stage_one"] = True
 
         if (
-            t_ctrl > (self.stp_heat + self.deadband)
-            and self.HVAC_mode == HVAC_modes.SINGLE_HEATING_SETPOINT
+            t_ctrl > (step_input["heat_set_point"] + self.deadband)
+            and self.step_output["heat_stage_one"]
         ):
             # turn off heat
-            next_HVAC_mode = HVAC_modes.UNCONTROLLED
+            self.step_output["heat_stage_one"] = False
+            self.step_output["fan_stage_one"] = False
 
         if (
-            t_ctrl > (self.stp_cool + self.deadband)
-            and self.HVAC_mode != HVAC_modes.SINGLE_COOLING_SETPOINT
+            t_ctrl > (step_input["cool_set_point"] + self.deadband)
+            and not self.step_output["compressor_cool_stage_one"]
         ):
             # turn on cool
-            next_HVAC_mode = HVAC_modes.SINGLE_COOLING_SETPOINT
+            self.step_output["compressor_cool_stage_one"] = True
+            self.step_output["fan_stage_one"] = True
 
         if (
-            t_ctrl < (self.stp_cool - self.deadband)
-            and self.HVAC_mode == HVAC_modes.SINGLE_COOLING_SETPOINT
+            t_ctrl < (step_input["cool_set_point"] - self.deadband)
+            and self.step_output["compressor_cool_stage_one"]
         ):
             # turn off cool
-            next_HVAC_mode = HVAC_modes.UNCONTROLLED
+            self.step_output["compressor_cool_stage_one"] = False
+            self.step_output["fan_stage_one"] = False
 
-        return next_HVAC_mode
+        add_step_to_output(step_output)
+
+        return self.step_output
+
+    def add_step_to_output(step_output):
+        for k, v in step_output.items():
+            self.output["k"][self.current_t_idx] = v
+
+        self.current_t_idx += 1

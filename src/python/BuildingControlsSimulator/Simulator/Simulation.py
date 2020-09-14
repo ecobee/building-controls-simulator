@@ -28,10 +28,12 @@ class Simulation:
 
     building_model = attr.ib()
     controller_model = attr.ib()
+    data_client = attr.ib()
+    config = attr.ib()
     # TODO add validator
-    step_size_minutes = attr.ib()
-    start_time_days = attr.ib()
-    final_time_days = attr.ib()
+    # step_size_minutes = attr.ib()
+    # start_time_days = attr.ib()
+    # final_time_days = attr.ib()
     output_data_dir = attr.ib(
         default=os.path.join(os.environ.get("OUTPUT_DIR"), "data")
     )
@@ -39,32 +41,60 @@ class Simulation:
         default=os.path.join(os.environ.get("OUTPUT_DIR"), "plot")
     )
 
+    # output_monitor = attr.ib(default=pd.DataFrame([], columns=["datetime_utc"], dtype="datetime64[ns, utc]")
+
+    def __attrs_post_init__(self):
+        """validate input/output specs
+        next input must be minimally satisfied by previous output
+        """
+        missing_controller_output_keys = [
+            k
+            for k in self.building_model.input_keys
+            if k not in self.controller_model.output_keys
+        ]
+        if any(missing_controller_output_keys):
+            raise ValueError(
+                f"""
+                type(controller_model)={type(self.controller_model)}
+                Missing controller output keys: {missing_controller_output_keys}
+                """
+            )
+
+        missing_building_output_keys = [
+            k
+            for k in self.controller_model.input_keys
+            if k not in self.building_model.output_keys
+        ]
+        if any(missing_building_output_keys):
+            raise ValueError(
+                f"""
+                type(building_model)={type(self.building_model)}
+                Missing building model output keys: {missing_building_output_keys}
+                """
+            )
+
     @property
     def steps_per_hour(self):
-        return int(60 / self.step_size_minutes)
+        return int(60 / self.config.step_size_minutes)
 
     @property
     def step_size_seconds(self):
-        return int(self.step_size_minutes * 60)
+        return int(self.config.step_size_minutes * 60)
 
     @property
     def start_time_seconds(self):
-        return int(self.start_time_days * 86400)
+        return int(self.config.start_time_days * 86400)
 
     @property
     def final_time_seconds(self):
-        return int(self.final_time_days * 86400)
-
-    @property
-    def simulator_output_keys(self):
-        return ["time_seconds", "step_status", "t_ctrl"]
+        return int(self.config.final_time_days * 86400)
 
     @property
     def output_keys(self):
         return (
             self.simulator_output_keys
-            + self.controller_model.output_keys()
-            + list(self.building_model.fmu.get_model_variables().keys())
+            + self.controller_model.output_keys
+            + self.building_model.output_keys
         )
 
     @property
@@ -72,6 +102,8 @@ class Simulation:
         return self.building_model.fmu.get_model_variables().keys()
 
     def create_models(self, preprocess_check=False):
+        self.data_client.get_data()
+
         self.building_model.idf.preprocess(
             timesteps_per_hour=self.steps_per_hour,
             preprocess_check=preprocess_check,
@@ -79,13 +111,17 @@ class Simulation:
         return self.building_model.create_model_fmu()
 
     def initialize(self):
-        """initialize FMU models
+        """initialize sub-system models
         """
         self.building_model.initialize(
-            self.start_time_seconds, self.final_time_seconds
+            t_start=self.start_time_seconds,
+            t_end=self.final_time_seconds,
+            ts=self.step_size_seconds,
         )
         self.controller_model.initialize(
-            self.start_time_seconds, self.final_time_seconds
+            t_start=self.start_time_seconds,
+            t_end=self.final_time_seconds,
+            ts=self.step_size_seconds,
         )
 
     def get_air_temp_output_idx(self):
@@ -103,11 +139,6 @@ class Simulation:
             if k in air_temp_var_names
         ]
 
-    def calc_T_control(self, building_model_output, air_temp_output_idx):
-        """
-        """
-        return np.mean(building_model_output[air_temp_output_idx])
-
     def run(self):
         """
         """
@@ -118,6 +149,36 @@ class Simulation:
         output = []
         t_ctrl = self.building_model.init_temperature
         air_temp_output_idx = self.get_air_temp_output_idx()
+
+        # pre-allocate output arrays
+        sim_time = np.arange(
+            self.start_time_seconds,
+            self.final_time_seconds,
+            self.step_size_seconds,
+            dtype="int64",
+        )
+
+        for i in range(0, len(sim_time)):
+
+            self.controller_model.do_step(
+                t_start=sim_time[i],
+                t_end=sim_time[i] + self.step_size_seconds,
+                step_building_input=self.controller_model.get_step_input(
+                    self.building_model.get_step_output()
+                ),
+                step_weather_input=[],
+                step_occupancy_input=[],
+            )
+
+            self.building_model.do_step(
+                t_start=sim_time[i],
+                t_end=sim_time[i] + self.step_size_seconds,
+                step_control_input=self.building_model.get_step_input(
+                    self.controller_model.get_step_output()
+                ),
+                step_weather_input=[],
+                step_occupancy_input=[],
+            )
 
         for t_step_seconds in range(
             self.start_time_seconds,
@@ -143,10 +204,6 @@ class Simulation:
                     self.building_model.fmu.get(k)[0]
                     for k in self.building_model_output_keys
                 ]
-            )
-
-            t_ctrl = self.calc_T_control(
-                building_model_output, air_temp_output_idx
             )
 
             step_output = (

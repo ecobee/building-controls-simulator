@@ -22,13 +22,14 @@ class FMIController(ControlModel):
     """
 
     fmu_path = attr.ib()
-    output_keys = attr.ib()
-    input_keys = attr.ib()
-    HVAC_mode = attr.ib(default=HVAC_modes.UNCONTROLLED)
-    stp_heat = attr.ib(default=21.0)
-    stp_cool = attr.ib(default=25.0)
-    input_map = attr.ib(default={"HVACmode": "HVACmode", "Tctrl": "Tctrl"})
-    output_map = attr.ib(default={"nextHVACmode": "nextHVACmode"})
+    # output_keys = attr.ib()
+    # input_keys = attr.ib()
+    # init_keys = attr.ib()
+    # HVAC_mode = attr.ib(default=HVAC_modes.UNCONTROLLED)
+    # stp_heat = attr.ib(default=21.0)
+    # stp_cool = attr.ib(default=25.0)
+    input_spec = attr.ib()
+    output_spec = attr.ib()
 
     def __attrs_post_init__(self):
         """
@@ -36,7 +37,7 @@ class FMIController(ControlModel):
         # self.fmu = pyfmi.load_fmu(self.fmu_path)
         pass
 
-    def initialize(self, t_start, t_end):
+    def initialize(self, t_start, t_end, ts):
         """
         """
         self.fmu = pyfmi.load_fmu(self.fmu_path, kind="CS", log_level=7)
