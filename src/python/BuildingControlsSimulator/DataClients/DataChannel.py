@@ -16,6 +16,7 @@ class DataChannel:
     data = attr.ib()
     spec = attr.ib()
     full_data_periods = attr.ib(default=[])
+    sim_data = attr.ib(default=[])
 
     def get_full_data_periods(self, expected_period):
         # if self.data has no records then there are no full_data_periods

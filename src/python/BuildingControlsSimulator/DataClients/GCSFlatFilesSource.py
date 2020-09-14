@@ -19,8 +19,7 @@ class GCSFlatFilesSource(GCSDataSource):
     source_name = attr.ib(default="GCSFlatFiles")
 
     def get_gcs_uri(self, sim_config):
-        sim_config = sim_config.reset_index()
-        sim_config["gcs_uri"] = (
+        gcs_uri = (
             self.gcs_uri_base
             + "/"
             + sim_config["identifier"]
@@ -28,6 +27,4 @@ class GCSFlatFilesSource(GCSDataSource):
             + self.file_extension
         )
 
-        sim_config = sim_config.set_index("identifier")
-
-        return sim_config
+        return gcs_uri

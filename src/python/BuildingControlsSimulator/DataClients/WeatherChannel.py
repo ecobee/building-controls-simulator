@@ -49,18 +49,20 @@ class WeatherChannel(DataChannel):
             + f"_{fill_epw_fname}",
         )
 
-    def make_epw_file(self, tstat):
+    def make_epw_file(self, sim_config):
         _epw_fpath = None
         # attempt to get .epw data from NREL
         fill_epw_fpath, fill_epw_fname = self.get_tmy_epw(
-            tstat.latitude, tstat.longitude
+            sim_config["latitude"], sim_config["longitude"]
         )
         (fill_epw_data, epw_meta, meta_lines,) = self.read_epw(fill_epw_fpath)
 
         if not fill_epw_data.empty:
             _epw_fpath = os.path.join(
                 self.simulation_epw_dir,
-                "NREL_EPLUS" + f"_{tstat.name}" + f"_{fill_epw_fname}",
+                "NREL_EPLUS"
+                + f"_{sim_config['identifier']}"
+                + f"_{fill_epw_fname}",
             )
 
             # fill any missing fields in epw

@@ -25,29 +25,30 @@ class DataSource(ABC):
     def get_data(self, sim_config):
         pass
 
-    def put_cache(self, _df, identifier):
+    def put_cache(self, _df, local_cache_path):
         # only store cache if set local_cache dir
-        if self.local_cache:
-            cache_file = self.get_local_cache_file(identifier)
-            os.makedirs(os.path.dirname(cache_file), exist_ok=True)
+        if self.local_cache_path:
+            os.makedirs(os.path.dirname(local_cache_path), exist_ok=True)
             # explictly infer compression from source file extension
-            _df.to_csv(cache_file, compression="infer")
+            _df.to_csv(local_cache_path, compression="infer")
 
-    def get_local_cache_file(self, identifier):
+    def get_local_cache_path(self, identifier):
         return os.path.join(
             self.local_cache,
             self.source_name,
             "{}.{}".format(identifier, self.file_extension),
         )
 
-    def get_local_cache(self, identifier):
-        cache_file = os.path.join(
-            self.local_cache,
-            self.source_name,
-            "{}.{}".format(identifier, self.file_extension),
-        )
-        if os.path.exists(cache_file):
-            _df = pd.read_csv(cache_file, usecols=self.data_spec.full.columns,)
+    def get_local_cache(self, local_cache_path):
+        # cache_file = os.path.join(
+        #     self.local_cache,
+        #     self.source_name,
+        #     "{}.{}".format(identifier, self.file_extension),
+        # )
+        if os.path.exists(local_cache_path):
+            _df = pd.read_csv(
+                local_cache_path, usecols=self.data_spec.full.columns,
+            )
 
         else:
             _df = self.get_empty_df()

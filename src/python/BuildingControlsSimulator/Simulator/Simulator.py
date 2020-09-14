@@ -2,6 +2,7 @@
 
 import os
 import logging
+import copy
 
 import pandas as pd
 import numpy as np
@@ -51,19 +52,24 @@ class Simulator:
         """Lazy init of all simulations
         """
         # simulation for each permutation: data, building, and controller
-        for identifier, sim_config in self.sim_config.iterrows():
-            breakpoint()
-            for b in self.building_models:
+        for _idx, _sim_config in self.sim_config.iterrows():
 
+            # the data client is copied once per sim_config so that permutations
+            # of building and controller models can reuse data where possible
+            dc = copy.deepcopy(self.data_client)
+            dc.sim_config = _sim_config
+            for b in self.building_models:
                 for c in self.controller_models:
 
                     # lazy init of simulation model
+                    # deep copies are used so that models can be in user code
+                    # and then be fully initialized lazily per simulation
                     self.simulations.append(
                         Simulation(
-                            config=sim_config,
-                            data_client=self.data_client[identifier],
-                            building_model=b,
-                            controller_model=c,
+                            config=_sim_config,
+                            data_client=dc,
+                            building_model=copy.deepcopy(b),
+                            controller_model=copy.deepcopy(c),
                         )
                     )
 
