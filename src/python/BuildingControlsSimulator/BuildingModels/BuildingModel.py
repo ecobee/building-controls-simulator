@@ -2,6 +2,8 @@
 
 import os
 import logging
+from abc import ABC, abstractmethod
+
 
 import pandas as pd
 import attr
@@ -13,9 +15,17 @@ logger = logging.getLogger(__name__)
 
 
 @attr.s
-class BuildingModel(object):
+class BuildingModel(ABC):
     """Abstract Base Class for building models
     """
 
-    def test_abc(self):
+    @abstractmethod
+    def initialize(self, t_start, t_end, ts):
+        pass
+
+    @abstractmethod
+    def do_step(self):
+        """
+        Defines sequence of step internals.
+        """
         pass

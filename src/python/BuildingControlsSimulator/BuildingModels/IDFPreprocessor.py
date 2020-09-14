@@ -34,15 +34,12 @@ class IDFPreprocessor:
     init_temperature = attr.ib(type=float, default=21.0)
     init_control_type = attr.ib(type=int, default=2)
     debug = attr.ib(type=bool, default=False)
-    timesteps = attr.ib(type=int, default=12)
-    fmi_version = attr.ib(type=float, default=1.0)
+    timesteps_per_hour = attr.ib(type=int, default=12)
 
     # first, terminate env vars, these will raise exceptions if undefined
     ep_version = attr.ib(default=os.environ.get("ENERGYPLUS_INSTALL_VERSION"))
     idf_dir = attr.ib(default=os.environ.get("IDF_DIR"))
     idd_path = attr.ib(default=os.environ.get("EPLUS_IDD"))
-    fmu_dir = attr.ib(default=os.environ.get("FMU_DIR"))
-    eplustofmu_path = attr.ib(default=os.environ.get("ENERGYPLUSTOFMUSCRIPT"))
 
     def __attrs_post_init__(self):
         """Initialize `IDFPreprocessor` with an IDF file and desired actions"""
@@ -92,25 +89,6 @@ class IDFPreprocessor:
     def idf_prep_path(self):
         return os.path.join(self.idf_prep_dir, self.idf_prep_name)
 
-    @property
-    def fmu_name(self):
-        fmu_name = os.path.splitext(self.idf_prep_name)[0]
-        # add automatic conversion rules for fmu naming
-        idf_bad_chars = [" ", "-", "+", "."]
-        for c in idf_bad_chars:
-            fmu_name = fmu_name.replace(c, "_")
-
-        if fmu_name[0].isdigit():
-            fmu_name = "f_" + fmu_name
-
-        fmu_name = fmu_name + ".fmu"
-
-        return fmu_name
-
-    @property
-    def fmu_path(self):
-        return os.path.join(self.fmu_dir, self.fmu_name)
-
     def output_keys(self):
         """
         """
@@ -120,7 +98,6 @@ class IDFPreprocessor:
         self,
         init_control_type=1,
         init_temperature=21.0,
-        timesteps_per_hour=60,
         preprocess_check=False,
     ):
         """add control signals to IDF before making FMU"""
@@ -137,7 +114,7 @@ class IDFPreprocessor:
             logger.info(f"Making new preprocessed IDF: {self.idf_prep_path}")
             self.prep_ep_version(self.ep_version)
             self.prep_simulation_control()
-            self.prep_timesteps(timesteps_per_hour)
+            self.prep_timesteps(self.timesteps_per_hour)
             self.prep_runtime()
             self.prep_ext_int()
 
@@ -194,47 +171,6 @@ class IDFPreprocessor:
             fix_idf_version_line(self.idf_prep_path, self.ep_version)
 
         return self.idf_prep_path
-
-    def make_fmu(self, weather):
-        """make the fmu
-
-        Calls FMU model generation script from https://github.com/lbl-srg/EnergyPlusToFMU.
-        This script litters temporary files of fixed names which get clobbered
-        if running in parallel. Need to fix scripts to be able to run in parallel.
-        """
-        cmd = f"python2.7 {self.eplustofmu_path}"
-        cmd += f" -i {self.idd_path}"
-        cmd += f" -w {weather}"
-        cmd += f" -a {self.fmi_version}"
-        cmd += f" -d {self.idf_prep_path}"
-
-        proc = subprocess.run(shlex.split(cmd), stdout=subprocess.PIPE)
-        if not proc.stdout:
-            raise ValueError(
-                f"Empty STDOUT. Invalid EnergyPlusToFMU cmd={cmd}"
-            )
-
-        # EnergyPlusToFMU puts fmu in cwd always, move out of cwd
-        shutil.move(
-            os.path.join(
-                os.getcwd(),
-                self.fmu_name.replace(
-                    self.ep_version, self.ep_version.replace("-", "_")
-                ),
-            ),
-            self.fmu_path,
-        )
-        # check FMI compliance
-        # -h specifies the step size in seconds, -s is the stop time in seconds.
-        # Stop time must be a multiple of 86400.
-        # The step size needs to be the same as the .idf file specifies
-
-        cmd = f'yes | {os.environ["EXT_DIR"]}/FMUComplianceChecker/fmuCheck.linux64 -h {self.timesteps} -s 172800 {self.fmu_path}'.split()
-        # subprocess.run(cmd.split(), stdout=subprocess.PIPE)
-        # if not proc.stdout:
-        #     raise ValueError(f"Empty STDOUT. Invalid EnergyPlusToFMU cmd={cmd}")
-
-        return self.fmu_path
 
     def prep_runtime(self):
         """
@@ -577,6 +513,7 @@ class IDFPreprocessor:
         """
         create external interface.
         """
+        self.popallidfobjects("EXTERNALINTERFACE")
         self.ep_idf.newidfobject(
             "EXTERNALINTERFACE",
             Name_of_External_Interface="FunctionalMockupUnitExport",

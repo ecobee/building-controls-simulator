@@ -24,7 +24,6 @@ class TestIDFPreprocessor:
     @classmethod
     def setup_class(cls):
         # basic IDF file found in all EnergyPlus installations
-        # cls.eplus_dir = os.environ.get("EPLUS_DIR")
         cls.dummy_idf_name = "Furnace.idf"
         cls.dummy_weather_name = "USA_IL_Chicago-OHare.Intl.AP.725300_TMY3.epw"
 
@@ -54,8 +53,10 @@ class TestIDFPreprocessor:
             )
             shutil.copyfile(_fpath, cls.dummy_weather_file)
 
-        cls.idf = IDFPreprocessor(idf_file=cls.dummy_idf_path,)
-        cls.step_size = int(3600.0 / cls.idf.timesteps)
+        cls.idf = IDFPreprocessor(
+            idf_file=cls.dummy_idf_path, timesteps_per_hour=12
+        )
+        cls.step_size = int(3600.0 / cls.idf.timesteps_per_hour)
 
     @classmethod
     def teardown_class(cls):
@@ -68,63 +69,8 @@ class TestIDFPreprocessor:
         """
         test that preprocessing produces output file
         """
-        prep_idf = self.idf.preprocess(timesteps_per_hour=self.idf.timesteps)
+        prep_idf = self.idf.preprocess(preprocess_check=False)
         assert os.path.exists(prep_idf)
 
         # test that preprocessing produces valid IDF output file
         assert self.idf.check_valid_idf(prep_idf) is True
-
-    def test_make_fmu(self):
-        """
-        test that make_fmu produces fmu file
-        """
-        fmu = self.idf.make_fmu(weather=self.dummy_weather_file)
-        assert os.path.exists(fmu)
-
-    def test_fmu_compliance(self):
-        """
-        test that fmu file is compliant with FMI.
-        """
-        # use `bash expect` to run non-interactive
-        cmd = """
-        bash expect 'Press enter to continue.' {{ send '\r' }} |
-        {}/FMUComplianceChecker/fmuCheck.linux64 -h {} -s 172800 -o {} {}
-        """.format(
-            os.environ.get("EXT_DIR"),
-            self.step_size,
-            os.path.join(
-                os.environ.get("OUTPUT_DIR"), "compliance_check_output.csv"
-            ),
-            self.idf.fmu_path,
-        )
-
-        logger.info("FMU compliance checker command:")
-        logger.info(cmd)
-        # shlex causes FMUComplianceChecker to run with options, use cmd string
-        out = subprocess.run(
-            cmd, shell=True, capture_output=False, text=True, input="\n"
-        )
-
-        assert out.returncode == 0
-
-    def test_pyfmi_load_fmu(self):
-        """
-        test that fmu can be loaded with pyfmi
-        """
-        model = pyfmi.load_fmu(self.idf.fmu_path)
-        assert model.get_version() == "1.0"
-
-    def test_simulate_fmu(self):
-        """
-        test that fmu can be simulated with pyfmi
-        """
-        model = pyfmi.load_fmu(self.idf.fmu_path)
-        opts = model.simulate_options()
-        t_end = 86400.0
-        opts["ncp"] = int(t_end / self.step_size)
-
-        res = model.simulate(final_time=t_end, options=opts)
-
-        output = res.result_data.get_data_matrix()
-
-        assert output.shape == (24, opts["ncp"] + 1)
