@@ -22,12 +22,6 @@ class FMIController(ControlModel):
     """
 
     fmu_path = attr.ib()
-    # output_keys = attr.ib()
-    # input_keys = attr.ib()
-    # init_keys = attr.ib()
-    # HVAC_mode = attr.ib(default=HVAC_modes.UNCONTROLLED)
-    # stp_heat = attr.ib(default=21.0)
-    # stp_cool = attr.ib(default=25.0)
     input_spec = attr.ib()
     output_spec = attr.ib()
 

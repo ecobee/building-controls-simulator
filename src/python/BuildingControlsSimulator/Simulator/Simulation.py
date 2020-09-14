@@ -30,10 +30,6 @@ class Simulation:
     controller_model = attr.ib()
     data_client = attr.ib()
     config = attr.ib()
-    # TODO add validator
-    # step_size_minutes = attr.ib()
-    # start_time_days = attr.ib()
-    # final_time_days = attr.ib()
     output_data_dir = attr.ib(
         default=os.path.join(os.environ.get("OUTPUT_DIR"), "data")
     )
@@ -47,10 +43,12 @@ class Simulation:
         """validate input/output specs
         next input must be minimally satisfied by previous output
         """
+        breakpoint()
+
         missing_controller_output_keys = [
             k
-            for k in self.building_model.input_keys
-            if k not in self.controller_model.output_keys
+            for k in self.building_model.input_spec.keys()
+            if k not in self.controller_model.output_spec.keys()
         ]
         if any(missing_controller_output_keys):
             raise ValueError(
@@ -62,8 +60,8 @@ class Simulation:
 
         missing_building_output_keys = [
             k
-            for k in self.controller_model.input_keys
-            if k not in self.building_model.output_keys
+            for k in self.controller_model.input_spec.keys()
+            if k not in self.building_model.output_spec.keys()
         ]
         if any(missing_building_output_keys):
             raise ValueError(

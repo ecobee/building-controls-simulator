@@ -50,12 +50,10 @@ class TestSimulator:
         cls.idtm_fmu_path = f"{os.environ.get('FMU_DIR')}/../fmu-models/idtm.0f94bb5d90d898380ff165b5caf1a70171c3bacc.fmu"
 
         cls.dc = DataClient(
-            sources=[
-                GCSDYDSource(
-                    gcp_project=os.environ.get("GOOGLE_CLOUD_PROJECT"),
-                    gcs_uri_base=os.environ.get("DYD_GCS_URI_BASE"),
-                )
-            ],
+            source=GCSDYDSource(
+                gcp_project=os.environ.get("GOOGLE_CLOUD_PROJECT"),
+                gcs_uri_base=os.environ.get("DYD_GCS_URI_BASE"),
+            ),
             nrel_dev_api_key=os.environ.get("NREL_DEV_API_KEY"),
             nrel_dev_email=os.environ.get("NREL_DEV_EMAIL"),
             archive_tmy3_meta=os.environ.get("ARCHIVE_TMY3_META"),

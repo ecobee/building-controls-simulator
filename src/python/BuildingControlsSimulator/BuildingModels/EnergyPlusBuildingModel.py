@@ -43,44 +43,53 @@ class EnergyPlusBuildingModel(BuildingModel):
     # ep_version = attr.ib(default=os.environ.get("ENERGYPLUS_INSTALL_VERSION"))
     ext_dir = attr.ib(default=os.environ.get("EXT_DIR"))
 
-    building_input_spec = attr.ib(
+    input_spec = attr.ib(
         default={
-            "HeatStageOne": {"input_name": "HeatStageOne", "dtype": "bool",},
-            "HeatStageTwo": {"input_name": "HeatStageTwo", "dtype": "bool",},
-            "HeatStageThree": {
-                "input_name": "HeatStageThree",
+            "heat_stage_one": {
+                "input_name": "heat_stage_one",
                 "dtype": "bool",
             },
-            "CompressorCoolStageOne": {
-                "input_name": "CompressorCoolStageOne",
+            "heat_stage_two": {
+                "input_name": "heat_stage_two",
                 "dtype": "bool",
             },
-            "CompressorCoolStageTwo": {
-                "input_name": "CompressorCoolStageTwo",
+            "heat_stage_three": {
+                "input_name": "heat_stage_three",
                 "dtype": "bool",
             },
-            "CompressorHeatStageOne": {
-                "input_name": "CompressorHeatStageOne",
+            "compressor_cool_stage_one": {
+                "input_name": "compressor_cool_stage_one",
                 "dtype": "bool",
             },
-            "CompressorHeatStageTwo": {
-                "input_name": "CompressorHeatStageTwo",
+            "compressor_cool_stage_two": {
+                "input_name": "compressor_cool_stage_two",
                 "dtype": "bool",
             },
-            "FanStageOne": {"input_name": "FanStageOne", "dtype": "bool",},
-            "FanStageTwo": {"input_name": "FanStageTwo", "dtype": "bool",},
-            "FanStageThree": {"input_name": "FanStageThree", "dtype": "bool",},
+            "compressor_heat_stage_one": {
+                "input_name": "compressor_heat_stage_one",
+                "dtype": "bool",
+            },
+            "compressor_heat_stage_two": {
+                "input_name": "compressor_heat_stage_two",
+                "dtype": "bool",
+            },
+            "fan_stage_one": {"input_name": "fan_stage_one", "dtype": "bool",},
+            "fan_stage_two": {"input_name": "fan_stage_two", "dtype": "bool",},
+            "fan_stage_three": {
+                "input_name": "fan_stage_three",
+                "dtype": "bool",
+            },
         }
     )
     # keys with "output_name" == None are not part of external output
-    building_output_spec = attr.ib(
+    output_spec = attr.ib(
         default={
-            "TstatTemperature": {
-                "output_name": "TstatTemperature",
+            "tstat_temperature": {
+                "output_name": "tstat_temperature",
                 "dtype": "float32",
             },
-            "TstatHumidity": {
-                "output_name": "TstatHumidity",
+            "tstat_humidity": {
+                "output_name": "tstat_humidity",
                 "dtype": "float32",
             },
             "Status": {"output_name": None, "dtype": "bool",},

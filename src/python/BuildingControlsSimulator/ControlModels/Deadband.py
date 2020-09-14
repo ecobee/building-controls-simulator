@@ -1,6 +1,8 @@
 # created by Tom Stesco tom.s@ecobee.com
 
 import attr
+import pandas as pd
+import numpy as np
 
 from BuildingControlsSimulator.ControlModels.ControlModel import ControlModel
 from BuildingControlsSimulator.ControlModels.ControlModel import HVAC_modes
@@ -17,9 +19,6 @@ class Deadband(ControlModel):
 
     """
 
-    HVAC_mode = attr.ib(default=HVAC_modes.UNCONTROLLED)
-    # stp_heat = attr.ib(default=21.0)
-    # stp_cool = attr.ib(default=25.0)
     deadband = attr.ib(default=1.0)
     input_spec = attr.ib(
         default={
@@ -60,8 +59,12 @@ class Deadband(ControlModel):
                 "output_name": "compressor_cool_stage_two",
                 "dtype": "bool",
             },
-            "compressor_cool_stage_three": {
-                "output_name": "compressor_cool_stage_three",
+            "compressor_heat_stage_one": {
+                "output_name": "compressor_heat_stage_one",
+                "dtype": "bool",
+            },
+            "compressor_heat_stage_two": {
+                "output_name": "compressor_heat_stage_two",
                 "dtype": "bool",
             },
             "fan_stage_one": {
@@ -99,6 +102,8 @@ class Deadband(ControlModel):
     def initialize(self, t_start, t_end, ts):
         """
         """
+        self.output["time"] = np.arange(t_start, t_end, ts, dtype="int64")
+        n_s = len(self.output["time"])
         self.output = {}
 
         # add fmu state variables
@@ -112,7 +117,6 @@ class Deadband(ControlModel):
                     "Unsupported output_map dtype: {}".format(v["dtype"])
                 )
 
-        self.output["time"] = time
         self.output["status"] = np.full(n_s, False, dtype="bool")
 
     def get_t_ctrl(self, tstat_temperature):
@@ -159,11 +163,11 @@ class Deadband(ControlModel):
             self.step_output["compressor_cool_stage_one"] = False
             self.step_output["fan_stage_one"] = False
 
-        add_step_to_output(step_output)
+        self.add_step_to_output(self.step_output)
 
         return self.step_output
 
-    def add_step_to_output(step_output):
+    def add_step_to_output(self, step_output):
         for k, v in step_output.items():
             self.output["k"][self.current_t_idx] = v
 

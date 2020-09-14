@@ -11,6 +11,7 @@ from BuildingControlsSimulator.DataClients.DataSpec import Internal
 from BuildingControlsSimulator.DataClients.SensorsChannel import SensorsChannel
 from BuildingControlsSimulator.DataClients.HVACChannel import HVACChannel
 from BuildingControlsSimulator.DataClients.WeatherChannel import WeatherChannel
+from BuildingControlsSimulator.DataClients.DataSource import DataSource
 
 logger = logging.getLogger(__name__)
 
@@ -24,7 +25,7 @@ class DataClient:
     weather = attr.ib(default={})
 
     # input variables
-    source = attr.ib()
+    source = attr.ib(validator=attr.validators.instance_of(DataSource))
     nrel_dev_api_key = attr.ib(default=None)
     nrel_dev_email = attr.ib(default=None)
     archive_tmy3_meta = attr.ib(default=None)
