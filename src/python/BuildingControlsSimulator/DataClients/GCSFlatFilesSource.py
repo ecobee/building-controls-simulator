@@ -18,16 +18,16 @@ class GCSFlatFilesSource(GCSDataSource):
     file_extension = attr.ib(default="csv.gz")
     source_name = attr.ib(default="GCSFlatFiles")
 
-    def get_gcs_uri(self, tstat_sim_config):
-        tstat_sim_config = tstat_sim_config.reset_index()
-        tstat_sim_config["gcs_uri"] = (
+    def get_gcs_uri(self, sim_config):
+        sim_config = sim_config.reset_index()
+        sim_config["gcs_uri"] = (
             self.gcs_uri_base
             + "/"
-            + tstat_sim_config["identifier"]
+            + sim_config["identifier"]
             + "."
             + self.file_extension
         )
 
-        tstat_sim_config = tstat_sim_config.set_index("identifier")
+        sim_config = sim_config.set_index("identifier")
 
-        return tstat_sim_config
+        return sim_config

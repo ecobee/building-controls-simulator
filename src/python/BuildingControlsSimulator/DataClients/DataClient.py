@@ -48,25 +48,25 @@ class DataClient:
         os.makedirs(self.ep_tmy3_cache_dir, exist_ok=True)
         os.makedirs(self.simulation_epw_dir, exist_ok=True)
 
-    def get_data(self, tstat_sim_config):
+    def get_data(self, sim_config):
 
         # check for invalid start/end combination
-        invalid = tstat_sim_config[
-            tstat_sim_config["end_utc"] <= tstat_sim_config["start_utc"]
+        invalid = sim_config[
+            sim_config["end_utc"] <= sim_config["start_utc"]
         ]
 
         if not invalid.empty:
             raise ValueError(
-                "tstat_sim_config contains invalid start_utc >= end_utc."
+                "sim_config contains invalid start_utc >= end_utc."
             )
 
         _data = {
             identifier: pd.DataFrame([], columns=[Internal.datetime_column])
-            for identifier in tstat_sim_config.index
+            for identifier in sim_config.index
         }
         for _s in self.sources:
             # load from cache or download data from source
-            _data_dict = _s.get_data(tstat_sim_config)
+            _data_dict = _s.get_data(sim_config)
             for tstat, _df in _data_dict.items():
                 # joining on datetime column with the initial empty df having
                 # only the datetime_column causes new columns to be added
@@ -83,7 +83,7 @@ class DataClient:
                         _data[tstat] = Internal.get_empty_df()
 
         # finally create the data channel objs for usage during simulation
-        for identifier, tstat in tstat_sim_config.iterrows():
+        for identifier, tstat in sim_config.iterrows():
 
             self.hvac[identifier] = HVACChannel(
                 data=_data[identifier][
@@ -133,100 +133,10 @@ class DataClient:
             subset=["Identifier"]
         )
 
-    def make_tstat_sim_config(
-        self,
-        identifier,
-        latitude,
-        longitude,
-        start_utc,
-        end_utc,
-        min_sim_period,
-        min_chunk_period,
-    ):
-        # first make sure identifier has a len()
-        if not isinstance(identifier, Iterable):
-            identifier = [identifier]
-
-        # broadcast single values to lists of len(identifier)
-        (
-            latitude,
-            longitude,
-            start_utc,
-            end_utc,
-            min_sim_period,
-            min_chunk_period,
-        ) = [
-            [v] * len(identifier)
-            if (not isinstance(v, Iterable) or isinstance(v, str))
-            else v
-            for v in [
-                latitude,
-                longitude,
-                start_utc,
-                end_utc,
-                min_sim_period,
-                min_chunk_period,
-            ]
-        ]
-
-        # parse and validate input
-        for i in range(len(identifier)):
-            if not isinstance(latitude[i], float):
-                raise ValueError(
-                    f"latitude[{i}]: {latitude[i]} is not a float."
-                )
-            if not isinstance(longitude[i], float):
-                raise ValueError(
-                    f"longitude[{i}]: {longitude[i]} is not a float."
-                )
-            # convert str to datetime utc
-            if isinstance(start_utc[i], str):
-                start_utc[i] = pd.Timestamp(start_utc[i], tz="utc")
-            if isinstance(end_utc[i], str):
-                end_utc[i] = pd.Timestamp(end_utc[i], tz="utc")
-
-            if not isinstance(start_utc[i], pd.Timestamp):
-                raise ValueError(
-                    f"start_utc[{i}]: {start_utc[i]} is not convertable to pd.Timestamp."
-                )
-            if not isinstance(end_utc[i], pd.Timestamp):
-                raise ValueError(
-                    f"end_utc[{i}]: {end_utc[i]} is not convertable to pd.Timestamp."
-                )
-
-            # convert str to timedelta
-            if isinstance(min_sim_period[i], str):
-                min_sim_period[i] = pd.Timedelta(min_sim_period[i])
-            if isinstance(min_chunk_period[i], str):
-                min_chunk_period[i] = pd.Timedelta(min_chunk_period[i])
-
-            if not isinstance(min_sim_period[i], pd.Timedelta):
-                raise ValueError(
-                    f"min_sim_period[{i}]: {min_sim_period[i]} is not convertable to pd.Timedelta."
-                )
-            if not isinstance(min_chunk_period[i], pd.Timedelta):
-                raise ValueError(
-                    f"min_chunk_period[{i}]: {min_chunk_period[i]} is not convertable to pd.Timedelta."
-                )
-
-        _df = pd.DataFrame.from_dict(
-            {
-                "identifier": identifier,
-                "latitude": latitude,
-                "longitude": longitude,
-                "start_utc": start_utc,
-                "end_utc": end_utc,
-                "min_sim_period": min_sim_period,
-                "min_chunk_period": min_chunk_period,
-            }
-        ).set_index("identifier")
-
-        return _df
-
-    def get_simulation_data(self, tstat_sim_config):
+    def get_simulation_data(self, sim_config):
         sim_hvac_data = {}
         sim_weather_data = {}
-        for identifier, tstat in tstat_sim_config.iterrows():
+        for identifier, tstat in sim_config.iterrows():
             sim_hvac_data[identifier] = []
             sim_weather_data[identifier] = []
 

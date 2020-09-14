@@ -36,7 +36,7 @@ class TestFlatFilesClient:
             simulation_epw_dir=os.environ.get("SIMULATION_EPW_DIR"),
         )
 
-        cls.tstat_sim_config = cls.dc.make_tstat_sim_config(
+        cls.sim_config = cls.dc.make_sim_config(
             identifier=[
                 "311019762466",  # missing data
                 "310106342367",  # full
@@ -50,9 +50,9 @@ class TestFlatFilesClient:
             min_chunk_period="30D",
         )
 
-        cls.dc.get_data(tstat_sim_config=cls.tstat_sim_config)
+        cls.dc.get_data(sim_config=cls.sim_config)
         cls.sim_hvac_data, cls.sim_weather_data = cls.dc.get_simulation_data(
-            cls.tstat_sim_config,
+            cls.sim_config,
         )
 
     @classmethod
@@ -64,7 +64,7 @@ class TestFlatFilesClient:
 
     def test_get_simulation_data(self):
         # test HVAC data returns dict of non-empty pd.DataFrame
-        for identifier, tstat in self.tstat_sim_config.iterrows():
+        for identifier, tstat in self.sim_config.iterrows():
             assert all(
                 [
                     isinstance(p, pd.DataFrame)
@@ -80,7 +80,7 @@ class TestFlatFilesClient:
 
     def test_read_epw(self):
         # read back cached filled epw files
-        for identifier, tstat in self.tstat_sim_config.iterrows():
+        for identifier, tstat in self.sim_config.iterrows():
             if identifier in self.dc.weather.keys():
                 data, meta, meta_lines = self.dc.weather[identifier].read_epw(
                     self.dc.weather[identifier].epw_fpath
@@ -96,7 +96,7 @@ class TestFlatFilesClient:
 
     def test_data_utc(self):
 
-        for identifier, tstat in self.tstat_sim_config.iterrows():
+        for identifier, tstat in self.sim_config.iterrows():
             if not self.dc.hvac[identifier].data.empty:
                 assert (
                     self.dc.hvac[identifier]

@@ -39,6 +39,32 @@ class Spec:
     null_check_column = attr.ib()
     datetime_column = attr.ib()
 
+    @spec.validator
+    def dtypes_are_pandas(self, attribute, value):
+        supported_dtypes = [
+            "boolean",
+            "string",
+            "Float32",
+            "float32",
+            "Float64",
+            "float64",
+            "Int8",
+            "Int16",
+            "Int32",
+            "Int64",
+            "UInt8",
+            "UInt16",
+            "UInt32",
+            "UInt64",
+            "category",
+            "datetime64[ns, utc]",
+        ]
+        for k, v in value.items():
+            if v["dtype"] not in supported_dtypes:
+                raise ValueError(
+                    f"Spec failed validation. Invalid dtype={v['dtype']} for key={k}."
+                )
+
     @property
     def columns(self):
         return list(self.spec.keys())

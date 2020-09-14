@@ -22,7 +22,7 @@ class DataSource(ABC):
     full_data_periods = attr.ib(default={})
 
     @abstractmethod
-    def get_data(self, tstat_sim_config):
+    def get_data(self, sim_config):
         pass
 
     def put_cache(self, _df, identifier):

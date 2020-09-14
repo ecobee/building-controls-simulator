@@ -21,12 +21,12 @@ class GCSDataSource(DataSource, ABC):
     gcp_project = attr.ib(default=None)
     gcs_uri_base = attr.ib(default=None)
 
-    def get_data(self, tstat_sim_config):
+    def get_data(self, sim_config):
 
         # first get GCS URI
-        tstat_sim_config = self.get_gcs_uri(tstat_sim_config)
+        sim_config = self.get_gcs_uri(sim_config)
         cache_dict = {}
-        for identifier, tstat in tstat_sim_config.iterrows():
+        for identifier, tstat in sim_config.iterrows():
             # first check if file in local cache
             cache_dict[identifier] = self.get_local_cache(identifier)
             if cache_dict[identifier].empty:
@@ -68,7 +68,7 @@ class GCSDataSource(DataSource, ABC):
         return cache_dict
 
     @abstractmethod
-    def get_gcs_uri(self, tstat_sim_config):
+    def get_gcs_uri(self, sim_config):
         pass
 
     def get_gcs_cache(self, tstat):

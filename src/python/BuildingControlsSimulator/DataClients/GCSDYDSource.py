@@ -17,14 +17,14 @@ class GCSDYDSource(GCSDataSource):
     file_extension = attr.ib(default="csv.zip")
     source_name = attr.ib(default="GCSDYD")
 
-    def get_gcs_uri(self, tstat_sim_config):
+    def get_gcs_uri(self, sim_config):
         # first cast to utc timestamp
         # DYD uses UTC
         start_utc = pd.to_datetime(
-            tstat_sim_config["start_utc"], utc=True, infer_datetime_format=True
+            sim_config["start_utc"], utc=True, infer_datetime_format=True
         )
         end_utc = pd.to_datetime(
-            tstat_sim_config["end_utc"], utc=True, infer_datetime_format=True
+            sim_config["end_utc"], utc=True, infer_datetime_format=True
         )
 
         # supporting cross year simulations would require loading both years
@@ -36,17 +36,17 @@ class GCSDYDSource(GCSDataSource):
             raise ValueError(
                 f"start_utc must be in supported years: {years_supported}"
             )
-        tstat_sim_config = tstat_sim_config.reset_index()
-        tstat_sim_config["gcs_uri"] = (
+        sim_config = sim_config.reset_index()
+        sim_config["gcs_uri"] = (
             self.gcs_uri_base
             + "/"
-            + tstat_sim_config["start_utc"].dt.year.astype("str")
+            + sim_config["start_utc"].dt.year.astype("str")
             + "/"
-            + tstat_sim_config["identifier"]
+            + sim_config["identifier"]
             + "."
             + self.file_extension
         )
 
-        tstat_sim_config = tstat_sim_config.set_index("identifier")
+        sim_config = sim_config.set_index("identifier")
 
-        return tstat_sim_config
+        return sim_config
