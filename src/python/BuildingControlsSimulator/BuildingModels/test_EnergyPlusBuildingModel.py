@@ -8,6 +8,7 @@ import logging
 
 import pytest
 import pyfmi
+import numpy as np
 
 from BuildingControlsSimulator.BuildingModels.IDFPreprocessor import (
     IDFPreprocessor,
@@ -115,21 +116,84 @@ class TestEnergyPlusBuildingModel:
 
     def test_pyfmi_load_fmu(self):
         """test that fmu can be loaded with pyfmi"""
-        model = pyfmi.load_fmu(self.building_model.fmu_path)
-        assert model.get_version() == "1.0"
+        fmu = pyfmi.load_fmu(self.building_model.fmu_path)
+        assert fmu.get_version() == "1.0"
 
     def test_simulate_fmu(self):
         """test that fmu can be simulated with pyfmi
         
         Note: if this test fails check ./Output_EPExport_Slave/Furnace_prep.err
         """
-        model = pyfmi.load_fmu(self.building_model.fmu_path)
-        opts = model.simulate_options()
+        fmu = pyfmi.load_fmu(self.building_model.fmu_path)
+        opts = fmu.simulate_options()
         t_end = 86400.0
         opts["ncp"] = int(t_end / self.step_size)
 
-        res = model.simulate(final_time=t_end, options=opts)
+        res = fmu.simulate(final_time=t_end, options=opts)
 
         output = res.result_data.get_data_matrix()
 
         assert output.shape == (24, opts["ncp"] + 1)
+
+    def test_step_fmu(self):
+        """test that fmu can be simulated with pyfmi
+        
+        Note: if this test fails check ./Output_EPExport_Slave/Furnace_prep.err
+        """
+        fmu = pyfmi.load_fmu(self.building_model.fmu_path)
+        t_start = 0
+        t_end = 86400.0
+        t_step = 300.0
+        ns = int(t_end / t_step)
+
+        fmu.initialize(t_start, t_end)
+        status = np.full(ns, False, dtype="bool")
+
+        for i in range(ns):
+            status[i] = fmu.do_step(
+                current_t=t_start, step_size=t_step, new_step=True,
+            )
+            t_start += t_step
+
+        breakpoint()
+        assert all(status)
+
+    def test_step_model(self):
+        """test that fmu can be simulated with pyfmi
+        
+        Note: if this test fails check ./Output_EPExport_Slave/Furnace_prep.err
+        """
+        t_start = 0
+        t_end = 86400.0
+        t_step = 300.0
+        ns = int(t_end / t_step)
+
+        self.building_model.create_model_fmu(
+            epw_path=self.building_model.epw_path, preprocess_check=False
+        )
+
+        self.building_model.initialize(
+            t_start=t_start, t_end=t_end, t_step=t_step
+        )
+
+        step_control_input = {
+            "heat_stage_one": True,
+            "heat_stage_two": False,
+            "heat_stage_three": False,
+            "compressor_cool_stage_one": False,
+            "compressor_cool_stage_two": False,
+            "compressore_cool_stage_one": False,
+            "compressor_cool_stage_three": False,
+            "fan_stage_one": False,
+            "fan_stage_two": False,
+            "fan_stage_three": False,
+        }
+        for i in range(ns):
+            self.building_model.do_step(
+                t_start=self.building_model.output["time"][i],
+                t_step=300,
+                step_control_input=step_control_input,
+                step_weather_input={},
+                step_occupancy_input={},
+            )
+        breakpoint()

@@ -4,7 +4,7 @@ from enum import IntEnum
 
 import attr
 
-# from BuildingControlsSimulator.DataClients.DataChannels import *
+from BuildingControlsSimulator.Conversions.Conversions import Conversions
 
 
 class Units(IntEnum):
@@ -328,12 +328,12 @@ class Internal:
                     Internal.full.spec[v["internal_name"]]["unit"]
                     == Units.CELSIUS
                 ):
-                    df[k] = Internal.F2C(df[k])
+                    df[k] = Conversions.F2C(df[k])
                 elif (v["unit"] == Units.FARHENHEITx10) and (
                     Internal.full.spec[v["internal_name"]]["unit"]
                     == Units.CELSIUS
                 ):
-                    df[k] = Internal.F2C(df[k] / 10.0)
+                    df[k] = Conversions.F2C(df[k] / 10.0)
                 else:
                     logger.error(
                         "Unsupported conversion: {} to {}".format(
@@ -350,10 +350,6 @@ class Internal:
         _df = _df.astype(dtype=Internal.full.get_dtype_mapper(_df.columns))
         _df = _df.sort_values(Internal.datetime_column, ascending=True)
         return _df
-
-    @staticmethod
-    def F2C(temp_F):
-        return (temp_F - 32) * 5 / 9
 
     @staticmethod
     def get_empty_df():

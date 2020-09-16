@@ -11,8 +11,8 @@ import requests
 from sklearn.metrics.pairwise import haversine_distances
 
 from BuildingControlsSimulator.DataClients.DataSpec import EnergyPlusWeather
-
 from BuildingControlsSimulator.DataClients.DataChannel import DataChannel
+from BuildingControlsSimulator.Conversions.Conversions import Conversions
 
 
 logger = logging.getLogger(__name__)
@@ -389,7 +389,7 @@ class WeatherChannel(DataChannel):
                 fill_data = fill_data.drop(columns=[_col])
 
             # compute dewpoint from dry-bulb and relative humidity
-            fill_data["temp_dew"] = WeatherChannel.dewpoint(
+            fill_data["temp_dew"] = Conversions.relative_humidity_to_dewpoint(
                 fill_data["temp_air"], fill_data["relative_humidity"]
             )
 
@@ -422,30 +422,3 @@ class WeatherChannel(DataChannel):
             epw_data.to_csv(f, header=False, index=False)
 
         return fpath
-
-    @staticmethod
-    def dewpoint(temp_air, relative_humidity):
-        """
-        Magnus formula with Arden Buck constants to calculate dew point.
-
-        see:
-        https://en.wikipedia.org/wiki/Dew_point
-        https://doi.org/10.1175/1520-0450(1981)020%3C1527:NEFCVP%3E2.0.CO;2
-
-        Buck, Arden L.
-        "New equations for computing vapor pressure and enhancement factor."
-        Journal of applied meteorology 20.12 (1981): 1527-1532.
-
-        :param temp_air: Temperature in Celsius.
-        :type temp_air: float or np.array of floats
-        :param relative_humidity: Relative humidity in % [0-100]
-        :type relative_humidity: float or np.array of floats
-
-        :return dew_point: The dew point temperature in Celcius.
-        """
-        b = 18.678
-        c = 257.14
-        d = 234.5
-        exp_arg = (b - (temp_air / d)) * (temp_air / (c + temp_air))
-        gamma = np.log((relative_humidity / 100) * np.exp(exp_arg))
-        return (c * gamma) / (b - gamma)

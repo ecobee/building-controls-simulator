@@ -35,11 +35,71 @@ class IDFPreprocessor:
     init_control_type = attr.ib(type=int, default=2)
     debug = attr.ib(type=bool, default=False)
     timesteps_per_hour = attr.ib(type=int, default=12)
+    conditioned_zones = attr.ib(default=[])
+    occupied_zones = attr.ib(default=[])
+    zone_lists = attr.ib(default={})
+    zone_outputs = attr.ib(default=[])
+    building_outputs = attr.ib(default=[])
 
     # first, terminate env vars, these will raise exceptions if undefined
     ep_version = attr.ib(default=os.environ.get("ENERGYPLUS_INSTALL_VERSION"))
     idf_dir = attr.ib(default=os.environ.get("IDF_DIR"))
     idd_path = attr.ib(default=os.environ.get("EPLUS_IDD"))
+
+    # output variable spec
+    # .rdd file for all output variables
+    zone_output_spec = attr.ib(
+        default={
+            "zone_air_temperature": {
+                "dtype": "float32",
+                "eplus_name": "Zone Air Temperature",
+            },
+            "zone_thermostat_heating_setpoint_temperature": {
+                "dtype": "float32",
+                "eplus_name": "Zone Thermostat Heating Setpoint Temperature",
+            },
+            "zone_thermostat_cooling_setpoint_temperature": {
+                "dtype": "float32",
+                "eplus_name": "Zone Thermostat Cooling Setpoint Temperature",
+            },
+            "zone_air_system_sensible_heating_rate": {
+                "dtype": "float32",
+                "eplus_name": "Zone Air System Sensible Heating Rate",
+            },
+            "zone_air_system_sensible_cooling_rate": {
+                "dtype": "float32",
+                "eplus_name": "Zone Air System Sensible Cooling Rate",
+            },
+            "zone_total_internal_total_heating_rate": {
+                "dtype": "float32",
+                "eplus_name": "Zone Total Internal Total Heating Rate",
+            },
+            "zone_mean_air_dewpoint_temperature": {
+                "dtype": "float32",
+                "eplus_name": "Zone Mean Air Dewpoint Temperature",
+            },
+            "zone_mean_air_humidity_ratio": {
+                "dtype": "float32",
+                "eplus_name": "Zone Mean Air Humidity Ratio",
+            },
+        }
+    )
+
+    building_output_spec = {
+        "environment": {
+            "site_outdoor_air_relative_humidity": {
+                "dtype": "float32",
+                "eplus_name": "Site Outdoor Air Relative Humidity",
+            },
+            "site_outdoor_air_drybulb_temperature": {
+                "dtype": "float32",
+                "eplus_name": "Site Outdoor Air Drybulb Temperature",
+            },
+            "eplus_name": "Environment",
+        },
+    }
+    # the output spec is created during preprocessing of IDF file
+    output_spec = attr.ib(default={})
 
     def __attrs_post_init__(self):
         """Initialize `IDFPreprocessor` with an IDF file and desired actions"""
@@ -68,10 +128,7 @@ class IDFPreprocessor:
         # select .idf output type
         self.ep_idf.outputtype = "standard"
 
-        self.zone_outputs = []
-        self.building_outputs = []
-
-        # config
+        # constants
         self.FMU_control_dual_stp_name = "FMU_T_dual_stp"
         self.FMU_control_cooling_stp_name = "FMU_T_cooling_stp"
         self.FMU_control_heating_stp_name = "FMU_T_heating_stp"
@@ -88,11 +145,6 @@ class IDFPreprocessor:
     @property
     def idf_prep_path(self):
         return os.path.join(self.idf_prep_dir, self.idf_prep_name)
-
-    def output_keys(self):
-        """
-        """
-        return self.building_outputs + self.zone_outputs
 
     def preprocess(
         self,
@@ -113,6 +165,7 @@ class IDFPreprocessor:
         else:
             logger.info(f"Making new preprocessed IDF: {self.idf_prep_path}")
             self.prep_ep_version(self.ep_version)
+            self.prep_zones()
             self.prep_simulation_control()
             self.prep_timesteps(self.timesteps_per_hour)
             self.prep_runtime()
@@ -126,42 +179,7 @@ class IDFPreprocessor:
                 FMU_control_cooling_stp_init=self.init_temperature,
             )
             # create per zone outputs depending on HVAC system type
-
-            # Output:Variable,*,Facility Total HVAC Electric Demand Power,hourly; !- HVAC Average [W]
-            zone_outputs = [
-                "Zone Air Temperature",
-                "Zone Thermostat Heating Setpoint Temperature",
-                "Zone Thermostat Cooling Setpoint Temperature",
-                "Zone Air System Sensible Heating Rate",
-                "Zone Air System Sensible Cooling Rate",
-                "Zone Total Internal Total Heating Rate",
-                # "Zone Total Internal Latent Gain Rate",
-                # "Zone Total Internal Convective Heating Rate",
-                # "Zone Total Internal Radiant Heating Rate",
-                # "Zone Total Internal Visible Radiation Heating Rate"
-                # "Air System Electric Energy"
-                # "Air System Gas Energy"
-                # "Air System Fan Electric Energy"
-                # "Air System Cooling Coil Chilled Water Energy"
-                # "Air System Heating Coil Hot Water Energy"
-                # "Air System DX Cooling Coil Electric Energy"
-                # "Air System Heating Coil Gas Energy"
-            ]
-            building_outputs = {
-                "Environment": [
-                    "Site Outdoor Air Relative Humidity",
-                    "Site Outdoor Air Drybulb Temperature",
-                    # "Site Diffuse Solar Radiation Rate per Area",
-                    # "Site Direct Solar Radiation Rate per Area"
-                ],
-                #  "Main Chiller": [
-                #      "Chiller Electric Power",
-                # ]
-            }
-
-            self.prep_ext_int_output(
-                zone_outputs=zone_outputs, building_outputs=building_outputs
-            )
+            self.prep_ext_int_output()
 
             # finally before saving expand objects
             self.prep_expand_objects()
@@ -171,6 +189,78 @@ class IDFPreprocessor:
             fix_idf_version_line(self.idf_prep_path, self.ep_version)
 
         return self.idf_prep_path
+
+    def prep_zones(self):
+        self.zone_lists = self.get_zone_lists()
+        # TODO: check that zone geometry exists
+
+        self.prep_condtioned_zones()
+        self.prep_occupied_zones()
+
+    def get_zone_lists(self):
+        zone_lists = {}
+        for obj in self.ep_idf.idfobjects["ZoneList"]:
+            zone_lists[obj.Name] = [
+                obj[f"Zone_{i}_Name"]
+                for i in range(1, 500)
+                if obj[f"Zone_{i}_Name"] != ""
+            ]
+
+        return zone_lists
+
+    def zone_list_lookup(self, zone_name):
+        for k, v in self.zone_lists.items():
+            if zone_name in v:
+                return k
+
+    def expand_zones(self, zone_list):
+        if zone_list in self.zone_lists.keys():
+            return self.zone_lists[zone_list]
+        else:
+            return zone_list
+
+    def prep_condtioned_zones(self):
+        """ get list of all zones that are condtioned
+        conditioned zones are defined in IDF by:
+        1. ZoneHVAC:EquipmentConnections
+        2. ZoneVentilation:DesignFlowRate
+        3. sizing:Zone
+        """
+        equip_conn_zones = [
+            self.expand_zones(obj.Zone_Name)
+            for obj in self.ep_idf.idfobjects["ZoneHVAC:EquipmentConnections"]
+        ]
+        # TODO: check if zone list, if so expand zones
+
+        vent_design_zones = [
+            self.expand_zones(obj.Zone_Name)
+            for obj in self.ep_idf.idfobjects["ZoneVentilation:DesignFlowRate"]
+        ]
+
+        sizing_zones = [
+            self.expand_zones(obj.Zone_Name)
+            for obj in self.ep_idf.idfobjects["sizing:Zone"]
+        ]
+
+        self.conditioned_zones = list(
+            set(equip_conn_zones) | set(vent_design_zones) | set(sizing_zones)
+        )
+
+    def prep_occupied_zones(self):
+        """ get list of all zones that are condtioned
+        conditioned zones are defined in IDF by:
+        1. people
+        """
+        self.occupied_zones = [
+            self.expand_zones(obj.Zone_or_ZoneList_Name)
+            for obj in self.ep_idf.idfobjects["people"]
+        ]
+
+        if any([z not in self.conditioned_zones for z in self.occupied_zones]):
+            info.error(
+                f"IDF file: {self.idf_file} contains occupied zones that"
+                " do not appear to be conditioned."
+            )
 
     def prep_runtime(self):
         """
@@ -549,20 +639,6 @@ class IDFPreprocessor:
         add external interface output variables
         Note: FMU input variables cannot be read directly and must be read through an
         OUTPUT:VARIABLE set in the .idf file.
-        example input:
-            zone_outputs = [
-                "Zone Air Temperature",
-                "Zone Thermostat Heating Setpoint Temperature",
-                "Zone Air System Sensible Heating Rate"
-            ]
-            building_outputs = {
-                "Environment": [
-                    "Site Outdoor Air Drybulb Temperature",
-                    "Site Outdoor Air Relative Humidity",
-                    "Site Diffuse Solar Radiation Rate per Area",
-                    "Site Direct Solar Radiation Rate per Area"
-                ]
-            }
         """
         # no need for meter file
         self.popallidfobjects("Output:Meter:MeterFileOnly")
@@ -576,54 +652,58 @@ class IDFPreprocessor:
         self.popallidfobjects(
             "EXTERNALINTERFACE:FUNCTIONALMOCKUPUNITEXPORT:FROM:VARIABLE"
         )
-        # add building_outputs
 
-        for e in building_outputs.keys():
-            for o in building_outputs[e]:
-                nzo = "FMU_{}_{}".format(
-                    e.replace(" ", "_").replace("-", "_"),
-                    o.replace(" ", "_").replace("-", "_"),
-                )
+        # add building_outputs as flattened dict of variable meta data
+        for ek, ev in self.building_output_spec.items():
+            for ok, ov in ev.items():
+                if ok != "eplus_name":
+                    # set name of variable in FMU and internally
+                    var_k = "FMU_{}_{}".format(
+                        ev["eplus_name"].replace(" ", "_").replace("-", "_"),
+                        ov["eplus_name"].replace(" ", "_").replace("-", "_"),
+                    )
 
-                self.ep_idf.newidfobject(
-                    "Output:variable",
-                    Key_Value=e,
-                    Variable_Name=o,
-                    Reporting_Frequency="timestep",
-                )
-                self.ep_idf.newidfobject(
-                    "ExternalInterface:FunctionalMockupUnitExport:From:Variable",
-                    OutputVariable_Index_Key_Name=e,
-                    OutputVariable_Name=o,
-                    FMU_Variable_Name=nzo,
-                )
-                self.building_outputs.append(nzo)
+                    # add fmi name as key to output spec
+                    self.output_spec[var_k] = ov
+
+                    self.ep_idf.newidfobject(
+                        "Output:variable",
+                        Key_Value=ev["eplus_name"],
+                        Variable_Name=ov["eplus_name"],
+                        Reporting_Frequency="timestep",
+                    )
+                    self.ep_idf.newidfobject(
+                        "ExternalInterface:FunctionalMockupUnitExport:From:Variable",
+                        OutputVariable_Index_Key_Name=ev["eplus_name"],
+                        OutputVariable_Name=ov["eplus_name"],
+                        FMU_Variable_Name=var_k,
+                    )
 
         # add zone_outputs
         # output IDF obj is broken out because the * key value can be used to select
         # all zones and is standard in E+ .idf files
-        for o in zone_outputs:
-            self.ep_idf.newidfobject(
-                "Output:variable",
-                Key_Value="*",
-                Variable_Name=o,
-                Reporting_Frequency="Timestep",
-            )
+        for z in self.conditioned_zones:
+            for ok, ov in self.zone_output_spec.items():
 
-        for z in self.ep_idf.idfobjects["Zone"]:
-            for o in zone_outputs:
+                zk = z.replace(" ", "_").replace("-", "_")
+                var_k = zk + "_" + ok
 
-                zo = "FMU_{}_{}".format(
-                    z.Name.replace(" ", "_").replace("-", "_"),
-                    o.replace(" ", "_").replace("-", "_"),
+                # add fmi name as key to output spec
+                self.output_spec[var_k] = ov
+
+                self.ep_idf.newidfobject(
+                    "Output:variable",
+                    Key_Value=z,
+                    Variable_Name=ov["eplus_name"],
+                    Reporting_Frequency="Timestep",
                 )
+
                 self.ep_idf.newidfobject(
                     "ExternalInterface:FunctionalMockupUnitExport:From:Variable",
-                    OutputVariable_Index_Key_Name=z.Name,
-                    OutputVariable_Name=o,
-                    FMU_Variable_Name=zo,
+                    OutputVariable_Index_Key_Name=z,
+                    OutputVariable_Name=ov["eplus_name"],
+                    FMU_Variable_Name=var_k,
                 )
-                self.zone_outputs.append(zo)
 
     """
     TODO: Changes to eppy:

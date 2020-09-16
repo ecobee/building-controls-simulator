@@ -88,7 +88,7 @@ class Deadband(ControlModel):
             "heat_stage_three": False,
             "compressor_cool_stage_one": False,
             "compressor_cool_stage_two": False,
-            "compressore_cool_stage_one": False,
+            "compressor_cool_stage_one": False,
             "compressor_cool_stage_three": False,
             "fan_stage_one": False,
             "fan_stage_two": False,

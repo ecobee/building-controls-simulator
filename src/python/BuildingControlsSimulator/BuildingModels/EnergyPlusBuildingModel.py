@@ -20,6 +20,7 @@ from BuildingControlsSimulator.BuildingModels.IDFPreprocessor import (
 )
 from BuildingControlsSimulator.ControlModels.ControlModel import HVAC_modes
 from BuildingControlsSimulator.ControlModels.ControlModel import ControlModel
+from BuildingControlsSimulator.Conversions.Conversions import Conversions
 
 
 logger = logging.getLogger(__name__)
@@ -40,8 +41,10 @@ class EnergyPlusBuildingModel(BuildingModel):
     timesteps_per_hour = attr.ib(default=12)
     fmu_dir = attr.ib(default=os.environ.get("FMU_DIR"))
     eplustofmu_path = attr.ib(default=os.environ.get("ENERGYPLUSTOFMUSCRIPT"))
-    # ep_version = attr.ib(default=os.environ.get("ENERGYPLUS_INSTALL_VERSION"))
     ext_dir = attr.ib(default=os.environ.get("EXT_DIR"))
+    fmu_output = attr.ib(default={})
+    output = attr.ib(default={})
+    step_size_seconds = attr.ib(default=None)
 
     input_spec = attr.ib(
         default={
@@ -92,17 +95,16 @@ class EnergyPlusBuildingModel(BuildingModel):
                 "output_name": "tstat_humidity",
                 "dtype": "float32",
             },
-            "Status": {"output_name": None, "dtype": "bool",},
         }
     )
 
-    fmu = attr.ib(default=None)
-    T_heat_off = attr.ib(default=-60.0)
-    T_heat_on = attr.ib(default=99.0)
-    T_cool_off = attr.ib(default=99.0)
-    T_cool_on = attr.ib(default=-60.0)
+    fmu_spec = attr.ib(
+        default={"Status": {"output_name": None, "dtype": "bool",},}
+    )
 
-    cur_HVAC_mode = attr.ib(default=HVAC_modes.UNCONTROLLED)
+    fmu = attr.ib(default=None)
+
+    # cur_HVAC_mode = attr.ib(default=HVAC_modes.UNCONTROLLED)
 
     def __attrs_post_init__(self):
         pass
@@ -130,7 +132,7 @@ class EnergyPlusBuildingModel(BuildingModel):
     def fmu_path(self):
         return os.path.join(self.fmu_dir, self.fmu_name)
 
-    def create_model_fmu(self, epw_path=None):
+    def create_model_fmu(self, epw_path=None, preprocess_check=False):
         """make the fmu
 
         Calls FMU model generation script from https://github.com/lbl-srg/EnergyPlusToFMU.
@@ -145,7 +147,7 @@ class EnergyPlusBuildingModel(BuildingModel):
                 f"Must supply valid weather file, epw_path={self.epw_path}"
             )
         self.idf.timesteps_per_hour = self.timesteps_per_hour
-        self.idf.preprocess()
+        self.idf.preprocess(preprocess_check=False)
 
         cmd = f"python2.7 {self.eplustofmu_path}"
         cmd += f" -i {self.idf.idd_path}"
@@ -181,20 +183,24 @@ class EnergyPlusBuildingModel(BuildingModel):
 
         return self.fmu_path
 
-    def initialize(self, t_start, t_end, ts):
+    def initialize(self, t_start, t_end, t_step):
         """
         """
-        self.fmu = pyfmi.load_fmu(fmu=self.idf.fmu_path)
+        self.fmu = pyfmi.load_fmu(fmu=self.fmu_path)
         self.fmu.initialize(t_start, t_end)
 
-        # allocate output memory
-        time = np.arange(t_start, t_end, ts, dtype="int64")
+        self.allocate_output_memory(t_start, t_end, t_step)
+
+    def allocate_output_memory(self, t_start, t_end, t_step):
+        """preallocate output memory as numpy arrays to speed up simulation
+        """
+        time = np.arange(t_start, t_end, t_step, dtype="int64")
         n_s = len(time)
 
         self.output = {}
 
-        # add fmu state variables
-        for k, v, in self.controller_output_spec.items():
+        # add output state variables
+        for k, v, in self.output_spec.items():
             if v["dtype"] == "bool":
                 self.output[k] = np.full(n_s, False, dtype="bool")
             elif v["dtype"] == "float32":
@@ -204,8 +210,21 @@ class EnergyPlusBuildingModel(BuildingModel):
                     "Unsupported output_map dtype: {}".format(v["dtype"])
                 )
 
+        # add fmu state variables
+        self.fmu_output["Status"] = np.full(n_s, False, dtype="bool")
+        self.fmu_output["time"] = time
+        for k, v, in self.idf.output_spec.items():
+            if v["dtype"] == "bool":
+                self.fmu_output[k] = np.full(n_s, False, dtype="bool")
+            elif v["dtype"] == "float32":
+                self.fmu_output[k] = np.full(n_s, -999, dtype="float32")
+            else:
+                raise ValueError(
+                    "Unsupported output_map dtype: {}".format(v["dtype"])
+                )
+
         self.output["time"] = time
-        self.output["status"] = np.full(n_s, False, dtype="bool")
+        # self.output["status"] = np.full(n_s, False, dtype="bool")
 
         # set current time
         self.current_time = t_start
@@ -215,7 +234,7 @@ class EnergyPlusBuildingModel(BuildingModel):
     def do_step(
         self,
         t_start,
-        t_end,
+        t_step,
         step_control_input,
         step_weather_input,
         step_occupancy_input,
@@ -226,63 +245,104 @@ class EnergyPlusBuildingModel(BuildingModel):
         """
         # advance current time
         self.current_t_start = t_start
-        self.current_t_end = t_end
+        # self.current_t_end = t_end
 
         # set input
+        self.actuate_HVAC_equipment(step_control_input)
 
         # new_step=True ?
-        status = self.fmu.do_step(t_start, t_end)
+        status = self.fmu.do_step(
+            current_t=t_start, step_size=t_step, new_step=True,
+        )
         self.update_output(status)
 
         # finally increment t_idx
         self.current_t_idx += 1
 
-    def occupied_zones(self):
-        """Gets occupied zones from zones that have a tstat in them."""
+    def update_output(self, status):
+        """Update internal output obj for current_t_idx with fmu output."""
+
+        # first get fmi zone output
+        for k in self.idf.output_spec.keys():
+            self.fmu_output[k][self.current_t_idx] = self.fmu.get(k)[0]
+
+        self.output["tstat_temperature"][
+            self.current_t_idx
+        ] = self.get_tstat_temperature()
+
+        self.output["tstat_humidity"][
+            self.current_t_idx
+        ] = Conversions.relative_humidity_from_dewpoint(
+            temperature=self.output["tstat_temperature"][self.current_t_idx],
+            dewpoint=self.get_tstat_dewpoint(),
+        )
+        # map fmu output to model output
+
+    def get_fmu_output_keys(self, eplus_key):
         return [
-            tstat.Zone_or_ZoneList_Name
-            for tstat in self.idf.ep_idf.idfobjects[
-                "zonecontrol:thermostat".upper()
-            ]
+            k
+            for k, v in self.idf.output_spec.items()
+            if v["eplus_name"] == eplus_key
         ]
 
-    def actuate_HVAC_equipment(self, step_HVAC_mode):
-        """
-        """
-        if self.cur_HVAC_mode != step_HVAC_mode:
-            if step_HVAC_mode == HVAC_modes.SINGLE_HEATING_SETPOINT:
-                self.fmu.set(
-                    self.idf.FMU_control_type_name, int(step_HVAC_mode)
-                )
-                self.fmu.set(
-                    self.idf.FMU_control_heating_stp_name, self.T_heat_on
-                )
-                self.fmu.set(
-                    self.idf.FMU_control_cooling_stp_name, self.T_cool_off
-                )
-            elif step_HVAC_mode == HVAC_modes.SINGLE_COOLING_SETPOINT:
-                self.fmu.set(
-                    self.idf.FMU_control_type_name, int(step_HVAC_mode)
-                )
-                self.fmu.set(
-                    self.idf.FMU_control_heating_stp_name, self.T_heat_off
-                )
-                self.fmu.set(
-                    self.idf.FMU_control_cooling_stp_name, self.T_cool_on
-                )
+    def get_tstat_temperature(self):
+        return np.mean(
+            [
+                self.fmu_output[k][self.current_t_idx]
+                for k in self.get_fmu_output_keys("Zone Air Temperature")
+            ]
+        )
 
-            elif step_HVAC_mode == HVAC_modes.UNCONTROLLED:
-                self.fmu.set(
-                    self.idf.FMU_control_type_name, int(step_HVAC_mode)
+    def get_tstat_dewpoint(self):
+        return np.mean(
+            [
+                self.fmu_output[k][self.current_t_idx]
+                for k in self.get_fmu_output_keys(
+                    "Zone Mean Air Dewpoint Temperature"
                 )
-                self.fmu.set(
-                    self.idf.FMU_control_heating_stp_name, self.T_heat_off
-                )
-                self.fmu.set(
-                    self.idf.FMU_control_cooling_stp_name, self.T_cool_off
-                )
+            ]
+        )
 
-        self.cur_HVAC_mode = step_HVAC_mode
+    def actuate_HVAC_equipment(self, step_control_input):
+        """
+        passes actuation to building model with minimal validation.
+        """
+        T_heat_off = -60.0
+        T_heat_on = 99.0
+        T_cool_off = 99.0
+        T_cool_on = 60.0
+
+        if (
+            step_control_input["heat_stage_one"]
+            and step_control_input["compressor_cool_stage_one"]
+        ):
+            info.error(
+                "Cannot heat and cool at same time. "
+                f"heat_stage_one={step_control_input['heat_stage_one']} "
+                f"compressor_cool_stage_one={step_control_input['compressor_cool_stage_one']}"
+            )
+
+        if step_control_input["heat_stage_one"]:
+            self.fmu.set(
+                self.idf.FMU_control_type_name,
+                int(HVAC_modes.SINGLE_HEATING_SETPOINT),
+            )
+            self.fmu.set(self.idf.FMU_control_heating_stp_name, T_heat_on)
+            self.fmu.set(self.idf.FMU_control_cooling_stp_name, T_cool_off)
+        elif step_control_input["compressor_cool_stage_one"]:
+            self.fmu.set(
+                self.idf.FMU_control_type_name,
+                int(HVAC_modes.SINGLE_COOLING_SETPOINT),
+            )
+            self.fmu.set(self.idf.FMU_control_heating_stp_name, T_heat_off)
+            self.fmu.set(self.idf.FMU_control_cooling_stp_name, T_cool_on)
+
+        else:
+            self.fmu.set(
+                self.idf.FMU_control_type_name, int(HVAC_modes.UNCONTROLLED)
+            )
+            self.fmu.set(self.idf.FMU_control_heating_stp_name, T_heat_off)
+            self.fmu.set(self.idf.FMU_control_cooling_stp_name, T_cool_off)
 
     @staticmethod
     def make_directories():

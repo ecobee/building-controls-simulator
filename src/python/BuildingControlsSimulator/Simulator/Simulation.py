@@ -114,12 +114,12 @@ class Simulation:
         self.building_model.initialize(
             t_start=self.start_time_seconds,
             t_end=self.final_time_seconds,
-            ts=self.step_size_seconds,
+            t_step=self.step_size_seconds,
         )
         self.controller_model.initialize(
             t_start=self.start_time_seconds,
             t_end=self.final_time_seconds,
-            ts=self.step_size_seconds,
+            t_step=self.step_size_seconds,
         )
 
     def get_air_temp_output_idx(self):
@@ -170,7 +170,7 @@ class Simulation:
 
             self.building_model.do_step(
                 t_start=sim_time[i],
-                t_end=sim_time[i] + self.step_size_seconds,
+                t_step=self.step_size_seconds,
                 step_control_input=self.building_model.get_step_input(
                     self.controller_model.get_step_output()
                 ),
