@@ -18,21 +18,13 @@ logger = logging.getLogger(__name__)
 @attr.s(kw_only=True)
 class IDFPreprocessor:
     """Converts IDFs (Input Data Files) for EnergyPlus into working IDFs.
-    Example:
-    ```python
-    from BuildingControlsSimulator.BuildingModels import IDFPreprocessor
-    idf = IDFPreprocessor(
-        idf_file=self.dummy_idf_file,
-        weather_file=self.dummy_weather_file,
-    )
-    ```
     """
 
     # user must supply an idf file as either 1) full path, or 2) a file in self.idf_dir
     idf_file = attr.ib()
 
     init_temperature = attr.ib(type=float, default=21.0)
-    init_control_type = attr.ib(type=int, default=2)
+    init_control_type = attr.ib(type=int, default=1)
     debug = attr.ib(type=bool, default=False)
     timesteps_per_hour = attr.ib(type=int, default=12)
     conditioned_zones = attr.ib(default=[])
@@ -147,10 +139,7 @@ class IDFPreprocessor:
         return os.path.join(self.idf_prep_dir, self.idf_prep_name)
 
     def preprocess(
-        self,
-        init_control_type=1,
-        init_temperature=21.0,
-        preprocess_check=False,
+        self, init_temperature=21.0, preprocess_check=False,
     ):
         """add control signals to IDF before making FMU"""
 
@@ -279,64 +268,8 @@ class IDFPreprocessor:
 
     def prep_simulation_control(self):
         """
-        From V8-9-0-Energy+.idd:
-
-        SimulationControl,
-            unique-object
-            memo Note that the following 3 fields are related to the Sizing:Zone, Sizing:System,
-            memo and Sizing:Plant objects.  Having these fields set to Yes but no corresponding
-            memo Sizing object will not cause the sizing to be done. However, having any of these
-            memo fields set to No, the corresponding Sizing object is ignored.
-            memo Note also, if you want to do system sizing, you must also do zone sizing in the same
-            memo run or an error will result.
-            min-fields 5
-        A1, field Do Zone Sizing Calculation
-            note If Yes, Zone sizing is accomplished from corresponding Sizing:Zone objects
-            note and autosize fields.
-            type choice
-            key Yes
-            key No
-            default No
-        A2, field Do System Sizing Calculation
-            note If Yes, System sizing is accomplished from corresponding Sizing:System objects
-            note and autosize fields.
-            note If Yes, Zone sizing (previous field) must also be Yes.
-            type choice
-            key Yes
-            key No
-            default No
-        A3 field Do Plant Sizing Calculation
-            note If Yes, Plant sizing is accomplished from corresponding Sizing:Plant objects
-            note and autosize fields.
-            type choice
-            key Yes
-            key No
-            default No
-        A4, field Run Simulation for Sizing Periods
-            note If Yes, SizingPeriod:* objects are executed and results from those may be displayed..
-            type choice
-            key Yes
-            key No
-            default Yes
-        A5, field Run Simulation for Weather File Run Periods
-            note If Yes, RunPeriod:* objects are executed and results from those may be displayed..
-            type choice
-            key Yes
-            key No
-            default Yes
-        A6, field Do HVAC Sizing Simulation for Sizing Periods
-            note If Yes, SizingPeriod:* objects are exectuted additional times for advanced sizing.
-            note Currently limited to use with coincident plant sizing, see Sizing:Plant object
-            type choice
-            key Yes
-            key No
-            default No
-        N1; field Maximum Number of HVAC Sizing Simulation Passes
-            note the entire set of SizingPeriod:* objects may be repeated to fine tune size results
-            note this input sets a limit on the number of passes that the sizing algorithms can repeate the set
-            type integer
-            minimum 1
-            default 1
+        See V8-9-0-Energy+.idd:
+        and Input Reference
         """
         self.popallidfobjects("SimulationControl")
         self.ep_idf.newidfobject(
@@ -352,26 +285,7 @@ class IDFPreprocessor:
 
     def prep_timesteps(self, timesteps_per_hour):
         """
-        From V8-9-0-Energy+.idd:
-        Timestep,
-            memo Specifies the "basic" timestep for the simulation. The
-            memo value entered here is also known as the Zone Timestep.  This is used in
-            memo the Zone Heat Balance Model calculation as the driving timestep for heat
-            memo transfer and load calculations.
-            unique-object
-            format singleLine
-        N1 ; field Number of Timesteps per Hour
-            note Number in hour: normal validity 4 to 60: 6 suggested
-            note Must be evenly divisible into 60
-            note Allowable values include 1, 2, 3, 4, 5, 6, 10, 12, 15, 20, 30, and 60
-            note Normal 6 is minimum as lower values may cause inaccuracies
-            note A minimum value of 20 is suggested for both ConductionFiniteDifference
-            note and CombinedHeatAndMoistureFiniteElement surface heat balance algorithms
-            note A minimum of 12 is suggested for simulations involving a Vegetated Roof (Material:RoofVegetation).
-            default 6
-            type integer
-            minimum 1
-            maximum 60
+        See V8-9-0-Energy+.idd:
         """
         self.ep_idf.idfobjects["TIMESTEP"][
             0
@@ -543,12 +457,7 @@ class IDFPreprocessor:
             FMU_Variable_Name=self.FMU_control_cooling_stp_name,
             Initial_Value=FMU_control_cooling_stp_init,
         )
-        # create a control type schedule limits
-        # 0 - Uncontrolled (No specification or default)
-        # 1 - Single Heating Setpoint
-        # 2 - Single Cooling SetPoint
-        # 3 - Single Heating Cooling Setpoint
-        # 4 - Dual Setpoint with Deadband (Heating and Cooling)
+        # create a control type schedule limits. See `ControlModels.HVAC_Modes`
         if not [
             s_obj
             for s_obj in self.ep_idf.idfobjects["ScheduleTypeLimits"]
