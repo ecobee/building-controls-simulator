@@ -5,7 +5,7 @@ import pandas as pd
 import numpy as np
 
 from BuildingControlsSimulator.ControlModels.ControlModel import ControlModel
-from BuildingControlsSimulator.ControlModels.ControlModel import HVAC_modes
+from BuildingControlsSimulator.DataClients.DataStates import STATES
 
 
 @attr.s
@@ -20,81 +20,90 @@ class Deadband(ControlModel):
     """
 
     deadband = attr.ib(default=1.0)
-    input_spec = attr.ib(
-        default={
-            "tstat_temperature": {
-                "input_name": "tstat_temperature",
-                "dtype": "float32",
-            },
-            "cool_set_point": {
-                "input_name": "cool_set_point",
-                "dtype": "float32",
-            },
-            "heat_set_point": {
-                "input_name": "heat_set_point",
-                "dtype": "float32",
-            },
-        }
+    input_states = attr.ib(
+        default=[
+            STATES.TEMPERATURE_CTRL,
+            STATES.TEMPERATURE_STP_COOL,
+            STATES.TEMPERATURE_STP_HEAT,
+        ]
     )
 
-    output_spec = attr.ib(
-        default={
-            "heat_stage_one": {
-                "output_name": "heat_stage_one",
-                "dtype": "bool",
-            },
-            "heat_stage_two": {
-                "output_name": "heat_stage_two",
-                "dtype": "bool",
-            },
-            "heat_stage_three": {
-                "output_name": "heat_stage_three",
-                "dtype": "bool",
-            },
-            "compressor_cool_stage_one": {
-                "output_name": "compressor_cool_stage_one",
-                "dtype": "bool",
-            },
-            "compressor_cool_stage_two": {
-                "output_name": "compressor_cool_stage_two",
-                "dtype": "bool",
-            },
-            "compressor_heat_stage_one": {
-                "output_name": "compressor_heat_stage_one",
-                "dtype": "bool",
-            },
-            "compressor_heat_stage_two": {
-                "output_name": "compressor_heat_stage_two",
-                "dtype": "bool",
-            },
-            "fan_stage_one": {
-                "output_name": "fan_stage_one",
-                "dtype": "bool",
-            },
-            "fan_stage_two": {
-                "output_name": "fan_stage_two",
-                "dtype": "bool",
-            },
-            "fan_stage_three": {
-                "output_name": "fan_stage_three",
-                "dtype": "bool",
-            },
-        }
+    output_states = attr.ib(
+        default=[
+            STATES.AUXHEAT1,
+            STATES.AUXHEAT2,
+            STATES.AUXHEAT3,
+            STATES.COMPCOOL1,
+            STATES.COMPCOOL2,
+            STATES.COMPHEAT1,
+            STATES.COMPHEAT2,
+            STATES.FAN_STAGE_ONE,
+            STATES.FAN_STAGE_TWO,
+            STATES.FAN_STAGE_THREE,
+        ]
     )
-    step_output = attr.ib(
-        default={
-            "heat_stage_one": False,
-            "heat_stage_two": False,
-            "heat_stage_three": False,
-            "compressor_cool_stage_one": False,
-            "compressor_cool_stage_two": False,
-            "compressor_cool_stage_one": False,
-            "compressor_cool_stage_three": False,
-            "fan_stage_one": False,
-            "fan_stage_two": False,
-            "fan_stage_three": False,
-        }
-    )
+    # input_spec = attr.ib(
+    #     default={
+    #         "tstat_temperature": {
+    #             "input_name": "tstat_temperature",
+    #             "dtype": "float32",
+    #         },
+    #         "cool_set_point": {
+    #             "input_name": "cool_set_point",
+    #             "dtype": "float32",
+    #         },
+    #         "heat_set_point": {
+    #             "input_name": "heat_set_point",
+    #             "dtype": "float32",
+    #         },
+    #     }
+    # )
+
+    # output_spec = attr.ib(
+    #     default={
+    #         "heat_stage_one": {
+    #             "output_name": "heat_stage_one",
+    #             "dtype": "bool",
+    #         },
+    #         "heat_stage_two": {
+    #             "output_name": "heat_stage_two",
+    #             "dtype": "bool",
+    #         },
+    #         "heat_stage_three": {
+    #             "output_name": "heat_stage_three",
+    #             "dtype": "bool",
+    #         },
+    #         "compressor_cool_stage_one": {
+    #             "output_name": "compressor_cool_stage_one",
+    #             "dtype": "bool",
+    #         },
+    #         "compressor_cool_stage_two": {
+    #             "output_name": "compressor_cool_stage_two",
+    #             "dtype": "bool",
+    #         },
+    #         "compressor_heat_stage_one": {
+    #             "output_name": "compressor_heat_stage_one",
+    #             "dtype": "bool",
+    #         },
+    #         "compressor_heat_stage_two": {
+    #             "output_name": "compressor_heat_stage_two",
+    #             "dtype": "bool",
+    #         },
+    #         "fan_stage_one": {
+    #             "output_name": "fan_stage_one",
+    #             "dtype": "bool",
+    #         },
+    #         "fan_stage_two": {
+    #             "output_name": "fan_stage_two",
+    #             "dtype": "bool",
+    #         },
+    #         "fan_stage_three": {
+    #             "output_name": "fan_stage_three",
+    #             "dtype": "bool",
+    #         },
+    #     }
+    # )
+    step_output = attr.ib(default={})
 
     output = attr.ib(default={})
     current_t_idx = attr.ib(default=0)
@@ -118,6 +127,7 @@ class Deadband(ControlModel):
                 )
 
         self.output["status"] = np.full(n_s, False, dtype="bool")
+        self.step_output = {k: False for k in self.output_states}
 
     def get_t_ctrl(self, tstat_temperature):
         """

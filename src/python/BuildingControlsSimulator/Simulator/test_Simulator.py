@@ -99,8 +99,7 @@ class TestSimulator:
             ],
             controller_models=[Deadband(deadband=2.0),],
         )
-        breakpoint()
-        master.create_models(preprocess_check=False)
+        master.simulate(local=True)
 
     @pytest.mark.skip()
     def test_idmt_fmu_simulation(self):

@@ -5,6 +5,7 @@ import logging
 import subprocess
 import shlex
 import shutil
+from enum import IntEnum
 
 import pandas as pd
 import attr
@@ -12,18 +13,34 @@ import numpy as np
 from eppy import modeleditor
 import pyfmi
 
+from BuildingControlsSimulator.DataClients.DataStates import STATES
 from BuildingControlsSimulator.BuildingModels.BuildingModel import (
     BuildingModel,
 )
 from BuildingControlsSimulator.BuildingModels.IDFPreprocessor import (
     IDFPreprocessor,
 )
-from BuildingControlsSimulator.ControlModels.ControlModel import HVAC_modes
+
 from BuildingControlsSimulator.ControlModels.ControlModel import ControlModel
 from BuildingControlsSimulator.Conversions.Conversions import Conversions
 
 
 logger = logging.getLogger(__name__)
+
+
+class EPLUS_THERMOSTAT_MODES(IntEnum):
+    """
+    0 - Uncontrolled (No specification or default)
+    1 - Single Heating Setpoint
+    2 - Single Cooling SetPoint
+    3 - Single Heating Cooling Setpoint
+    4 - Dual Setpoint with Deadband (Heating and Cooling)
+    """
+
+    UNCONTROLLED = 0
+    SINGLE_HEATING_SETPOINT = 1
+    SINGLE_COOLING_SETPOINT = 2
+    DUAL_HEATING_COOLING_SETPOINT = 3
 
 
 @attr.s(kw_only=True)
@@ -46,56 +63,27 @@ class EnergyPlusBuildingModel(BuildingModel):
     output = attr.ib(default={})
     step_size_seconds = attr.ib(default=None)
 
-    input_spec = attr.ib(
-        default={
-            "heat_stage_one": {
-                "input_name": "heat_stage_one",
-                "dtype": "bool",
-            },
-            "heat_stage_two": {
-                "input_name": "heat_stage_two",
-                "dtype": "bool",
-            },
-            "heat_stage_three": {
-                "input_name": "heat_stage_three",
-                "dtype": "bool",
-            },
-            "compressor_cool_stage_one": {
-                "input_name": "compressor_cool_stage_one",
-                "dtype": "bool",
-            },
-            "compressor_cool_stage_two": {
-                "input_name": "compressor_cool_stage_two",
-                "dtype": "bool",
-            },
-            "compressor_heat_stage_one": {
-                "input_name": "compressor_heat_stage_one",
-                "dtype": "bool",
-            },
-            "compressor_heat_stage_two": {
-                "input_name": "compressor_heat_stage_two",
-                "dtype": "bool",
-            },
-            "fan_stage_one": {"input_name": "fan_stage_one", "dtype": "bool",},
-            "fan_stage_two": {"input_name": "fan_stage_two", "dtype": "bool",},
-            "fan_stage_three": {
-                "input_name": "fan_stage_three",
-                "dtype": "bool",
-            },
-        }
+    input_states = attr.ib(
+        default=[
+            STATES.AUXHEAT1,
+            STATES.AUXHEAT2,
+            STATES.AUXHEAT3,
+            STATES.COMPCOOL1,
+            STATES.COMPCOOL2,
+            STATES.COMPHEAT1,
+            STATES.COMPHEAT2,
+            STATES.FAN_STAGE_ONE,
+            STATES.FAN_STAGE_TWO,
+            STATES.FAN_STAGE_THREE,
+        ]
     )
     # keys with "output_name" == None are not part of external output
-    output_spec = attr.ib(
-        default={
-            "tstat_temperature": {
-                "output_name": "tstat_temperature",
-                "dtype": "float32",
-            },
-            "tstat_humidity": {
-                "output_name": "tstat_humidity",
-                "dtype": "float32",
-            },
-        }
+    output_states = attr.ib(
+        default=[
+            STATES.TEMPERATURE_CTRL,
+            STATES.TEMPERATURE_STP_COOL,
+            STATES.TEMPERATURE_STP_HEAT,
+        ]
     )
 
     fmu_spec = attr.ib(
@@ -103,8 +91,6 @@ class EnergyPlusBuildingModel(BuildingModel):
     )
 
     fmu = attr.ib(default=None)
-
-    # cur_HVAC_mode = attr.ib(default=HVAC_modes.UNCONTROLLED)
 
     def __attrs_post_init__(self):
         pass
@@ -325,21 +311,22 @@ class EnergyPlusBuildingModel(BuildingModel):
         if step_control_input["heat_stage_one"]:
             self.fmu.set(
                 self.idf.FMU_control_type_name,
-                int(HVAC_modes.SINGLE_HEATING_SETPOINT),
+                int(EPLUS_THERMOSTAT_MODES.SINGLE_HEATING_SETPOINT),
             )
             self.fmu.set(self.idf.FMU_control_heating_stp_name, T_heat_on)
             self.fmu.set(self.idf.FMU_control_cooling_stp_name, T_cool_off)
         elif step_control_input["compressor_cool_stage_one"]:
             self.fmu.set(
                 self.idf.FMU_control_type_name,
-                int(HVAC_modes.SINGLE_COOLING_SETPOINT),
+                int(EPLUS_THERMOSTAT_MODES.SINGLE_COOLING_SETPOINT),
             )
             self.fmu.set(self.idf.FMU_control_heating_stp_name, T_heat_off)
             self.fmu.set(self.idf.FMU_control_cooling_stp_name, T_cool_on)
 
         else:
             self.fmu.set(
-                self.idf.FMU_control_type_name, int(HVAC_modes.UNCONTROLLED)
+                self.idf.FMU_control_type_name,
+                int(EPLUS_THERMOSTAT_MODES.UNCONTROLLED),
             )
             self.fmu.set(self.idf.FMU_control_heating_stp_name, T_heat_off)
             self.fmu.set(self.idf.FMU_control_cooling_stp_name, T_cool_off)

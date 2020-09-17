@@ -457,7 +457,7 @@ class IDFPreprocessor:
             FMU_Variable_Name=self.FMU_control_cooling_stp_name,
             Initial_Value=FMU_control_cooling_stp_init,
         )
-        # create a control type schedule limits. See `ControlModels.HVAC_Modes`
+        # create a control type schedule limits. See `ControlModels.EPLUS_THERMOSTAT_MODES`
         if not [
             s_obj
             for s_obj in self.ep_idf.idfobjects["ScheduleTypeLimits"]

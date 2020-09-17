@@ -7,7 +7,6 @@ import attr
 import pyfmi
 
 from BuildingControlsSimulator.ControlModels.ControlModel import ControlModel
-from BuildingControlsSimulator.ControlModels.ControlModel import HVAC_modes
 
 
 @attr.s(kw_only=True)

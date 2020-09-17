@@ -53,31 +53,23 @@ class DataClient:
     def get_data(self, sim_config):
 
         # check for invalid start/end combination
-        # invalid = sim_config[sim_config["end_utc"] <= sim_config["start_utc"]]
-
         if sim_config["end_utc"] <= sim_config["start_utc"]:
             raise ValueError(
                 "sim_config contains invalid start_utc >= end_utc."
             )
-
-        # _data = {
-        #     identifier: pd.DataFrame([], columns=[Internal.datetime_column])
-        #     for identifier in sim_config.index
-        # }
-
         # load from cache or download data from source
         _data = self.source.get_data(sim_config)
 
         if _data.empty:
-            logging.info(
-                "EMPTY SOURCE: sim_config={}, source={}".format(
+            logging.error(
+                "EMPTY DATA SOURCE: \nsim_config={} \nsource={}\n".format(
                     sim_config, self.source
                 )
             )
             if _data.empty:
                 _data = Internal.get_empty_df()
 
-            # finally create the data channel objs for usage during simulation
+        # finally create the data channel objs for usage during simulation
 
         self.hvac = HVACChannel(
             data=_data[
@@ -97,6 +89,7 @@ class DataClient:
             ],
             spec=Internal.sensors,
         )
+        self.sensors.drop_unused_room_sensors()
         self.sensors.get_full_data_periods(expected_period="5M")
 
         self.weather = WeatherChannel(

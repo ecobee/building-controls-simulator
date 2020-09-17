@@ -73,7 +73,7 @@ class Simulator:
                         )
                     )
 
-    def simulate(self, local=True):
+    def simulate(self, local=True, preprocess_check=False):
         """Run all simulations locally or in cloud.
 
 
@@ -81,5 +81,6 @@ class Simulator:
         """
         if local:
             for s in self.simulations:
+                s.create_models(preprocess_check=preprocess_check)
                 s.run(local=True)
 

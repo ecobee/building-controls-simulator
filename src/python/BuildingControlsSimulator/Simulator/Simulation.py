@@ -43,32 +43,33 @@ class Simulation:
         """validate input/output specs
         next input must be minimally satisfied by previous output
         """
-        breakpoint()
 
-        missing_controller_output_keys = [
+        missing_controller_output_states = [
             k
-            for k in self.building_model.input_spec.keys()
-            if k not in self.controller_model.output_spec.keys()
+            for k in self.building_model.input_states
+            if k not in self.controller_model.output_states
         ]
-        if any(missing_controller_output_keys):
+        if any(missing_controller_output_states):
             raise ValueError(
-                f"""
-                type(controller_model)={type(self.controller_model)}
-                Missing controller output keys: {missing_controller_output_keys}
-                """
+                f"type(controller_model)={type(self.controller_model)}\n",
+                f"Missing controller output keys: {missing_controller_output_states}\n",
             )
+
+        available_data_states = [
+            v["internal_state"]
+            for k, v in self.data_client.source.data_spec.hvac.spec.items()
+        ]
 
         missing_building_output_keys = [
             k
-            for k in self.controller_model.input_spec.keys()
-            if k not in self.building_model.output_spec.keys()
+            for k in self.controller_model.input_states
+            if k
+            not in self.building_model.output_states + available_data_states
         ]
         if any(missing_building_output_keys):
             raise ValueError(
-                f"""
-                type(building_model)={type(self.building_model)}
-                Missing building model output keys: {missing_building_output_keys}
-                """
+                f"type(building_model)={type(self.building_model)}\n",
+                f"Missing building model output keys: {missing_building_output_keys}\n",
             )
 
     @property
