@@ -171,7 +171,6 @@ class Simulation:
             f"Running co-simulation from {data_period[0]} to {data_period[1]}"
         )
         for i in range(0, len(sim_time)):
-            # TODO: add occupancy from data_client
             self.controller_model.do_step(
                 t_start=sim_time[i],
                 t_step=self.step_size_seconds,
