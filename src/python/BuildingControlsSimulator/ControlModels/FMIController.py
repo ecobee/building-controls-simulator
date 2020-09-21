@@ -21,52 +21,6 @@ class FMIController(ControlModel):
     """
 
     fmu_path = attr.ib()
-    input_spec = attr.ib()
-    output_spec = attr.ib()
 
-    def __attrs_post_init__(self):
-        """
-        """
-        # self.fmu = pyfmi.load_fmu(self.fmu_path)
-        pass
-
-    def initialize(self, t_start, t_end, ts):
-        """
-        """
-        self.fmu = pyfmi.load_fmu(self.fmu_path, kind="CS", log_level=7)
-        self.fmu.initialize(t_start, t_end)
-
-    # def output_keys(self):
-    #     """
-    #     Data to return in output.
-    #     """
-    #     # return ["HVAC_mode", "stp_heat", "stp_cool", "deadband"]
-    #     pass
-
-    # def do_step(self, t_ctrl):
-    #     """
-    #     Simulate controller time step.
-    #     Before building model step `HVAC_mode` is the HVAC_mode for the step
-    #     """
-    #     self.HVAC_mode = self.next_HVAC_mode(t_ctrl)
-    #     output = [getattr(self, k) for k in self.output_keys()]
-    #     return output
-
-    def next_HVAC_mode(self, t_ctrl):
-        """
-        Calculate HVAC mode based on current temperature. 
-        """
-        # take output record and parse to FMU
-        self.fmu.set("HVACmode", self.HVAC_mode)
-        self.fmu.set("Tctrl", t_ctrl)
-        self.fmu.set("Thstp", self.stp_heat)
-        self.fmu.set("Tcstp", self.stp_cool)
-        self.fmu.set("deadBand", self.deadband)
-
-        self.fmu.do_step(
-            current_t=0, step_size=300, new_step=True,
-        )
-
-        next_HVAC_mode = self.fmu.get("nextHVACmode")[0]
-
-        return next_HVAC_mode
+    current_t_idx = attr.ib(default=None)
+    step_size_seconds = attr.ib()

@@ -98,29 +98,3 @@ class TestSimulator:
             controller_models=[Deadband(),],
         )
         master.simulate(local=True, preprocess_check=True)
-
-    @pytest.mark.skip()
-    def test_idmt_fmu_simulation(self):
-        s = Simulator(
-            building_model=EnergyPlusBuildingModel(
-                idf=IDFPreprocessor(
-                    idf_file=self.idf_name, init_temperature=22.0,
-                ),
-                # weather_file=self.test_weather_path,
-            ),
-            controller_model=FMIController(
-                fmu_path=self.idtm_fmu_path,
-                deadband=2.0,
-                stp_heat=21.0,
-                stp_cool=24.0,
-            ),
-            step_size_minutes=5,
-            start_time_days=182,
-            final_time_days=189,
-        )
-
-        # don't need to recreate EnergyPlus FMU
-        s.create_models(preprocess_check=True)
-
-        output_df_fmi = s.run()
-        print("ok")

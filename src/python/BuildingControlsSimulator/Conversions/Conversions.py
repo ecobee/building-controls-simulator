@@ -55,6 +55,8 @@ class Conversions:
             return False
         elif dtype in ["float32", "Float32"]:
             return -9999.0
+        elif dtype in ["int64", "Int64"]:
+            return -99999
         elif dtype in ["int32", "Int32"]:
             return -9999
         elif dtype in ["int16", "Int16"]:
@@ -62,6 +64,6 @@ class Conversions:
         elif dtype in ["int8", "Int8"]:
             return -99
         elif dtype in ["category", "Category"]:
-            return 0
+            return ""
         else:
             raise ValueError(f"Unsupported dtype={dtype}")

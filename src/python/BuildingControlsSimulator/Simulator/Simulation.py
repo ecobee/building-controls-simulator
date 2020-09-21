@@ -49,21 +49,31 @@ class Simulation:
         self.start_utc = self.config.start_utc
         self.end_utc = self.config.end_utc
 
+        # get all data states that can be input to each model
+        available_data_states = [
+            v["internal_state"]
+            for k, v in self.data_client.source.data_spec.hvac.spec.items()
+        ]
+        available_data_states += [
+            v["internal_state"]
+            for k, v in self.data_client.source.data_spec.sensors.spec.items()
+        ]
+        available_data_states += [
+            v["internal_state"]
+            for k, v in self.data_client.source.data_spec.weather.spec.items()
+        ]
+
         missing_controller_output_states = [
             k
             for k in self.building_model.input_states
-            if k not in self.controller_model.output_states
+            if k
+            not in self.controller_model.output_states + available_data_states
         ]
         if any(missing_controller_output_states):
             raise ValueError(
                 f"type(controller_model)={type(self.controller_model)}\n",
                 f"Missing controller output keys: {missing_controller_output_states}\n",
             )
-
-        available_data_states = [
-            v["internal_state"]
-            for k, v in self.data_client.source.data_spec.hvac.spec.items()
-        ]
 
         missing_building_output_keys = [
             k
@@ -126,21 +136,23 @@ class Simulation:
             t_start=self.start_time_seconds,
             t_end=self.final_time_seconds,
             t_step=self.step_size_seconds,
+            categories_dict=self.data_client.hvac.get_categories_dict(),
         )
         self.controller_model.initialize(
             t_start=self.start_time_seconds,
             t_end=self.final_time_seconds,
             t_step=self.step_size_seconds,
+            categories_dict=self.data_client.hvac.get_categories_dict(),
         )
 
     def tear_down(self):
-        logger.info("Tearing down co-simulation models ...")
+        logger.info("Tearing down co-simulation models")
         self.building_model.tear_down()
         self.controller_model.tear_down()
 
     def run(self, data_period, local=True):
         """Main co-simulation loop"""
-        logger.info("Initializing co-simulation models ...")
+        logger.info("Initializing co-simulation models")
         self.initialize(data_period=data_period)
 
         sim_data_channel_idx_offset = self.data_client.hvac.data[
@@ -155,12 +167,14 @@ class Simulation:
             dtype="int64",
         )
 
-        logger.info("Running co-simulation ...")
+        logger.info(
+            f"Running co-simulation from {data_period[0]} to {data_period[1]}"
+        )
         for i in range(0, len(sim_time)):
             # TODO: add occupancy from data_client
             self.controller_model.do_step(
                 t_start=sim_time[i],
-                t_end=sim_time[i] + self.step_size_seconds,
+                t_step=self.step_size_seconds,
                 step_hvac_input=self.data_client.hvac.data.iloc[
                     sim_data_channel_idx_offset + i
                 ],
@@ -168,22 +182,22 @@ class Simulation:
                 step_weather_input=self.data_client.weather.data.iloc[
                     sim_data_channel_idx_offset + i
                 ],
-                step_occupancy_input=[],
             )
             self.building_model.do_step(
                 t_start=sim_time[i],
                 t_step=self.step_size_seconds,
                 step_control_input=self.controller_model.step_output,
+                step_sensor_input=self.data_client.sensors.data.iloc[
+                    sim_data_channel_idx_offset + i
+                ],
                 step_weather_input=self.data_client.weather.data.iloc[
                     sim_data_channel_idx_offset + i
                 ],
-                step_occupancy_input=[],
             )
 
-        logger.info("Finished co-simulation.")
+        logger.info("Finished co-simulation")
 
         self.tear_down()
-        breakpoint()
 
     def show_plots(self):
         output_analysis = OutputAnalysis(df=self.output_df)

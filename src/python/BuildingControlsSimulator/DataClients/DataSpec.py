@@ -23,7 +23,7 @@ class Spec:
     @spec.validator
     def dtypes_are_pandas(self, attribute, value):
         supported_dtypes = [
-            "boolean",
+            "bool",
             "string",
             "Float32",
             "float32",
@@ -259,7 +259,7 @@ class Internal:
             },
             STATES.THERMOSTAT_MOTION: {
                 "name": "thermostat_motion",
-                "dtype": "boolean",
+                "dtype": "bool",
                 "channel": CHANNELS.OCCUPANCY_SENSOR,
                 "unit": UNITS.OTHER,
             },
@@ -275,7 +275,7 @@ class Internal:
             **{
                 STATES["RS{}_OCCUPANCY".format(i)]: {
                     "name": "rs{}_occupancy".format(i),
-                    "dtype": "boolean",
+                    "dtype": "bool",
                     "channel": CHANNELS.OCCUPANCY_SENSOR,
                     "unit": UNITS.OTHER,
                 }
@@ -309,7 +309,7 @@ class Internal:
         spec={
             STATES.STEP_STATUS: {
                 "name": "status",
-                "dtype": "category",
+                "dtype": "Int8",
                 "channel": CHANNELS.SIMULATION,
                 "unit": UNITS.OTHER,
             },
@@ -555,7 +555,7 @@ class FlatFilesSpec:
             },
             "SensorOcc000": {
                 "internal_state": STATES.THERMOSTAT_MOTION,
-                "dtype": "boolean",
+                "dtype": "bool",
                 "channel": CHANNELS.OCCUPANCY_SENSOR,
                 "unit": UNITS.OTHER,
             },
@@ -571,7 +571,7 @@ class FlatFilesSpec:
             **{
                 "SensorOcc1{}".format(str(i).zfill(2)): {
                     "internal_state": STATES["RS{}_OCCUPANCY".format(i)],
-                    "dtype": "boolean",
+                    "dtype": "bool",
                     "channel": CHANNELS.OCCUPANCY_SENSOR,
                     "unit": UNITS.OTHER,
                 }
@@ -755,7 +755,7 @@ class DonateYourDataSpec:
             },
             "Thermostat_Motion": {
                 "internal_state": STATES.THERMOSTAT_MOTION,
-                "dtype": "boolean",
+                "dtype": "bool",
                 "channel": CHANNELS.OCCUPANCY_SENSOR,
                 "unit": UNITS.OTHER,
             },
@@ -771,7 +771,7 @@ class DonateYourDataSpec:
             **{
                 "Remote_Sensor_{}_Motion".format(i): {
                     "internal_state": STATES[f"RS{i}_OCCUPANCY"],
-                    "dtype": "boolean",
+                    "dtype": "bool",
                     "channel": CHANNELS.OCCUPANCY_SENSOR,
                     "unit": UNITS.OTHER,
                 }

@@ -45,29 +45,47 @@ class Deadband(ControlModel):
     output = attr.ib(default={})
     current_t_idx = attr.ib(default=None)
 
-    def initialize(self, t_start, t_end, t_step):
+    def initialize(self, t_start, t_end, t_step, categories_dict):
         """
         """
         self.current_t_idx = 0
         self.step_size_seconds = t_step
+        self.allocate_output_memory(
+            t_start=t_start,
+            t_end=t_end,
+            t_step=t_step,
+            categories_dict=categories_dict,
+        )
+        self.init_step_output()
+
+    def allocate_output_memory(self, t_start, t_end, t_step, categories_dict):
+        """preallocate output memory to speed up simulation"""
         self.output[STATES.SIMULATION_TIME] = np.arange(
             t_start, t_end, t_step, dtype="int64"
         )
         n_s = len(self.output[STATES.SIMULATION_TIME])
         self.output = {}
 
-        # add fmu state variables
+        # add state variables
         for state in self.output_states:
-            _default_value = Conversions.default_value_by_type(
-                Internal.full.spec[state]["dtype"]
-            )
-            self.output[state] = np.full(
-                n_s, _default_value, dtype=Internal.full.spec[state]["dtype"]
-            )
+            if Internal.full.spec[state]["dtype"] == "category":
+                self.output[state] = pd.Series(
+                    pd.Categorical(
+                        pd.Series(index=np.arange(n_s)),
+                        categories=categories_dict[state],
+                    )
+                )
+            else:
+                _default_value = Conversions.default_value_by_type(
+                    Internal.full.spec[state]["dtype"]
+                )
+                self.output[state] = np.full(
+                    n_s,
+                    _default_value,
+                    dtype=Internal.full.spec[state]["dtype"],
+                )
 
         self.output[STATES.STEP_STATUS] = np.full(n_s, 0, dtype="int8")
-
-        self.init_step_output()
 
     def tear_down(self):
         """tear down FMU"""
@@ -80,11 +98,10 @@ class Deadband(ControlModel):
     def do_step(
         self,
         t_start,
-        t_end,
+        t_step,
         step_hvac_input,
         step_sensor_input,
         step_weather_input,
-        step_occupancy_input,
     ):
         """Simulate controller time step."""
         t_ctrl = step_sensor_input[STATES.THERMOSTAT_TEMPERATURE]
@@ -112,33 +129,6 @@ class Deadband(ControlModel):
             self.step_output[STATES.AUXHEAT1] = 0
             self.step_output[STATES.COMPCOOL1] = 0
             self.step_output[STATES.FAN_STAGE_ONE] = 0
-
-        # elif (
-        #     t_ctrl
-        #     > (step_hvac_input[STATES.TEMPERATURE_STP_HEAT] + self.deadband)
-        #     and self.step_output[STATES.AUXHEAT1]
-        # ):
-        #     # turn off heat
-        #     self.step_output[STATES.AUXHEAT1] = 0
-        #     self.step_output[STATES.FAN_STAGE_ONE] = 0
-
-        # elif (
-        #     t_ctrl
-        #     > (step_hvac_input[STATES.TEMPERATURE_STP_COOL] + self.deadband)
-        #     and not self.step_output[STATES.COMPCOOL1]
-        # ):
-        #     # turn on cool
-        #     self.step_output[STATES.COMPCOOL1] = self.step_size_seconds
-        #     self.step_output[STATES.FAN_STAGE_ONE] = self.step_size_seconds
-
-        # elif (
-        #     t_ctrl
-        #     < (step_hvac_input[STATES.TEMPERATURE_STP_COOL] - self.deadband)
-        #     and self.step_output[STATES.COMPCOOL1]
-        # ):
-        #     # turn off cool
-        #     self.step_output[STATES.COMPCOOL1] = 0
-        #     self.step_output[STATES.FAN_STAGE_ONE] = 0
 
         self.add_step_to_output(self.step_output)
         self.current_t_idx += 1

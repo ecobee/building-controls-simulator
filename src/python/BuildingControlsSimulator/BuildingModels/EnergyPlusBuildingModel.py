@@ -10,7 +10,6 @@ from enum import IntEnum
 import pandas as pd
 import attr
 import numpy as np
-from eppy import modeleditor
 import pyfmi
 
 from BuildingControlsSimulator.DataClients.DataStates import STATES
@@ -18,9 +17,7 @@ from BuildingControlsSimulator.DataClients.DataSpec import Internal
 from BuildingControlsSimulator.BuildingModels.BuildingModel import (
     BuildingModel,
 )
-from BuildingControlsSimulator.BuildingModels.IDFPreprocessor import (
-    IDFPreprocessor,
-)
+
 
 from BuildingControlsSimulator.ControlModels.ControlModel import ControlModel
 from BuildingControlsSimulator.Conversions.Conversions import Conversions
@@ -82,7 +79,11 @@ class EnergyPlusBuildingModel(BuildingModel):
     )
 
     output_states = attr.ib(
-        default=[STATES.THERMOSTAT_TEMPERATURE, STATES.THERMOSTAT_HUMIDITY,]
+        default=[
+            STATES.THERMOSTAT_TEMPERATURE,
+            STATES.THERMOSTAT_HUMIDITY,
+            STATES.THERMOSTAT_MOTION,
+        ]
     )
 
     fmu = attr.ib(default=None)
@@ -195,11 +196,11 @@ class EnergyPlusBuildingModel(BuildingModel):
 
         return self.fmu_path
 
-    def initialize(self, t_start, t_end, t_step):
+    def initialize(self, t_start, t_end, t_step, categories_dict={}):
         """
         """
         logger.info(f"Initializing EnergyPlusBuildingModel: {self.fmu_path}")
-        self.allocate_output_memory(t_start, t_end, t_step)
+        self.allocate_output_memory(t_start, t_end, t_step, categories_dict)
         self.init_step_output()
 
         self.fmu = pyfmi.load_fmu(fmu=self.fmu_path)
@@ -207,14 +208,16 @@ class EnergyPlusBuildingModel(BuildingModel):
 
     def tear_down(self):
         """tear down FMU"""
-        self.fmu.terminate()
-        self.fmu.free_instance()
+        # self.fmu.terminate()
+        # self.fmu.free_instance()
+        pass
 
     def init_step_output(self):
         self.step_output[STATES.THERMOSTAT_TEMPERATURE] = self.init_temperature
         self.step_output[STATES.THERMOSTAT_HUMIDITY] = self.init_humidity
+        self.step_output[STATES.THERMOSTAT_MOTION] = False
 
-    def allocate_output_memory(self, t_start, t_end, t_step):
+    def allocate_output_memory(self, t_start, t_end, t_step, categories_dict):
         """preallocate output memory as numpy arrays to speed up simulation
         """
 
@@ -227,12 +230,22 @@ class EnergyPlusBuildingModel(BuildingModel):
 
         # add output state variables
         for state in self.output_states:
-            _default_value = Conversions.default_value_by_type(
-                Internal.full.spec[state]["dtype"]
-            )
-            self.output[state] = np.full(
-                n_s, _default_value, dtype=Internal.full.spec[state]["dtype"]
-            )
+            if Internal.full.spec[state]["dtype"] == "category":
+                self.output[state] = pd.Series(
+                    pd.Categorical(
+                        pd.Series(index=np.arange(n_s)),
+                        categories=categories_dict[state],
+                    )
+                )
+            else:
+                _default_value = Conversions.default_value_by_type(
+                    Internal.full.spec[state]["dtype"]
+                )
+                self.output[state] = np.full(
+                    n_s,
+                    _default_value,
+                    dtype=Internal.full.spec[state]["dtype"],
+                )
 
         # add fmu state variables
         self.fmu_output[STATES.STEP_STATUS] = np.full(n_s, False, dtype="bool")
@@ -253,8 +266,8 @@ class EnergyPlusBuildingModel(BuildingModel):
         t_start,
         t_step,
         step_control_input,
+        step_sensor_input,
         step_weather_input,
-        step_occupancy_input,
     ):
         """
         Simulate controller time step.
@@ -269,12 +282,12 @@ class EnergyPlusBuildingModel(BuildingModel):
         status = self.fmu.do_step(
             current_t=t_start, step_size=t_step, new_step=True,
         )
-        self.update_output(status)
+        self.update_output(status, step_sensor_input)
 
         # finally increment t_idx
         self.current_t_idx += 1
 
-    def update_output(self, status):
+    def update_output(self, status, step_sensor_input):
         """Update internal output obj for current_t_idx with fmu output."""
 
         self.fmu_output[STATES.STEP_STATUS][self.current_t_idx] = status
@@ -296,6 +309,12 @@ class EnergyPlusBuildingModel(BuildingModel):
             ],
             dewpoint=self.get_tstat_dewpoint(),
         )
+        # pass through outputs
+        self.output[STATES.THERMOSTAT_MOTION][
+            self.current_t_idx
+        ] = step_sensor_input[STATES.THERMOSTAT_MOTION]
+
+        # get step_output
         for state in self.output_states:
             self.step_output[state] = self.output[state][self.current_t_idx]
 

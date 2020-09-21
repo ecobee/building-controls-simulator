@@ -18,6 +18,15 @@ class DataChannel:
     full_data_periods = attr.ib(default=[])
     sim_data = attr.ib(default=[])
 
+    def get_categories_dict(self):
+        """Get dict of all categories for categorical dtypes to sync with models"""
+        _cat_dict = {}
+        for _col in self.data.columns:
+            if isinstance(self.data[_col].dtype, pd.CategoricalDtype):
+                _cat_dict[_col] = self.data[_col].dtype.categories
+
+        return _cat_dict
+
     def get_full_data_periods(self, expected_period):
         # if self.data has no records then there are no full_data_periods
         _full_data_periods = []
