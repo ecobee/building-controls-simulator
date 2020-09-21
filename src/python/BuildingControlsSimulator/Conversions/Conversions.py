@@ -48,3 +48,20 @@ class Conversions:
         exp_arg = (b - (temp_air / d)) * (temp_air / (c + temp_air))
         gamma = np.log((relative_humidity / 100) * np.exp(exp_arg))
         return (c * gamma) / (b - gamma)
+
+    @staticmethod
+    def default_value_by_type(dtype):
+        if dtype in ["bool", "boolean"]:
+            return False
+        elif dtype in ["float32", "Float32"]:
+            return -9999.0
+        elif dtype in ["int32", "Int32"]:
+            return -9999
+        elif dtype in ["int16", "Int16"]:
+            return -999
+        elif dtype in ["int8", "Int8"]:
+            return -99
+        elif dtype in ["category", "Category"]:
+            return 0
+        else:
+            raise ValueError(f"Unsupported dtype={dtype}")

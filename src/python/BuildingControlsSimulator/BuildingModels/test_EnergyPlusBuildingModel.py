@@ -198,7 +198,7 @@ class TestEnergyPlusBuildingModel:
         }
         for i in range(ns):
             self.building_model.do_step(
-                t_start=self.building_model.output["time"][i],
+                t_start=self.building_model.output[STATES.SIMULATION_TIME][i],
                 t_step=300,
                 step_control_input=step_control_input,
                 step_weather_input={},

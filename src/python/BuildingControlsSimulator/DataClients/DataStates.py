@@ -26,6 +26,7 @@ class CHANNELS(enum.IntEnum):
     WEATHER = enum.auto()
     DATETIME = enum.auto()
     ENERGY_COST = enum.auto()
+    SIMULATION = enum.auto()
 
 
 @enum.unique
@@ -90,3 +91,6 @@ class STATES(enum.IntEnum):
     FAN_STAGE_ONE = enum.auto()
     FAN_STAGE_TWO = enum.auto()
     FAN_STAGE_THREE = enum.auto()
+    STEP_STATUS = enum.auto()
+    SIMULATION_TIME = enum.auto()
+

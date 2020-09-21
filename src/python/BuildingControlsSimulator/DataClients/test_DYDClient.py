@@ -79,7 +79,7 @@ class TestDYDClient:
         for dc in self.data_clients:
             if not dc.weather.data.empty:
                 data, meta, meta_lines = dc.weather.read_epw(
-                    dc.weather.epw_fpath
+                    dc.weather.epw_path
                 )
                 assert not data.empty
                 assert all(

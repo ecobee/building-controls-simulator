@@ -23,6 +23,7 @@ class DataClient:
     hvac = attr.ib(default={})
     sensors = attr.ib(default={})
     weather = attr.ib(default={})
+    full_data_periods = attr.ib(default=[])
 
     # input variables
     source = attr.ib(validator=attr.validators.instance_of(DataSource))
@@ -50,20 +51,20 @@ class DataClient:
         os.makedirs(self.ep_tmy3_cache_dir, exist_ok=True)
         os.makedirs(self.simulation_epw_dir, exist_ok=True)
 
-    def get_data(self, sim_config):
-
+    def get_data(self):
         # check for invalid start/end combination
-        if sim_config["end_utc"] <= sim_config["start_utc"]:
+        if self.sim_config["end_utc"] <= self.sim_config["start_utc"]:
             raise ValueError(
                 "sim_config contains invalid start_utc >= end_utc."
             )
         # load from cache or download data from source
-        _data = self.source.get_data(sim_config)
+        _data = self.source.get_data(self.sim_config)
+        _data = _data.sort_index()
 
         if _data.empty:
             logging.error(
                 "EMPTY DATA SOURCE: \nsim_config={} \nsource={}\n".format(
-                    sim_config, self.source
+                    self.sim_config, self.source
                 )
             )
             if _data.empty:
@@ -107,21 +108,21 @@ class DataClient:
         self.weather.get_full_data_periods(expected_period="5M")
 
         # post-processing of data channels
-        self.weather.make_epw_file(sim_config=sim_config)
+        self.weather.make_epw_file(sim_config=self.sim_config)
 
-        self.get_simulation_data(sim_config)
+        self.get_simulation_data()
 
     def get_metadata(self):
         return pd.read_csv(self.meta_gs_uri).drop_duplicates(
             subset=["Identifier"]
         )
 
-    def get_simulation_data(self, sim_config):
+    def get_simulation_data(self):
         """Set `sim_data` in each data channel with periods data exists in all
         channels.
         """
-        self.hvac.sim_data = []
-        self.weather.sim_data = []
+        # self.hvac.sim_data = []
+        # self.weather.sim_data = []
 
         # iterate through data sources
         data_source_periods = [
@@ -133,8 +134,8 @@ class DataClient:
         # check for missing data sources
         if all([len(d) != 0 for d in data_source_periods]):
             # set period start of simulation time
-            p_start = sim_config.start_utc
-            p_end = sim_config.start_utc
+            p_start = self.sim_config["start_utc"]
+            p_end = self.sim_config["end_utc"]
             # create list of data source idxs to keep track of place for each
             ds_idx = [0 for d in data_source_periods]
             data_periods = []
@@ -153,33 +154,34 @@ class DataClient:
 
                 p_start = np.max(ds_p_start)
                 p_end = np.min(ds_p_end)
-                data_periods.append((p_start, p_end))
+                self.full_data_periods.append((p_start, p_end))
                 # advance time period
                 p_start = p_end
 
-            for p_start, p_end in data_periods:
-                if (p_end - p_start) > sim_config.min_sim_period:
-                    for _data_channel in [
-                        self.hvac,
-                        self.sensors,
-                        self.weather,
-                    ]:
-                        _data_channel.sim_data.append(
-                            _data_channel.data[
-                                (
-                                    _data_channel.data[
-                                        _data_channel.spec.datetime_column
-                                    ]
-                                    >= p_start
-                                )
-                                & (
-                                    _data_channel.data[
-                                        _data_channel.spec.datetime_column
-                                    ]
-                                    <= p_end
-                                )
-                            ]
-                        )
+            # select data only within periods
+            # for p_start, p_end in self.full_data_periods:
+            #     if (p_end - p_start) > self.sim_config["min_sim_period"]:
+            #         for _data_channel in [
+            #             self.hvac,
+            #             self.sensors,
+            #             self.weather,
+            #         ]:
+            #             _data_channel.sim_data.append(
+            #                 _data_channel.data[
+            #                     (
+            #                         _data_channel.data[
+            #                             _data_channel.spec.datetime_column
+            #                         ]
+            #                         >= p_start
+            #                     )
+            #                     & (
+            #                         _data_channel.data[
+            #                             _data_channel.spec.datetime_column
+            #                         ]
+            #                         <= p_end
+            #                     )
+            #                 ]
+            #             )
         else:
             logger.info("No valid simulation periods.")
 

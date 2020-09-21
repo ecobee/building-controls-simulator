@@ -12,6 +12,10 @@ from BuildingControlsSimulator.Simulator.Simulation import Simulation
 from BuildingControlsSimulator.BuildingModels.BuildingModel import (
     BuildingModel,
 )
+from BuildingControlsSimulator.BuildingModels.EnergyPlusBuildingModel import (
+    EnergyPlusBuildingModel,
+)
+
 from BuildingControlsSimulator.ControlModels.ControlModel import ControlModel
 from BuildingControlsSimulator.DataClients.DataClient import DataClient
 from BuildingControlsSimulator.OutputAnalysis.OutputAnalysis import (
@@ -80,7 +84,15 @@ class Simulator:
         :param local:
         """
         if local:
-            for s in self.simulations:
-                s.create_models(preprocess_check=preprocess_check)
-                s.run(local=True)
+            for sim in self.simulations:
+                sim.data_client.get_data()
+                sim.create_models(preprocess_check=preprocess_check)
+                for data_period in sim.data_client.full_data_periods:
+                    if isinstance(sim.building_model, EnergyPlusBuildingModel):
+                        # data_periods must be trimmed to full day periods for EPlus
+                        _end = data_period[0] + pd.Timedelta(
+                            days=(data_period[1] - data_period[0]).days
+                        )
+                        data_period = (data_period[0], _end)
 
+                    sim.run(local=True, data_period=data_period)

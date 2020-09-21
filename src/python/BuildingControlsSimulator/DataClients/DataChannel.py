@@ -26,13 +26,22 @@ class DataChannel:
                 self.spec.datetime_column, ascending=True
             )
             # drop records that are incomplete
+            original_len = len(self.data)
+            # TODO: can we overwrite self.data?
             _df = (
-                self.data[~self.data[self.spec.null_check_column].isnull()]
-                .reset_index()
-                .copy(deep=True)
+                self.data.dropna(
+                    axis=0, how="any", subset=self.spec.null_check_columns
+                )
+                .reset_index(drop=True)
+                .sort_values(self.spec.datetime_column, ascending=True)
             )
 
-            # if null_check_column is always null then all missing data
+            null_rows = original_len - len(_df)
+            logger.info(
+                f"Dropped {null_rows} null_rows with no columns={self.spec.null_check_columns}",
+            )
+
+            # if null_check_columns is always null then all missing data
             if not _df.empty:
 
                 diffs = _df[self.spec.datetime_column].diff()

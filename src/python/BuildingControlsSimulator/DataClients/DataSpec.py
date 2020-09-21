@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 @attr.s(kw_only=True)
 class Spec:
     spec = attr.ib()
-    null_check_column = attr.ib()
+    null_check_columns = attr.ib()
     datetime_column = attr.ib()
 
     @spec.validator
@@ -74,7 +74,7 @@ class Internal:
     # do not need Enum value for only one column
     datetime = Spec(
         datetime_column=datetime_column,
-        null_check_column=[datetime_column],
+        null_check_columns=[datetime_column],
         spec={
             datetime_column: {
                 "name": "date_time",
@@ -86,7 +86,7 @@ class Internal:
     )
     hvac = Spec(
         datetime_column=datetime_column,
-        null_check_column=[STATES.HVAC_MODE],
+        null_check_columns=[STATES.HVAC_MODE],
         spec={
             STATES.HVAC_MODE: {
                 "name": "hvac_mode",
@@ -208,6 +208,24 @@ class Internal:
                 "channel": CHANNELS.HVAC,
                 "unit": UNITS.SECONDS,
             },
+            STATES.FAN_STAGE_ONE: {
+                "name": "fan",
+                "dtype": "Int16",
+                "channel": CHANNELS.HVAC,
+                "unit": UNITS.SECONDS,
+            },
+            STATES.FAN_STAGE_TWO: {
+                "name": "fan",
+                "dtype": "Int16",
+                "channel": CHANNELS.HVAC,
+                "unit": UNITS.SECONDS,
+            },
+            STATES.FAN_STAGE_THREE: {
+                "name": "fan",
+                "dtype": "Int16",
+                "channel": CHANNELS.HVAC,
+                "unit": UNITS.SECONDS,
+            },
             STATES.HUMIDIFIER: {
                 "name": "humidifier",
                 "dtype": "Int16",
@@ -225,7 +243,7 @@ class Internal:
 
     sensors = Spec(
         datetime_column=datetime_column,
-        null_check_column=[STATES.THERMOSTAT_TEMPERATURE],
+        null_check_columns=[STATES.THERMOSTAT_TEMPERATURE],
         spec={
             STATES.THERMOSTAT_TEMPERATURE: {
                 "name": "thermostat_temperature",
@@ -268,7 +286,7 @@ class Internal:
 
     weather = Spec(
         datetime_column=datetime_column,
-        null_check_column=[STATES.OUTDOOR_TEMPERATURE],
+        null_check_columns=[STATES.OUTDOOR_TEMPERATURE],
         spec={
             STATES.OUTDOOR_TEMPERATURE: {
                 "name": "outdoor_temperature",
@@ -285,15 +303,40 @@ class Internal:
         },
     )
 
+    simulation = Spec(
+        datetime_column=datetime_column,
+        null_check_columns="Temperature",
+        spec={
+            STATES.STEP_STATUS: {
+                "name": "status",
+                "dtype": "category",
+                "channel": CHANNELS.SIMULATION,
+                "unit": UNITS.OTHER,
+            },
+            STATES.SIMULATION_TIME: {
+                "name": "simulation_time_seconds",
+                "dtype": "Int64",
+                "channel": CHANNELS.SIMULATION,
+                "unit": UNITS.SECONDS,
+            },
+        },
+    )
+
     full = Spec(
         datetime_column=datetime_column,
-        null_check_column=[
-            datetime.null_check_column
-            + hvac.null_check_column
-            + sensors.null_check_column
-            + weather.null_check_column
+        null_check_columns=[
+            datetime.null_check_columns
+            + hvac.null_check_columns
+            + sensors.null_check_columns
+            + weather.null_check_columns
         ],
-        spec={**datetime.spec, **hvac.spec, **sensors.spec, **weather.spec,},
+        spec={
+            **datetime.spec,
+            **hvac.spec,
+            **sensors.spec,
+            **weather.spec,
+            **simulation.spec,
+        },
     )
 
     @staticmethod
@@ -345,7 +388,7 @@ class FlatFilesSpec:
     N_ROOM_SENSORS = 10
     datetime = Spec(
         datetime_column=datetime_column,
-        null_check_column=datetime_column,
+        null_check_columns=datetime_column,
         spec={
             datetime_column: {
                 "internal_state": STATES.DATE_TIME,
@@ -357,7 +400,7 @@ class FlatFilesSpec:
     )
     hvac = Spec(
         datetime_column=datetime_column,
-        null_check_column="HvacMode",
+        null_check_columns="HvacMode",
         spec={
             "HvacMode": {
                 "internal_state": STATES.HVAC_MODE,
@@ -496,7 +539,7 @@ class FlatFilesSpec:
 
     sensors = Spec(
         datetime_column=datetime_column,
-        null_check_column="thermostat_temperature",
+        null_check_columns="thermostat_temperature",
         spec={
             "SensorTemp000": {
                 "internal_state": STATES.THERMOSTAT_TEMPERATURE,
@@ -539,7 +582,7 @@ class FlatFilesSpec:
 
     weather = Spec(
         datetime_column=datetime_column,
-        null_check_column="Temperature",
+        null_check_columns="Temperature",
         spec={
             "Temperature": {
                 "internal_state": STATES.OUTDOOR_TEMPERATURE,
@@ -558,11 +601,11 @@ class FlatFilesSpec:
 
     full = Spec(
         datetime_column=datetime_column,
-        null_check_column=[
-            datetime.null_check_column
-            + hvac.null_check_column
-            + sensors.null_check_column
-            + weather.null_check_column
+        null_check_columns=[
+            datetime.null_check_columns
+            + hvac.null_check_columns
+            + sensors.null_check_columns
+            + weather.null_check_columns
         ],
         spec={**datetime.spec, **hvac.spec, **sensors.spec, **weather.spec,},
     )
@@ -575,7 +618,7 @@ class DonateYourDataSpec:
     N_ROOM_SENSORS = 10
     datetime = Spec(
         datetime_column=datetime_column,
-        null_check_column=datetime_column,
+        null_check_columns=datetime_column,
         spec={
             datetime_column: {
                 "internal_state": STATES.DATE_TIME,
@@ -587,7 +630,7 @@ class DonateYourDataSpec:
     )
     hvac = Spec(
         datetime_column=datetime_column,
-        null_check_column="HvacMode",
+        null_check_columns="HvacMode",
         spec={
             "HvacMode": {
                 "internal_state": STATES.HVAC_MODE,
@@ -696,16 +739,16 @@ class DonateYourDataSpec:
 
     sensors = Spec(
         datetime_column=datetime_column,
-        null_check_column="Thermostat_Temperature",
+        null_check_columns="Thermostat_Temperature",
         spec={
             "Thermostat_Temperature": {
-                "internal_state": STATES.THERMOSTAT_MOTION,
+                "internal_state": STATES.THERMOSTAT_TEMPERATURE,
                 "dtype": "Int16",
                 "channel": CHANNELS.TEMPERATURE_SENSOR,
                 "unit": UNITS.FARHENHEIT,
             },
             "Humidity": {
-                "internal_state": STATES.THERMOSTAT_MOTION,
+                "internal_state": STATES.THERMOSTAT_HUMIDITY,
                 "dtype": "Int16",
                 "channel": CHANNELS.HUMIDITY_SENSOR,
                 "unit": UNITS.RELATIVE_HUMIDITY,
@@ -739,7 +782,7 @@ class DonateYourDataSpec:
 
     weather = Spec(
         datetime_column=datetime_column,
-        null_check_column="Temperature",
+        null_check_columns="Temperature",
         spec={
             "T_out": {
                 "internal_state": STATES.OUTDOOR_TEMPERATURE,
@@ -758,11 +801,11 @@ class DonateYourDataSpec:
 
     full = Spec(
         datetime_column=datetime_column,
-        null_check_column=[
-            datetime.null_check_column
-            + hvac.null_check_column
-            + sensors.null_check_column
-            + weather.null_check_column
+        null_check_columns=[
+            datetime.null_check_columns
+            + hvac.null_check_columns
+            + sensors.null_check_columns
+            + weather.null_check_columns
         ],
         spec={**datetime.spec, **hvac.spec, **sensors.spec, **weather.spec,},
     )

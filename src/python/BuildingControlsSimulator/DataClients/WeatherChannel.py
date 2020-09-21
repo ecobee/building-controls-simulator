@@ -23,7 +23,7 @@ class WeatherChannel(DataChannel):
     """Client for weather data.
     """
 
-    epw_fpath = attr.ib(default=None)
+    epw_path = attr.ib(default=None)
     epw_data = attr.ib(default={})
     epw_meta = attr.ib(default={})
 
@@ -50,15 +50,15 @@ class WeatherChannel(DataChannel):
         )
 
     def make_epw_file(self, sim_config):
-        _epw_fpath = None
+        _epw_path = None
         # attempt to get .epw data from NREL
-        fill_epw_fpath, fill_epw_fname = self.get_tmy_epw(
+        fill_epw_path, fill_epw_fname = self.get_tmy_epw(
             sim_config["latitude"], sim_config["longitude"]
         )
-        (fill_epw_data, epw_meta, meta_lines,) = self.read_epw(fill_epw_fpath)
+        (fill_epw_data, epw_meta, meta_lines,) = self.read_epw(fill_epw_path)
 
         if not fill_epw_data.empty:
-            _epw_fpath = os.path.join(
+            _epw_path = os.path.join(
                 self.simulation_epw_dir,
                 "NREL_EPLUS"
                 + f"_{sim_config['identifier']}"
@@ -74,10 +74,10 @@ class WeatherChannel(DataChannel):
                 epw_data=epw_data,
                 meta=epw_meta,
                 meta_lines=meta_lines,
-                fpath=_epw_fpath,
+                fpath=_epw_path,
             )
 
-            self.epw_fpath = _epw_fpath
+            self.epw_path = _epw_path
         else:
             logger.error("failed to retrieve .epw fill data.")
 

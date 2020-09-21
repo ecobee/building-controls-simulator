@@ -14,6 +14,7 @@ from eppy import modeleditor
 import pyfmi
 
 from BuildingControlsSimulator.DataClients.DataStates import STATES
+from BuildingControlsSimulator.DataClients.DataSpec import Internal
 from BuildingControlsSimulator.BuildingModels.BuildingModel import (
     BuildingModel,
 )
@@ -61,7 +62,9 @@ class EnergyPlusBuildingModel(BuildingModel):
     ext_dir = attr.ib(default=os.environ.get("EXT_DIR"))
     fmu_output = attr.ib(default={})
     output = attr.ib(default={})
-    step_size_seconds = attr.ib(default=None)
+    step_output = attr.ib(default={})
+    init_humidity = attr.ib(default=50.0)
+    init_temperature = attr.ib(default=21.0)
 
     input_states = attr.ib(
         default=[
@@ -77,17 +80,9 @@ class EnergyPlusBuildingModel(BuildingModel):
             STATES.FAN_STAGE_THREE,
         ]
     )
-    # keys with "output_name" == None are not part of external output
-    output_states = attr.ib(
-        default=[
-            STATES.TEMPERATURE_CTRL,
-            STATES.TEMPERATURE_STP_COOL,
-            STATES.TEMPERATURE_STP_HEAT,
-        ]
-    )
 
-    fmu_spec = attr.ib(
-        default={"Status": {"output_name": None, "dtype": "bool",},}
+    output_states = attr.ib(
+        default=[STATES.THERMOSTAT_TEMPERATURE, STATES.THERMOSTAT_HUMIDITY,]
     )
 
     fmu = attr.ib(default=None)
@@ -100,8 +95,37 @@ class EnergyPlusBuildingModel(BuildingModel):
         return self.idf.init_temperature
 
     @property
+    def init_fmu_name(self):
+        init_fmu_name = os.path.splitext(self.idf.idf_prep_name)[0]
+        # add automatic conversion rules for fmu naming
+        idf_bad_chars = [" ", "-", "+", "."]
+        for c in idf_bad_chars:
+            init_fmu_name = init_fmu_name.replace(c, "_")
+
+        if init_fmu_name[0].isdigit():
+            init_fmu_name = "f_" + init_fmu_name
+
+        init_fmu_name = init_fmu_name + ".fmu"
+
+        return init_fmu_name
+
+    @property
     def fmu_name(self):
-        fmu_name = os.path.splitext(self.idf.idf_prep_name)[0]
+        if not self.epw_path:
+            raise ValueError(
+                "Cannot name FMU without specifying weather file."
+            )
+
+        # the full fmu name is unique per combination of:
+        # 1. IDF file
+        # 2. weather service used
+        # 3. thermostat ID
+        # this is because the simulation weather is compiled into the FMU
+        fmu_name = (
+            self.idf.idf_prep_name
+            + "_"
+            + os.path.splitext(os.path.basename(self.epw_path))[0]
+        )
         # add automatic conversion rules for fmu naming
         idf_bad_chars = [" ", "-", "+", "."]
         for c in idf_bad_chars:
@@ -133,7 +157,9 @@ class EnergyPlusBuildingModel(BuildingModel):
                 f"Must supply valid weather file, epw_path={self.epw_path}"
             )
         self.idf.timesteps_per_hour = self.timesteps_per_hour
-        self.idf.preprocess(preprocess_check=False)
+        self.idf.init_temperature = self.init_temperature
+        self.idf.init_humidity = self.init_humidity
+        self.idf.preprocess(preprocess_check=preprocess_check)
 
         cmd = f"python2.7 {self.eplustofmu_path}"
         cmd += f" -i {self.idf.idd_path}"
@@ -149,7 +175,7 @@ class EnergyPlusBuildingModel(BuildingModel):
 
         # EnergyPlusToFMU puts fmu in cwd always, move out of cwd
         shutil.move(
-            os.path.join(os.getcwd(), self.fmu_name), self.fmu_path,
+            os.path.join(os.getcwd(), self.init_fmu_name), self.fmu_path,
         )
         # check FMI compliance
         # -h specifies the step size in seconds, -s is the stop time in seconds.
@@ -172,49 +198,54 @@ class EnergyPlusBuildingModel(BuildingModel):
     def initialize(self, t_start, t_end, t_step):
         """
         """
+        logger.info(f"Initializing EnergyPlusBuildingModel: {self.fmu_path}")
+        self.allocate_output_memory(t_start, t_end, t_step)
+        self.init_step_output()
+
         self.fmu = pyfmi.load_fmu(fmu=self.fmu_path)
         self.fmu.initialize(t_start, t_end)
 
-        self.allocate_output_memory(t_start, t_end, t_step)
+    def tear_down(self):
+        """tear down FMU"""
+        self.fmu.terminate()
+        self.fmu.free_instance()
+
+    def init_step_output(self):
+        self.step_output[STATES.THERMOSTAT_TEMPERATURE] = self.init_temperature
+        self.step_output[STATES.THERMOSTAT_HUMIDITY] = self.init_humidity
 
     def allocate_output_memory(self, t_start, t_end, t_step):
         """preallocate output memory as numpy arrays to speed up simulation
         """
-        time = np.arange(t_start, t_end, t_step, dtype="int64")
-        n_s = len(time)
 
-        self.output = {}
+        self.output = {
+            STATES.SIMULATION_TIME: np.arange(
+                t_start, t_end, t_step, dtype="int64"
+            )
+        }
+        n_s = len(self.output[STATES.SIMULATION_TIME])
 
         # add output state variables
-        for k, v, in self.output_spec.items():
-            if v["dtype"] == "bool":
-                self.output[k] = np.full(n_s, False, dtype="bool")
-            elif v["dtype"] == "float32":
-                self.output[k] = np.full(n_s, -999, dtype="float32")
-            else:
-                raise ValueError(
-                    "Unsupported output_map dtype: {}".format(v["dtype"])
-                )
+        for state in self.output_states:
+            _default_value = Conversions.default_value_by_type(
+                Internal.full.spec[state]["dtype"]
+            )
+            self.output[state] = np.full(
+                n_s, _default_value, dtype=Internal.full.spec[state]["dtype"]
+            )
 
         # add fmu state variables
-        self.fmu_output["Status"] = np.full(n_s, False, dtype="bool")
-        self.fmu_output["time"] = time
-        for k, v, in self.idf.output_spec.items():
-            if v["dtype"] == "bool":
-                self.fmu_output[k] = np.full(n_s, False, dtype="bool")
-            elif v["dtype"] == "float32":
-                self.fmu_output[k] = np.full(n_s, -999, dtype="float32")
-            else:
-                raise ValueError(
-                    "Unsupported output_map dtype: {}".format(v["dtype"])
-                )
+        self.fmu_output[STATES.STEP_STATUS] = np.full(n_s, False, dtype="bool")
+        self.fmu_output[STATES.SIMULATION_TIME] = self.output[
+            STATES.SIMULATION_TIME
+        ]
 
-        self.output["time"] = time
-        # self.output["status"] = np.full(n_s, False, dtype="bool")
+        for k, v in self.idf.output_spec.items():
+            _default_value = Conversions.default_value_by_type(v["dtype"])
+            self.fmu_output[k] = np.full(n_s, _default_value, dtype=v["dtype"])
 
         # set current time
         self.current_time = t_start
-        self.current_t_end = t_end
         self.current_t_idx = 0
 
     def do_step(
@@ -231,12 +262,10 @@ class EnergyPlusBuildingModel(BuildingModel):
         """
         # advance current time
         self.current_t_start = t_start
-        # self.current_t_end = t_end
 
         # set input
         self.actuate_HVAC_equipment(step_control_input)
 
-        # new_step=True ?
         status = self.fmu.do_step(
             current_t=t_start, step_size=t_step, new_step=True,
         )
@@ -248,21 +277,27 @@ class EnergyPlusBuildingModel(BuildingModel):
     def update_output(self, status):
         """Update internal output obj for current_t_idx with fmu output."""
 
+        self.fmu_output[STATES.STEP_STATUS][self.current_t_idx] = status
+
         # first get fmi zone output
-        for k in self.idf.output_spec.keys():
+        for k, v in self.idf.output_spec.items():
             self.fmu_output[k][self.current_t_idx] = self.fmu.get(k)[0]
 
-        self.output["tstat_temperature"][
+        # map fmu output to model output
+        self.output[STATES.THERMOSTAT_TEMPERATURE][
             self.current_t_idx
         ] = self.get_tstat_temperature()
 
-        self.output["tstat_humidity"][
+        self.output[STATES.THERMOSTAT_HUMIDITY][
             self.current_t_idx
         ] = Conversions.relative_humidity_from_dewpoint(
-            temperature=self.output["tstat_temperature"][self.current_t_idx],
+            temperature=self.output[STATES.THERMOSTAT_TEMPERATURE][
+                self.current_t_idx
+            ],
             dewpoint=self.get_tstat_dewpoint(),
         )
-        # map fmu output to model output
+        for state in self.output_states:
+            self.step_output[state] = self.output[state][self.current_t_idx]
 
     def get_fmu_output_keys(self, eplus_key):
         return [
@@ -271,7 +306,7 @@ class EnergyPlusBuildingModel(BuildingModel):
             if v["eplus_name"] == eplus_key
         ]
 
-    def get_tstat_temperature(self):
+    def get_mean_temperature(self):
         return np.mean(
             [
                 self.fmu_output[k][self.current_t_idx]
@@ -279,7 +314,22 @@ class EnergyPlusBuildingModel(BuildingModel):
             ]
         )
 
+    def get_tstat_temperature(self):
+        """tstat temperature is air temperature from zone containing tstat"""
+        fmu_name = f"{self.idf.thermostat_zone}_zone_air_temperature"
+        return self.fmu_output[fmu_name][self.current_t_idx]
+
+    def get_rs_temperature(self):
+        pass
+
     def get_tstat_dewpoint(self):
+        """tstat temperature is air temperature from zone containing tstat"""
+        fmu_name = (
+            f"{self.idf.thermostat_zone}_zone_mean_air_dewpoint_temperature"
+        )
+        return self.fmu_output[fmu_name][self.current_t_idx]
+
+    def get_mean_dewpoint(self):
         return np.mean(
             [
                 self.fmu_output[k][self.current_t_idx]
@@ -298,31 +348,36 @@ class EnergyPlusBuildingModel(BuildingModel):
         T_cool_off = 99.0
         T_cool_on = 60.0
 
-        if (
-            step_control_input["heat_stage_one"]
-            and step_control_input["compressor_cool_stage_one"]
-        ):
-            info.error(
-                "Cannot heat and cool at same time. "
-                f"heat_stage_one={step_control_input['heat_stage_one']} "
-                f"compressor_cool_stage_one={step_control_input['compressor_cool_stage_one']}"
-            )
+        # map input states to specific actuation within EPlus model
+        run_heat = bool(
+            (step_control_input[STATES.AUXHEAT1] > 0)
+            or (step_control_input[STATES.AUXHEAT2] > 0)
+            or (step_control_input[STATES.AUXHEAT3] > 0)
+            or (step_control_input[STATES.COMPHEAT1] > 0)
+            or (step_control_input[STATES.COMPHEAT2] > 0)
+        )
 
-        if step_control_input["heat_stage_one"]:
+        run_cool = bool(
+            (step_control_input[STATES.COMPCOOL1] > 0)
+            or (step_control_input[STATES.COMPCOOL2] > 0)
+        )
+
+        if run_heat and run_cool:
+            logger.error("Cannot heat and cool at same time.")
+        elif run_heat:
             self.fmu.set(
                 self.idf.FMU_control_type_name,
                 int(EPLUS_THERMOSTAT_MODES.SINGLE_HEATING_SETPOINT),
             )
             self.fmu.set(self.idf.FMU_control_heating_stp_name, T_heat_on)
             self.fmu.set(self.idf.FMU_control_cooling_stp_name, T_cool_off)
-        elif step_control_input["compressor_cool_stage_one"]:
+        elif run_cool:
             self.fmu.set(
                 self.idf.FMU_control_type_name,
                 int(EPLUS_THERMOSTAT_MODES.SINGLE_COOLING_SETPOINT),
             )
             self.fmu.set(self.idf.FMU_control_heating_stp_name, T_heat_off)
             self.fmu.set(self.idf.FMU_control_cooling_stp_name, T_cool_on)
-
         else:
             self.fmu.set(
                 self.idf.FMU_control_type_name,

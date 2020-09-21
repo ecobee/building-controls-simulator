@@ -6,23 +6,18 @@ import numpy as np
 
 from BuildingControlsSimulator.ControlModels.ControlModel import ControlModel
 from BuildingControlsSimulator.DataClients.DataStates import STATES
+from BuildingControlsSimulator.DataClients.DataSpec import Internal
+from BuildingControlsSimulator.Conversions.Conversions import Conversions
 
 
 @attr.s
 class Deadband(ControlModel):
-    """Deadband controller
-
-    Example:
-    ```python
-    from BuildingControlsSimulator.ControlModels.Deadband import Deadband
-    ```
-
-    """
+    """Deadband controller"""
 
     deadband = attr.ib(default=1.0)
     input_states = attr.ib(
         default=[
-            STATES.TEMPERATURE_CTRL,
+            STATES.THERMOSTAT_TEMPERATURE,
             STATES.TEMPERATURE_STP_COOL,
             STATES.TEMPERATURE_STP_HEAT,
         ]
@@ -30,6 +25,7 @@ class Deadband(ControlModel):
 
     output_states = attr.ib(
         default=[
+            STATES.TEMPERATURE_CTRL,
             STATES.AUXHEAT1,
             STATES.AUXHEAT2,
             STATES.AUXHEAT3,
@@ -42,143 +38,113 @@ class Deadband(ControlModel):
             STATES.FAN_STAGE_THREE,
         ]
     )
-    # input_spec = attr.ib(
-    #     default={
-    #         "tstat_temperature": {
-    #             "input_name": "tstat_temperature",
-    #             "dtype": "float32",
-    #         },
-    #         "cool_set_point": {
-    #             "input_name": "cool_set_point",
-    #             "dtype": "float32",
-    #         },
-    #         "heat_set_point": {
-    #             "input_name": "heat_set_point",
-    #             "dtype": "float32",
-    #         },
-    #     }
-    # )
 
-    # output_spec = attr.ib(
-    #     default={
-    #         "heat_stage_one": {
-    #             "output_name": "heat_stage_one",
-    #             "dtype": "bool",
-    #         },
-    #         "heat_stage_two": {
-    #             "output_name": "heat_stage_two",
-    #             "dtype": "bool",
-    #         },
-    #         "heat_stage_three": {
-    #             "output_name": "heat_stage_three",
-    #             "dtype": "bool",
-    #         },
-    #         "compressor_cool_stage_one": {
-    #             "output_name": "compressor_cool_stage_one",
-    #             "dtype": "bool",
-    #         },
-    #         "compressor_cool_stage_two": {
-    #             "output_name": "compressor_cool_stage_two",
-    #             "dtype": "bool",
-    #         },
-    #         "compressor_heat_stage_one": {
-    #             "output_name": "compressor_heat_stage_one",
-    #             "dtype": "bool",
-    #         },
-    #         "compressor_heat_stage_two": {
-    #             "output_name": "compressor_heat_stage_two",
-    #             "dtype": "bool",
-    #         },
-    #         "fan_stage_one": {
-    #             "output_name": "fan_stage_one",
-    #             "dtype": "bool",
-    #         },
-    #         "fan_stage_two": {
-    #             "output_name": "fan_stage_two",
-    #             "dtype": "bool",
-    #         },
-    #         "fan_stage_three": {
-    #             "output_name": "fan_stage_three",
-    #             "dtype": "bool",
-    #         },
-    #     }
-    # )
     step_output = attr.ib(default={})
+    step_size_seconds = attr.ib(default=None)
 
     output = attr.ib(default={})
-    current_t_idx = attr.ib(default=0)
+    current_t_idx = attr.ib(default=None)
 
-    def initialize(self, t_start, t_end, ts):
+    def initialize(self, t_start, t_end, t_step):
         """
         """
-        self.output["time"] = np.arange(t_start, t_end, ts, dtype="int64")
-        n_s = len(self.output["time"])
+        self.current_t_idx = 0
+        self.step_size_seconds = t_step
+        self.output[STATES.SIMULATION_TIME] = np.arange(
+            t_start, t_end, t_step, dtype="int64"
+        )
+        n_s = len(self.output[STATES.SIMULATION_TIME])
         self.output = {}
 
         # add fmu state variables
-        for k, v, in self.output_spec.items():
-            if v["dtype"] == "bool":
-                self.output[k] = np.full(n_s, False, dtype="bool")
-            elif v["dtype"] == "float32":
-                self.output[k] = np.full(n_s, -999, dtype="float32")
-            else:
-                raise ValueError(
-                    "Unsupported output_map dtype: {}".format(v["dtype"])
-                )
+        for state in self.output_states:
+            _default_value = Conversions.default_value_by_type(
+                Internal.full.spec[state]["dtype"]
+            )
+            self.output[state] = np.full(
+                n_s, _default_value, dtype=Internal.full.spec[state]["dtype"]
+            )
 
-        self.output["status"] = np.full(n_s, False, dtype="bool")
-        self.step_output = {k: False for k in self.output_states}
+        self.output[STATES.STEP_STATUS] = np.full(n_s, 0, dtype="int8")
 
-    def get_t_ctrl(self, tstat_temperature):
-        """
-        """
-        return np.mean(tstat_temperature)
+        self.init_step_output()
 
-    def do_step(self, step_input):
-        """
-        Simulate controller time step.
-        Before building model step `HVAC_mode` is the HVAC_mode for the step
-        """
-        t_ctrl = self.get_t_ctrl(step_input["tstat_temperature"])
+    def tear_down(self):
+        """tear down FMU"""
+        pass
 
-        if (
-            t_ctrl < (step_input["heat_set_point"] - self.deadband)
-            and not self.step_output["heat_stage_one"]
+    def init_step_output(self):
+        # initialize all off
+        self.step_output = {state: 0 for state in self.output_states}
+
+    def do_step(
+        self,
+        t_start,
+        t_end,
+        step_hvac_input,
+        step_sensor_input,
+        step_weather_input,
+        step_occupancy_input,
+    ):
+        """Simulate controller time step."""
+        t_ctrl = step_sensor_input[STATES.THERMOSTAT_TEMPERATURE]
+        self.step_output[STATES.TEMPERATURE_CTRL] = t_ctrl
+
+        if t_ctrl < (
+            step_hvac_input[STATES.TEMPERATURE_STP_HEAT] - self.deadband
         ):
             # turn on heat
-            self.step_output["heat_stage_one"] = True
-            self.step_output["fan_stage_one"] = True
-
-        if (
-            t_ctrl > (step_input["heat_set_point"] + self.deadband)
-            and self.step_output["heat_stage_one"]
-        ):
-            # turn off heat
-            self.step_output["heat_stage_one"] = False
-            self.step_output["fan_stage_one"] = False
-
-        if (
-            t_ctrl > (step_input["cool_set_point"] + self.deadband)
-            and not self.step_output["compressor_cool_stage_one"]
+            # turn off cool
+            self.step_output[STATES.AUXHEAT1] = self.step_size_seconds
+            self.step_output[STATES.FAN_STAGE_ONE] = self.step_size_seconds
+            self.step_output[STATES.COMPCOOL1] = 0
+        elif t_ctrl > (
+            step_hvac_input[STATES.TEMPERATURE_STP_COOL] + self.deadband
         ):
             # turn on cool
-            self.step_output["compressor_cool_stage_one"] = True
-            self.step_output["fan_stage_one"] = True
-
-        if (
-            t_ctrl < (step_input["cool_set_point"] - self.deadband)
-            and self.step_output["compressor_cool_stage_one"]
-        ):
+            # turn off heat
+            self.step_output[STATES.COMPCOOL1] = self.step_size_seconds
+            self.step_output[STATES.FAN_STAGE_ONE] = self.step_size_seconds
+            self.step_output[STATES.AUXHEAT1] = 0
+        else:
+            # turn off heat
             # turn off cool
-            self.step_output["compressor_cool_stage_one"] = False
-            self.step_output["fan_stage_one"] = False
+            self.step_output[STATES.AUXHEAT1] = 0
+            self.step_output[STATES.COMPCOOL1] = 0
+            self.step_output[STATES.FAN_STAGE_ONE] = 0
+
+        # elif (
+        #     t_ctrl
+        #     > (step_hvac_input[STATES.TEMPERATURE_STP_HEAT] + self.deadband)
+        #     and self.step_output[STATES.AUXHEAT1]
+        # ):
+        #     # turn off heat
+        #     self.step_output[STATES.AUXHEAT1] = 0
+        #     self.step_output[STATES.FAN_STAGE_ONE] = 0
+
+        # elif (
+        #     t_ctrl
+        #     > (step_hvac_input[STATES.TEMPERATURE_STP_COOL] + self.deadband)
+        #     and not self.step_output[STATES.COMPCOOL1]
+        # ):
+        #     # turn on cool
+        #     self.step_output[STATES.COMPCOOL1] = self.step_size_seconds
+        #     self.step_output[STATES.FAN_STAGE_ONE] = self.step_size_seconds
+
+        # elif (
+        #     t_ctrl
+        #     < (step_hvac_input[STATES.TEMPERATURE_STP_COOL] - self.deadband)
+        #     and self.step_output[STATES.COMPCOOL1]
+        # ):
+        #     # turn off cool
+        #     self.step_output[STATES.COMPCOOL1] = 0
+        #     self.step_output[STATES.FAN_STAGE_ONE] = 0
 
         self.add_step_to_output(self.step_output)
+        self.current_t_idx += 1
 
         return self.step_output
 
     def add_step_to_output(self, step_output):
         for k, v in step_output.items():
-            self.output["k"][self.current_t_idx] = v
-
-        self.current_t_idx += 1
+            self.output[k][self.current_t_idx] = v

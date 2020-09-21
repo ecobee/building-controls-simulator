@@ -64,15 +64,15 @@ class TestSimulator:
 
         cls.sim_config = Config.make_sim_config(
             identifier=[
-                "f2254479e14daf04089082d1cd9df53948f98f1e",  # missing thermostat_temperature data
+                # "f2254479e14daf04089082d1cd9df53948f98f1e",  # missing thermostat_temperature data
                 "2df6959cdf502c23f04f3155758d7b678af0c631",  # has full data periods
-                "6e63291da5427ae87d34bb75022ee54ee3b1fc1a",  # file not found
+                # "6e63291da5427ae87d34bb75022ee54ee3b1fc1a",  # file not found
             ],
             latitude=33.481136,
             longitude=-112.078232,
             start_utc="2019-01-01",
             end_utc="2019-12-31",
-            min_sim_period="7D",
+            min_sim_period="14D",
             min_chunk_period="30D",
             step_size_minutes=5,
         )
@@ -92,14 +92,12 @@ class TestSimulator:
             sim_config=self.sim_config,
             building_models=[
                 EnergyPlusBuildingModel(
-                    idf=IDFPreprocessor(
-                        idf_file=self.idf_name, init_temperature=22.0,
-                    ),
+                    idf=IDFPreprocessor(idf_file=self.idf_name,),
                 )
             ],
-            controller_models=[Deadband(deadband=2.0),],
+            controller_models=[Deadband(),],
         )
-        master.simulate(local=True)
+        master.simulate(local=True, preprocess_check=True)
 
     @pytest.mark.skip()
     def test_idmt_fmu_simulation(self):

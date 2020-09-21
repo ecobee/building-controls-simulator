@@ -24,11 +24,13 @@ class IDFPreprocessor:
     idf_file = attr.ib()
 
     init_temperature = attr.ib(type=float, default=21.0)
+    init_humidity = attr.ib(type=float, default=50.0)
     init_control_type = attr.ib(type=int, default=1)
     debug = attr.ib(type=bool, default=False)
     timesteps_per_hour = attr.ib(type=int, default=12)
     conditioned_zones = attr.ib(default=[])
     occupied_zones = attr.ib(default=[])
+    thermostat_zones = attr.ib(default=[])
     zone_lists = attr.ib(default={})
     zone_outputs = attr.ib(default=[])
     building_outputs = attr.ib(default=[])
@@ -147,6 +149,11 @@ class IDFPreprocessor:
         if preprocess_check and self.check_valid_idf(
             self.idf_prep_path, target_version=self.ep_version
         ):
+            self.ep_idf = IDF(self.idf_prep_path)
+            self.get_zone_info()
+            # this sets fmu output keys
+            # TODO: generalize so doesnt wrap editing .idf
+            self.prep_ext_int_output()
             logger.info(
                 f"Found correct preprocessed IDF: {self.idf_prep_path}"
             )
@@ -154,7 +161,7 @@ class IDFPreprocessor:
         else:
             logger.info(f"Making new preprocessed IDF: {self.idf_prep_path}")
             self.prep_ep_version(self.ep_version)
-            self.prep_zones()
+            self.get_zone_info()
             self.prep_simulation_control()
             self.prep_timesteps(self.timesteps_per_hour)
             self.prep_runtime()
@@ -179,12 +186,13 @@ class IDFPreprocessor:
 
         return self.idf_prep_path
 
-    def prep_zones(self):
+    def get_zone_info(self):
         self.zone_lists = self.get_zone_lists()
         # TODO: check that zone geometry exists
 
-        self.prep_condtioned_zones()
-        self.prep_occupied_zones()
+        self.get_condtioned_zones()
+        self.get_occupied_zones()
+        self.get_tstat_zone()
 
     def get_zone_lists(self):
         zone_lists = {}
@@ -208,7 +216,16 @@ class IDFPreprocessor:
         else:
             return zone_list
 
-    def prep_condtioned_zones(self):
+    def get_tstat_zone(self):
+        tstats = self.ep_idf.idfobjects["zonecontrol:thermostat"]
+        if len(tstats) > 1:
+            raise ValueError(
+                f"Multiple thermostats in IDF file: {self.idf_file}"
+            )
+
+        self.thermostat_zone = tstats[0].Zone_or_ZoneList_Name
+
+    def get_condtioned_zones(self):
         """ get list of all zones that are condtioned
         conditioned zones are defined in IDF by:
         1. ZoneHVAC:EquipmentConnections
@@ -219,15 +236,14 @@ class IDFPreprocessor:
             self.expand_zones(obj.Zone_Name)
             for obj in self.ep_idf.idfobjects["ZoneHVAC:EquipmentConnections"]
         ]
-        # TODO: check if zone list, if so expand zones
 
         vent_design_zones = [
-            self.expand_zones(obj.Zone_Name)
+            self.expand_zones(obj.Zone_or_ZoneList_Name)
             for obj in self.ep_idf.idfobjects["ZoneVentilation:DesignFlowRate"]
         ]
 
         sizing_zones = [
-            self.expand_zones(obj.Zone_Name)
+            self.expand_zones(obj.Zone_or_ZoneList_Name)
             for obj in self.ep_idf.idfobjects["sizing:Zone"]
         ]
 
@@ -235,7 +251,7 @@ class IDFPreprocessor:
             set(equip_conn_zones) | set(vent_design_zones) | set(sizing_zones)
         )
 
-    def prep_occupied_zones(self):
+    def get_occupied_zones(self):
         """ get list of all zones that are condtioned
         conditioned zones are defined in IDF by:
         1. people
@@ -543,7 +559,7 @@ class IDFPreprocessor:
                 amln = g.Availability_Manager_List_Name
         pass
 
-    def prep_ext_int_output(self, zone_outputs=[], building_outputs={}):
+    def prep_ext_int_output(self):
         """
         add external interface output variables
         Note: FMU input variables cannot be read directly and must be read through an
