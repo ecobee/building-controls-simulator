@@ -1,43 +1,50 @@
 import numpy as np
 import pandas as pd
-from enum import IntEnum
+import logging
 
 import attr
 
-# from BuildingControlsSimulator.DataClients.DataChannels import *
+from BuildingControlsSimulator.Conversions.Conversions import Conversions
+from BuildingControlsSimulator.DataClients.DataStates import (
+    UNITS,
+    CHANNELS,
+    STATES,
+)
 
-
-class Units(IntEnum):
-    """Definition of units for preprocessing to internal unit formats."""
-
-    OTHER = 0
-    CELSIUS = 1
-    FARHENHEIT = 2
-    FARHENHEITx10 = 3
-    RELATIVE_HUMIDITY = 4
-    DATETIME = 60
-    SECONDS = 70
-
-
-class Channels(IntEnum):
-    """Definition of component part of input data for preprocessing to 
-    internal formats."""
-
-    OTHER = 0
-    HVAC = 1
-    TEMPERATURE_SENSOR = 2
-    HUMIDITY_SENSOR = 3
-    OCCUPANCY_SENSOR = 4
-    WEATHER = 5
-    DATETIME = 6
-    ENERGY_COST = 7
+logger = logging.getLogger(__name__)
 
 
 @attr.s(kw_only=True)
 class Spec:
     spec = attr.ib()
-    null_check_column = attr.ib()
+    null_check_columns = attr.ib()
     datetime_column = attr.ib()
+
+    @spec.validator
+    def dtypes_are_pandas(self, attribute, value):
+        supported_dtypes = [
+            "bool",
+            "string",
+            "Float32",
+            "float32",
+            "Float64",
+            "float64",
+            "Int8",
+            "Int16",
+            "Int32",
+            "Int64",
+            "UInt8",
+            "UInt16",
+            "UInt32",
+            "UInt64",
+            "category",
+            "datetime64[ns, utc]",
+        ]
+        for k, v in value.items():
+            if v["dtype"] not in supported_dtypes:
+                raise ValueError(
+                    f"Spec failed validation. Invalid dtype={v['dtype']} for key={k}."
+                )
 
     @property
     def columns(self):
@@ -49,7 +56,7 @@ class Spec:
         }
 
     def get_rename_mapper(self):
-        return {k: v["internal_name"] for k, v in self.spec.items()}
+        return {k: v["internal_state"] for k, v in self.spec.items()}
 
 
 @attr.s(frozen=True)
@@ -61,197 +68,216 @@ class Internal:
 
     # TODO: remove .name property if unneeded
     N_ROOM_SENSORS = 10
-    datetime_column = "date_time"
+    datetime_column = STATES.DATE_TIME
 
     # dtype [ns, TZ] is used to represent the known TZ of data
+    # do not need Enum value for only one column
     datetime = Spec(
         datetime_column=datetime_column,
-        null_check_column=datetime_column,
+        null_check_columns=[datetime_column],
         spec={
             datetime_column: {
-                "name": datetime_column,
+                "name": "date_time",
                 "dtype": "datetime64[ns, utc]",
-                "channel": Channels.DATETIME,
-                "unit": Units.DATETIME,
+                "channel": CHANNELS.DATETIME,
+                "unit": UNITS.DATETIME,
             },
         },
     )
     hvac = Spec(
         datetime_column=datetime_column,
-        null_check_column="hvac_mode",
+        null_check_columns=[STATES.HVAC_MODE],
         spec={
-            "hvac_mode": {
+            STATES.HVAC_MODE: {
                 "name": "hvac_mode",
                 "dtype": "category",
-                "channel": Channels.HVAC,
-                "unit": Units.OTHER,
+                "channel": CHANNELS.HVAC,
+                "unit": UNITS.OTHER,
             },
-            "system_mode": {
+            STATES.SYSTEM_MODE: {
                 "name": "system_mode",
                 "dtype": "category",
-                "channel": Channels.HVAC,
-                "unit": Units.OTHER,
+                "channel": CHANNELS.HVAC,
+                "unit": UNITS.OTHER,
             },
-            "calendar_event": {
+            STATES.CALENDAR_EVENT: {
                 "name": "calendar_event",
                 "dtype": "category",
-                "channel": Channels.HVAC,
-                "unit": Units.OTHER,
+                "channel": CHANNELS.HVAC,
+                "unit": UNITS.OTHER,
             },
-            "climate": {
-                "name": "climate",
+            STATES.SCHEDULE: {
+                "name": "schedule",
                 "dtype": "category",
-                "channel": Channels.HVAC,
-                "unit": Units.OTHER,
+                "channel": CHANNELS.HVAC,
+                "unit": UNITS.OTHER,
             },
-            "temperature_ctrl": {
+            STATES.TEMPERATURE_CTRL: {
                 "name": "temperature_ctrl",
                 "dtype": "Float32",
-                "channel": Channels.HVAC,
-                "unit": Units.CELSIUS,
+                "channel": CHANNELS.HVAC,
+                "unit": UNITS.CELSIUS,
             },
-            "temperature_stp_cool": {
+            STATES.TEMPERATURE_STP_COOL: {
                 "name": "temperature_stp_cool",
                 "dtype": "Float32",
-                "channel": Channels.HVAC,
-                "unit": Units.CELSIUS,
+                "channel": CHANNELS.HVAC,
+                "unit": UNITS.CELSIUS,
             },
-            "temperature_stp_heat": {
+            STATES.TEMPERATURE_STP_HEAT: {
                 "name": "temperature_stp_heat",
                 "dtype": "Float32",
-                "channel": Channels.HVAC,
-                "unit": Units.CELSIUS,
+                "channel": CHANNELS.HVAC,
+                "unit": UNITS.CELSIUS,
             },
-            "humidity": {
+            STATES.HUMIDITY: {
                 "name": "humidity",
                 "dtype": "Float32",
-                "channel": Channels.HVAC,
-                "unit": Units.RELATIVE_HUMIDITY,
+                "channel": CHANNELS.HVAC,
+                "unit": UNITS.RELATIVE_HUMIDITY,
             },
-            "humidity_expected_low": {
+            STATES.HUMIDITY_EXPECTED_LOW: {
                 "name": "humidity_expected_low",
                 "dtype": "Float32",
-                "channel": Channels.HVAC,
-                "unit": Units.RELATIVE_HUMIDITY,
+                "channel": CHANNELS.HVAC,
+                "unit": UNITS.RELATIVE_HUMIDITY,
             },
-            "humidity_expected_high": {
+            STATES.HUMIDITY_EXPECTED_HIGH: {
                 "name": "humidity_expected_high",
                 "dtype": "Float32",
-                "channel": Channels.HVAC,
-                "unit": Units.RELATIVE_HUMIDITY,
+                "channel": CHANNELS.HVAC,
+                "unit": UNITS.RELATIVE_HUMIDITY,
             },
-            "auxHeat1": {
+            STATES.AUXHEAT1: {
                 "name": "auxHeat1",
                 "dtype": "Int16",
-                "channel": Channels.HVAC,
-                "unit": Units.SECONDS,
+                "channel": CHANNELS.HVAC,
+                "unit": UNITS.SECONDS,
             },
-            "auxHeat2": {
+            STATES.AUXHEAT2: {
                 "name": "auxHeat2",
                 "dtype": "Int16",
-                "channel": Channels.HVAC,
-                "unit": Units.SECONDS,
+                "channel": CHANNELS.HVAC,
+                "unit": UNITS.SECONDS,
             },
-            "auxHeat3": {
+            STATES.AUXHEAT3: {
                 "name": "auxHeat3",
                 "dtype": "Int16",
-                "channel": Channels.HVAC,
-                "unit": Units.SECONDS,
+                "channel": CHANNELS.HVAC,
+                "unit": UNITS.SECONDS,
             },
-            "compCool1": {
+            STATES.COMPCOOL1: {
                 "name": "compCool1",
                 "dtype": "Int16",
-                "channel": Channels.HVAC,
-                "unit": Units.SECONDS,
+                "channel": CHANNELS.HVAC,
+                "unit": UNITS.SECONDS,
             },
-            "compCool2": {
+            STATES.COMPCOOL2: {
                 "name": "compCool2",
                 "dtype": "Int16",
-                "channel": Channels.HVAC,
-                "unit": Units.SECONDS,
+                "channel": CHANNELS.HVAC,
+                "unit": UNITS.SECONDS,
             },
-            "compHeat1": {
+            STATES.COMPHEAT1: {
                 "name": "compHeat1",
                 "dtype": "Int16",
-                "channel": Channels.HVAC,
-                "unit": Units.SECONDS,
+                "channel": CHANNELS.HVAC,
+                "unit": UNITS.SECONDS,
             },
-            "compHeat2": {
+            STATES.COMPHEAT2: {
                 "name": "compHeat2",
                 "dtype": "Int16",
-                "channel": Channels.HVAC,
-                "unit": Units.SECONDS,
+                "channel": CHANNELS.HVAC,
+                "unit": UNITS.SECONDS,
             },
-            "dehumidifier": {
+            STATES.DEHUMIDIFIER: {
                 "name": "dehumidifier",
                 "dtype": "Int16",
-                "channel": Channels.HVAC,
-                "unit": Units.SECONDS,
+                "channel": CHANNELS.HVAC,
+                "unit": UNITS.SECONDS,
             },
-            "economizer": {
+            STATES.ECONOMIZER: {
                 "name": "economizer",
                 "dtype": "Int16",
-                "channel": Channels.HVAC,
-                "unit": Units.SECONDS,
+                "channel": CHANNELS.HVAC,
+                "unit": UNITS.SECONDS,
             },
-            "fan": {
+            STATES.FAN: {
                 "name": "fan",
                 "dtype": "Int16",
-                "channel": Channels.HVAC,
-                "unit": Units.SECONDS,
+                "channel": CHANNELS.HVAC,
+                "unit": UNITS.SECONDS,
             },
-            "humidifier": {
+            STATES.FAN_STAGE_ONE: {
+                "name": "fan",
+                "dtype": "Int16",
+                "channel": CHANNELS.HVAC,
+                "unit": UNITS.SECONDS,
+            },
+            STATES.FAN_STAGE_TWO: {
+                "name": "fan",
+                "dtype": "Int16",
+                "channel": CHANNELS.HVAC,
+                "unit": UNITS.SECONDS,
+            },
+            STATES.FAN_STAGE_THREE: {
+                "name": "fan",
+                "dtype": "Int16",
+                "channel": CHANNELS.HVAC,
+                "unit": UNITS.SECONDS,
+            },
+            STATES.HUMIDIFIER: {
                 "name": "humidifier",
                 "dtype": "Int16",
-                "channel": Channels.HVAC,
-                "unit": Units.SECONDS,
+                "channel": CHANNELS.HVAC,
+                "unit": UNITS.SECONDS,
             },
-            "ventilator": {
+            STATES.VENTILATOR: {
                 "name": "ventilator",
                 "dtype": "Int16",
-                "channel": Channels.HVAC,
-                "unit": Units.SECONDS,
+                "channel": CHANNELS.HVAC,
+                "unit": UNITS.SECONDS,
             },
         },
     )
 
     sensors = Spec(
         datetime_column=datetime_column,
-        null_check_column="thermostat_temperature",
+        null_check_columns=[STATES.THERMOSTAT_TEMPERATURE],
         spec={
-            "thermostat_temperature": {
+            STATES.THERMOSTAT_TEMPERATURE: {
                 "name": "thermostat_temperature",
                 "dtype": "Float32",
-                "channel": Channels.TEMPERATURE_SENSOR,
-                "unit": Units.CELSIUS,
+                "channel": CHANNELS.TEMPERATURE_SENSOR,
+                "unit": UNITS.CELSIUS,
             },
-            "thermostat_humidity": {
+            STATES.THERMOSTAT_HUMIDITY: {
                 "name": "thermostat_humidity",
                 "dtype": "Float32",
-                "channel": Channels.HUMIDITY_SENSOR,
-                "unit": Units.RELATIVE_HUMIDITY,
+                "channel": CHANNELS.HUMIDITY_SENSOR,
+                "unit": UNITS.RELATIVE_HUMIDITY,
             },
-            "thermostat_motion": {
+            STATES.THERMOSTAT_MOTION: {
                 "name": "thermostat_motion",
-                "dtype": "boolean",
-                "channel": Channels.OCCUPANCY_SENSOR,
-                "unit": Units.OTHER,
+                "dtype": "bool",
+                "channel": CHANNELS.OCCUPANCY_SENSOR,
+                "unit": UNITS.OTHER,
             },
             **{
-                "rs{}_temperature".format(i): {
+                STATES["RS{}_TEMPERATURE".format(i)]: {
                     "name": "rs{}_temperature".format(i),
                     "dtype": "Float32",
-                    "channel": Channels.TEMPERATURE_SENSOR,
-                    "unit": Units.CELSIUS,
+                    "channel": CHANNELS.TEMPERATURE_SENSOR,
+                    "unit": UNITS.CELSIUS,
                 }
                 for i in range(1, N_ROOM_SENSORS)
             },
             **{
-                "rs{}_occupancy".format(i): {
+                STATES["RS{}_OCCUPANCY".format(i)]: {
                     "name": "rs{}_occupancy".format(i),
-                    "dtype": "boolean",
-                    "channel": Channels.OCCUPANCY_SENSOR,
-                    "unit": Units.OTHER,
+                    "dtype": "bool",
+                    "channel": CHANNELS.OCCUPANCY_SENSOR,
+                    "unit": UNITS.OTHER,
                 }
                 for i in range(1, N_ROOM_SENSORS)
             },
@@ -260,32 +286,57 @@ class Internal:
 
     weather = Spec(
         datetime_column=datetime_column,
-        null_check_column="outdoor_temperature",
+        null_check_columns=[STATES.OUTDOOR_TEMPERATURE],
         spec={
-            "outdoor_temperature": {
+            STATES.OUTDOOR_TEMPERATURE: {
                 "name": "outdoor_temperature",
                 "dtype": "Float32",
-                "channel": Channels.WEATHER,
-                "unit": Units.CELSIUS,
+                "channel": CHANNELS.WEATHER,
+                "unit": UNITS.CELSIUS,
             },
-            "outdoor_relative_humidity": {
+            STATES.OUTDOOR_RELATIVE_HUMIDITY: {
                 "name": "outdoor_relative_humidity",
                 "dtype": "Float32",
-                "channel": Channels.WEATHER,
-                "unit": Units.RELATIVE_HUMIDITY,
+                "channel": CHANNELS.WEATHER,
+                "unit": UNITS.RELATIVE_HUMIDITY,
+            },
+        },
+    )
+
+    simulation = Spec(
+        datetime_column=datetime_column,
+        null_check_columns="Temperature",
+        spec={
+            STATES.STEP_STATUS: {
+                "name": "status",
+                "dtype": "Int8",
+                "channel": CHANNELS.SIMULATION,
+                "unit": UNITS.OTHER,
+            },
+            STATES.SIMULATION_TIME: {
+                "name": "simulation_time_seconds",
+                "dtype": "Int64",
+                "channel": CHANNELS.SIMULATION,
+                "unit": UNITS.SECONDS,
             },
         },
     )
 
     full = Spec(
         datetime_column=datetime_column,
-        null_check_column=[
-            datetime.null_check_column
-            + hvac.null_check_column
-            + sensors.null_check_column
-            + weather.null_check_column
+        null_check_columns=[
+            datetime.null_check_columns
+            + hvac.null_check_columns
+            + sensors.null_check_columns
+            + weather.null_check_columns
         ],
-        spec={**datetime.spec, **hvac.spec, **sensors.spec, **weather.spec,},
+        spec={
+            **datetime.spec,
+            **hvac.spec,
+            **sensors.spec,
+            **weather.spec,
+            **simulation.spec,
+        },
     )
 
     @staticmethod
@@ -297,22 +348,22 @@ class Internal:
         """This method must be able to evaluate multiple sources should
         a channel be composed from multiple sources."""
         for k, v in _spec.items():
-            if v["unit"] != Internal.full.spec[v["internal_name"]]["unit"]:
-                if (v["unit"] == Units.FARHENHEIT) and (
-                    Internal.full.spec[v["internal_name"]]["unit"]
-                    == Units.CELSIUS
+            if v["unit"] != Internal.full.spec[v["internal_state"]]["unit"]:
+                if (v["unit"] == UNITS.FARHENHEIT) and (
+                    Internal.full.spec[v["internal_state"]]["unit"]
+                    == UNITS.CELSIUS
                 ):
-                    df[k] = Internal.F2C(df[k])
-                elif (v["unit"] == Units.FARHENHEITx10) and (
-                    Internal.full.spec[v["internal_name"]]["unit"]
-                    == Units.CELSIUS
+                    df[k] = Conversions.F2C(df[k])
+                elif (v["unit"] == UNITS.FARHENHEITx10) and (
+                    Internal.full.spec[v["internal_state"]]["unit"]
+                    == UNITS.CELSIUS
                 ):
-                    df[k] = Internal.F2C(df[k] / 10.0)
+                    df[k] = Conversions.F2C(df[k] / 10.0)
                 else:
                     logger.error(
                         "Unsupported conversion: {} to {}".format(
                             v["unit"],
-                            Internal.full.spec[v["internal_name"]]["unit"],
+                            Internal.full.spec[v["internal_state"]]["unit"],
                         )
                     )
         return df
@@ -326,10 +377,6 @@ class Internal:
         return _df
 
     @staticmethod
-    def F2C(temp_F):
-        return (temp_F - 32) * 5 / 9
-
-    @staticmethod
     def get_empty_df():
         return pd.DataFrame([], columns=Internal.full.columns)
 
@@ -341,192 +388,192 @@ class FlatFilesSpec:
     N_ROOM_SENSORS = 10
     datetime = Spec(
         datetime_column=datetime_column,
-        null_check_column=datetime_column,
+        null_check_columns=datetime_column,
         spec={
             datetime_column: {
-                "internal_name": "date_time",
+                "internal_state": STATES.DATE_TIME,
                 "dtype": "datetime64[ns, utc]",
-                "channel": Channels.DATETIME,
-                "unit": Units.DATETIME,
+                "channel": CHANNELS.DATETIME,
+                "unit": UNITS.DATETIME,
             },
         },
     )
     hvac = Spec(
         datetime_column=datetime_column,
-        null_check_column="HvacMode",
+        null_check_columns="HvacMode",
         spec={
             "HvacMode": {
-                "internal_name": "hvac_mode",
+                "internal_state": STATES.HVAC_MODE,
                 "dtype": "category",
-                "channel": Channels.HVAC,
-                "unit": Units.OTHER,
+                "channel": CHANNELS.HVAC,
+                "unit": UNITS.OTHER,
             },
             "SystemMode": {
-                "internal_name": "system_mode",
+                "internal_state": STATES.SYSTEM_MODE,
                 "dtype": "category",
-                "channel": Channels.HVAC,
-                "unit": Units.OTHER,
+                "channel": CHANNELS.HVAC,
+                "unit": UNITS.OTHER,
             },
             "CalendarEvent": {
-                "internal_name": "calendar_event",
+                "internal_state": STATES.CALENDAR_EVENT,
                 "dtype": "category",
-                "channel": Channels.HVAC,
-                "unit": Units.OTHER,
+                "channel": CHANNELS.HVAC,
+                "unit": UNITS.OTHER,
             },
             "Climate": {
-                "internal_name": "climate",
+                "internal_state": STATES.SCHEDULE,
                 "dtype": "category",
-                "channel": Channels.HVAC,
-                "unit": Units.OTHER,
+                "channel": CHANNELS.HVAC,
+                "unit": UNITS.OTHER,
             },
             "Temperature_ctrl": {
-                "internal_name": "temperature_ctrl",
+                "internal_state": STATES.TEMPERATURE_CTRL,
                 "dtype": "Int16",
-                "channel": Channels.HVAC,
-                "unit": Units.FARHENHEITx10,
+                "channel": CHANNELS.HVAC,
+                "unit": UNITS.FARHENHEITx10,
             },
             "TemperatureExpectedCool": {
-                "internal_name": "temperature_stp_cool",
+                "internal_state": STATES.TEMPERATURE_STP_COOL,
                 "dtype": "Int16",
-                "channel": Channels.HVAC,
-                "unit": Units.FARHENHEITx10,
+                "channel": CHANNELS.HVAC,
+                "unit": UNITS.FARHENHEITx10,
             },
             "TemperatureExpectedHeat": {
-                "internal_name": "temperature_stp_heat",
+                "internal_state": STATES.TEMPERATURE_STP_HEAT,
                 "dtype": "Int16",
-                "channel": Channels.HVAC,
-                "unit": Units.FARHENHEITx10,
+                "channel": CHANNELS.HVAC,
+                "unit": UNITS.FARHENHEITx10,
             },
             "Humidity": {
-                "internal_name": "humidity",
+                "internal_state": STATES.HUMIDITY,
                 "dtype": "Float32",
-                "channel": Channels.HVAC,
-                "unit": Units.RELATIVE_HUMIDITY,
+                "channel": CHANNELS.HVAC,
+                "unit": UNITS.RELATIVE_HUMIDITY,
             },
             "HumidityExpectedLow": {
-                "internal_name": "humidity_expected_low",
+                "internal_state": STATES.HUMIDITY_EXPECTED_LOW,
                 "dtype": "Float32",
-                "channel": Channels.HVAC,
-                "unit": Units.RELATIVE_HUMIDITY,
+                "channel": CHANNELS.HVAC,
+                "unit": UNITS.RELATIVE_HUMIDITY,
             },
             "HumidityExpectedHigh": {
-                "internal_name": "humidity_expected_high",
+                "internal_state": STATES.HUMIDITY_EXPECTED_HIGH,
                 "dtype": "Float32",
-                "channel": Channels.HVAC,
-                "unit": Units.RELATIVE_HUMIDITY,
+                "channel": CHANNELS.HVAC,
+                "unit": UNITS.RELATIVE_HUMIDITY,
             },
             "auxHeat1": {
-                "internal_name": "auxHeat1",
+                "internal_state": STATES.AUXHEAT1,
                 "dtype": "Int16",
-                "channel": Channels.HVAC,
-                "unit": Units.SECONDS,
+                "channel": CHANNELS.HVAC,
+                "unit": UNITS.SECONDS,
             },
             "auxHeat2": {
-                "internal_name": "auxHeat2",
+                "internal_state": STATES.AUXHEAT2,
                 "dtype": "Int16",
-                "channel": Channels.HVAC,
-                "unit": Units.SECONDS,
+                "channel": CHANNELS.HVAC,
+                "unit": UNITS.SECONDS,
             },
             "auxHeat3": {
-                "internal_name": "auxHeat3",
+                "internal_state": STATES.AUXHEAT3,
                 "dtype": "Int16",
-                "channel": Channels.HVAC,
-                "unit": Units.SECONDS,
+                "channel": CHANNELS.HVAC,
+                "unit": UNITS.SECONDS,
             },
             "compCool1": {
-                "internal_name": "compCool1",
+                "internal_state": STATES.COMPCOOL1,
                 "dtype": "Int16",
-                "channel": Channels.HVAC,
-                "unit": Units.SECONDS,
+                "channel": CHANNELS.HVAC,
+                "unit": UNITS.SECONDS,
             },
             "compCool2": {
-                "internal_name": "compCool2",
+                "internal_state": STATES.COMPCOOL2,
                 "dtype": "Int16",
-                "channel": Channels.HVAC,
-                "unit": Units.SECONDS,
+                "channel": CHANNELS.HVAC,
+                "unit": UNITS.SECONDS,
             },
             "compHeat1": {
-                "internal_name": "compHeat1",
+                "internal_state": STATES.COMPHEAT1,
                 "dtype": "Int16",
-                "channel": Channels.HVAC,
-                "unit": Units.SECONDS,
+                "channel": CHANNELS.HVAC,
+                "unit": UNITS.SECONDS,
             },
             "compHeat2": {
-                "internal_name": "compHeat2",
+                "internal_state": STATES.COMPHEAT2,
                 "dtype": "Int16",
-                "channel": Channels.HVAC,
-                "unit": Units.SECONDS,
+                "channel": CHANNELS.HVAC,
+                "unit": UNITS.SECONDS,
             },
             "dehumidifier": {
-                "internal_name": "dehumidifier",
+                "internal_state": STATES.DEHUMIDIFIER,
                 "dtype": "Int16",
-                "channel": Channels.HVAC,
-                "unit": Units.SECONDS,
+                "channel": CHANNELS.HVAC,
+                "unit": UNITS.SECONDS,
             },
             "economizer": {
-                "internal_name": "economizer",
+                "internal_state": STATES.ECONOMIZER,
                 "dtype": "Int16",
-                "channel": Channels.HVAC,
-                "unit": Units.SECONDS,
+                "channel": CHANNELS.HVAC,
+                "unit": UNITS.SECONDS,
             },
             "fan": {
-                "internal_name": "fan",
+                "internal_state": STATES.FAN,
                 "dtype": "Int16",
-                "channel": Channels.HVAC,
-                "unit": Units.SECONDS,
+                "channel": CHANNELS.HVAC,
+                "unit": UNITS.SECONDS,
             },
             "humidifier": {
-                "internal_name": "humidifier",
+                "internal_state": STATES.HUMIDIFIER,
                 "dtype": "Int16",
-                "channel": Channels.HVAC,
-                "unit": Units.SECONDS,
+                "channel": CHANNELS.HVAC,
+                "unit": UNITS.SECONDS,
             },
             "ventilator": {
-                "internal_name": "ventilator",
+                "internal_state": STATES.VENTILATOR,
                 "dtype": "Int16",
-                "channel": Channels.HVAC,
-                "unit": Units.SECONDS,
+                "channel": CHANNELS.HVAC,
+                "unit": UNITS.SECONDS,
             },
         },
     )
 
     sensors = Spec(
         datetime_column=datetime_column,
-        null_check_column="thermostat_temperature",
+        null_check_columns="thermostat_temperature",
         spec={
             "SensorTemp000": {
-                "internal_name": "thermostat_temperature",
+                "internal_state": STATES.THERMOSTAT_TEMPERATURE,
                 "dtype": "Int16",
-                "channel": Channels.TEMPERATURE_SENSOR,
-                "unit": Units.FARHENHEITx10,
+                "channel": CHANNELS.TEMPERATURE_SENSOR,
+                "unit": UNITS.FARHENHEITx10,
             },
             "SensorHum000": {
-                "internal_name": "thermostat_humidity",
+                "internal_state": STATES.THERMOSTAT_HUMIDITY,
                 "dtype": "Int16",
-                "channel": Channels.HUMIDITY_SENSOR,
-                "unit": Units.RELATIVE_HUMIDITY,
+                "channel": CHANNELS.HUMIDITY_SENSOR,
+                "unit": UNITS.RELATIVE_HUMIDITY,
             },
             "SensorOcc000": {
-                "internal_name": "thermostat_motion",
-                "dtype": "boolean",
-                "channel": Channels.OCCUPANCY_SENSOR,
-                "unit": Units.OTHER,
+                "internal_state": STATES.THERMOSTAT_MOTION,
+                "dtype": "bool",
+                "channel": CHANNELS.OCCUPANCY_SENSOR,
+                "unit": UNITS.OTHER,
             },
             **{
                 "SensorTemp1{}".format(str(i).zfill(2)): {
-                    "internal_name": "rs{}_temperature".format(i),
+                    "internal_state": STATES["RS{}_TEMPERATURE".format(i)],
                     "dtype": "Int16",
-                    "channel": Channels.TEMPERATURE_SENSOR,
-                    "unit": Units.FARHENHEITx10,
+                    "channel": CHANNELS.TEMPERATURE_SENSOR,
+                    "unit": UNITS.FARHENHEITx10,
                 }
                 for i in range(1, N_ROOM_SENSORS)
             },
             **{
                 "SensorOcc1{}".format(str(i).zfill(2)): {
-                    "internal_name": "rs{}_occupancy".format(i),
-                    "dtype": "boolean",
-                    "channel": Channels.OCCUPANCY_SENSOR,
-                    "unit": Units.OTHER,
+                    "internal_state": STATES["RS{}_OCCUPANCY".format(i)],
+                    "dtype": "bool",
+                    "channel": CHANNELS.OCCUPANCY_SENSOR,
+                    "unit": UNITS.OTHER,
                 }
                 for i in range(1, N_ROOM_SENSORS)
             },
@@ -535,30 +582,30 @@ class FlatFilesSpec:
 
     weather = Spec(
         datetime_column=datetime_column,
-        null_check_column="Temperature",
+        null_check_columns="Temperature",
         spec={
             "Temperature": {
-                "internal_name": "outdoor_temperature",
+                "internal_state": STATES.OUTDOOR_TEMPERATURE,
                 "dtype": "Int16",
-                "channel": Channels.WEATHER,
-                "unit": Units.FARHENHEITx10,
+                "channel": CHANNELS.WEATHER,
+                "unit": UNITS.FARHENHEITx10,
             },
             "RelativeHumidity": {
-                "internal_name": "outdoor_relative_humidity",
+                "internal_state": STATES.OUTDOOR_RELATIVE_HUMIDITY,
                 "dtype": "Float32",
-                "channel": Channels.WEATHER,
-                "unit": Units.RELATIVE_HUMIDITY,
+                "channel": CHANNELS.WEATHER,
+                "unit": UNITS.RELATIVE_HUMIDITY,
             },
         },
     )
 
     full = Spec(
         datetime_column=datetime_column,
-        null_check_column=[
-            datetime.null_check_column
-            + hvac.null_check_column
-            + sensors.null_check_column
-            + weather.null_check_column
+        null_check_columns=[
+            datetime.null_check_columns
+            + hvac.null_check_columns
+            + sensors.null_check_columns
+            + weather.null_check_columns
         ],
         spec={**datetime.spec, **hvac.spec, **sensors.spec, **weather.spec,},
     )
@@ -571,162 +618,162 @@ class DonateYourDataSpec:
     N_ROOM_SENSORS = 10
     datetime = Spec(
         datetime_column=datetime_column,
-        null_check_column=datetime_column,
+        null_check_columns=datetime_column,
         spec={
             datetime_column: {
-                "internal_name": "date_time",
+                "internal_state": STATES.DATE_TIME,
                 "dtype": "datetime64[ns, utc]",
-                "channel": Channels.DATETIME,
-                "unit": Units.DATETIME,
+                "channel": CHANNELS.DATETIME,
+                "unit": UNITS.DATETIME,
             },
         },
     )
     hvac = Spec(
         datetime_column=datetime_column,
-        null_check_column="HvacMode",
+        null_check_columns="HvacMode",
         spec={
             "HvacMode": {
-                "internal_name": "hvac_mode",
+                "internal_state": STATES.HVAC_MODE,
                 "dtype": "category",
-                "channel": Channels.HVAC,
-                "unit": Units.OTHER,
+                "channel": CHANNELS.HVAC,
+                "unit": UNITS.OTHER,
             },
             "Event": {
-                "internal_name": "calendar_event",
+                "internal_state": STATES.CALENDAR_EVENT,
                 "dtype": "category",
-                "channel": Channels.HVAC,
-                "unit": Units.OTHER,
+                "channel": CHANNELS.HVAC,
+                "unit": UNITS.OTHER,
             },
             "Schedule": {
-                "internal_name": "climate",
+                "internal_state": STATES.SCHEDULE,
                 "dtype": "category",
-                "channel": Channels.HVAC,
-                "unit": Units.OTHER,
+                "channel": CHANNELS.HVAC,
+                "unit": UNITS.OTHER,
             },
             "T_ctrl": {
-                "internal_name": "temperature_ctrl",
+                "internal_state": STATES.TEMPERATURE_CTRL,
                 "dtype": "Int16",
-                "channel": Channels.HVAC,
-                "unit": Units.FARHENHEIT,
+                "channel": CHANNELS.HVAC,
+                "unit": UNITS.FARHENHEIT,
             },
             "T_stp_cool": {
-                "internal_name": "temperature_stp_cool",
+                "internal_state": STATES.TEMPERATURE_STP_COOL,
                 "dtype": "Int16",
-                "channel": Channels.HVAC,
-                "unit": Units.FARHENHEIT,
+                "channel": CHANNELS.HVAC,
+                "unit": UNITS.FARHENHEIT,
             },
             "T_stp_heat": {
-                "internal_name": "temperature_stp_heat",
+                "internal_state": STATES.TEMPERATURE_STP_HEAT,
                 "dtype": "Int16",
-                "channel": Channels.HVAC,
-                "unit": Units.FARHENHEIT,
+                "channel": CHANNELS.HVAC,
+                "unit": UNITS.FARHENHEIT,
             },
             "Humidity": {
-                "internal_name": "humidity",
+                "internal_state": STATES.HUMIDITY,
                 "dtype": "Float32",
-                "channel": Channels.HVAC,
-                "unit": Units.RELATIVE_HUMIDITY,
+                "channel": CHANNELS.HVAC,
+                "unit": UNITS.RELATIVE_HUMIDITY,
             },
             "HumidityExpectedLow": {
-                "internal_name": "humidity_expected_low",
+                "internal_state": STATES.HUMIDITY_EXPECTED_LOW,
                 "dtype": "Float32",
-                "channel": Channels.HVAC,
-                "unit": Units.RELATIVE_HUMIDITY,
+                "channel": CHANNELS.HVAC,
+                "unit": UNITS.RELATIVE_HUMIDITY,
             },
             "HumidityExpectedHigh": {
-                "internal_name": "humidity_expected_high",
+                "internal_state": STATES.HUMIDITY_EXPECTED_HIGH,
                 "dtype": "Float32",
-                "channel": Channels.HVAC,
-                "unit": Units.RELATIVE_HUMIDITY,
+                "channel": CHANNELS.HVAC,
+                "unit": UNITS.RELATIVE_HUMIDITY,
             },
             "auxHeat1": {
-                "internal_name": "auxHeat1",
+                "internal_state": STATES.AUXHEAT1,
                 "dtype": "Int16",
-                "channel": Channels.HVAC,
-                "unit": Units.SECONDS,
+                "channel": CHANNELS.HVAC,
+                "unit": UNITS.SECONDS,
             },
             "auxHeat2": {
-                "internal_name": "auxHeat2",
+                "internal_state": STATES.AUXHEAT2,
                 "dtype": "Int16",
-                "channel": Channels.HVAC,
-                "unit": Units.SECONDS,
+                "channel": CHANNELS.HVAC,
+                "unit": UNITS.SECONDS,
             },
             "auxHeat3": {
-                "internal_name": "auxHeat3",
+                "internal_state": STATES.AUXHEAT3,
                 "dtype": "Int16",
-                "channel": Channels.HVAC,
-                "unit": Units.SECONDS,
+                "channel": CHANNELS.HVAC,
+                "unit": UNITS.SECONDS,
             },
             "compCool1": {
-                "internal_name": "compCool1",
+                "internal_state": STATES.COMPCOOL1,
                 "dtype": "Int16",
-                "channel": Channels.HVAC,
-                "unit": Units.SECONDS,
+                "channel": CHANNELS.HVAC,
+                "unit": UNITS.SECONDS,
             },
             "compCool2": {
-                "internal_name": "compCool2",
+                "internal_state": STATES.COMPCOOL2,
                 "dtype": "Int16",
-                "channel": Channels.HVAC,
-                "unit": Units.SECONDS,
+                "channel": CHANNELS.HVAC,
+                "unit": UNITS.SECONDS,
             },
             "compHeat1": {
-                "internal_name": "compHeat1",
+                "internal_state": STATES.COMPHEAT1,
                 "dtype": "Int16",
-                "channel": Channels.HVAC,
-                "unit": Units.SECONDS,
+                "channel": CHANNELS.HVAC,
+                "unit": UNITS.SECONDS,
             },
             "compHeat2": {
-                "internal_name": "compHeat2",
+                "internal_state": STATES.COMPHEAT2,
                 "dtype": "Int16",
-                "channel": Channels.HVAC,
-                "unit": Units.SECONDS,
+                "channel": CHANNELS.HVAC,
+                "unit": UNITS.SECONDS,
             },
             "fan": {
-                "internal_name": "fan",
+                "internal_state": STATES.FAN,
                 "dtype": "Int16",
-                "channel": Channels.HVAC,
-                "unit": Units.SECONDS,
+                "channel": CHANNELS.HVAC,
+                "unit": UNITS.SECONDS,
             },
         },
     )
 
     sensors = Spec(
         datetime_column=datetime_column,
-        null_check_column="Thermostat_Temperature",
+        null_check_columns="Thermostat_Temperature",
         spec={
             "Thermostat_Temperature": {
-                "internal_name": "thermostat_temperature",
+                "internal_state": STATES.THERMOSTAT_TEMPERATURE,
                 "dtype": "Int16",
-                "channel": Channels.TEMPERATURE_SENSOR,
-                "unit": Units.FARHENHEIT,
+                "channel": CHANNELS.TEMPERATURE_SENSOR,
+                "unit": UNITS.FARHENHEIT,
             },
             "Humidity": {
-                "internal_name": "thermostat_humidity",
+                "internal_state": STATES.THERMOSTAT_HUMIDITY,
                 "dtype": "Int16",
-                "channel": Channels.HUMIDITY_SENSOR,
-                "unit": Units.RELATIVE_HUMIDITY,
+                "channel": CHANNELS.HUMIDITY_SENSOR,
+                "unit": UNITS.RELATIVE_HUMIDITY,
             },
             "Thermostat_Motion": {
-                "internal_name": "thermostat_motion",
-                "dtype": "boolean",
-                "channel": Channels.OCCUPANCY_SENSOR,
-                "unit": Units.OTHER,
+                "internal_state": STATES.THERMOSTAT_MOTION,
+                "dtype": "bool",
+                "channel": CHANNELS.OCCUPANCY_SENSOR,
+                "unit": UNITS.OTHER,
             },
             **{
                 "Remote_Sensor_{}_Temperature".format(i): {
-                    "internal_name": "rs{}_temperature".format(i),
+                    "internal_state": STATES[f"RS{i}_TEMPERATURE"],
                     "dtype": "Int16",
-                    "channel": Channels.TEMPERATURE_SENSOR,
-                    "unit": Units.CELSIUS,
+                    "channel": CHANNELS.TEMPERATURE_SENSOR,
+                    "unit": UNITS.CELSIUS,
                 }
                 for i in range(1, N_ROOM_SENSORS)
             },
             **{
                 "Remote_Sensor_{}_Motion".format(i): {
-                    "internal_name": "rs{}_occupancy".format(i),
-                    "dtype": "boolean",
-                    "channel": Channels.OCCUPANCY_SENSOR,
-                    "unit": Units.OTHER,
+                    "internal_state": STATES[f"RS{i}_OCCUPANCY"],
+                    "dtype": "bool",
+                    "channel": CHANNELS.OCCUPANCY_SENSOR,
+                    "unit": UNITS.OTHER,
                 }
                 for i in range(1, N_ROOM_SENSORS)
             },
@@ -735,30 +782,30 @@ class DonateYourDataSpec:
 
     weather = Spec(
         datetime_column=datetime_column,
-        null_check_column="Temperature",
+        null_check_columns="Temperature",
         spec={
             "T_out": {
-                "internal_name": "outdoor_temperature",
+                "internal_state": STATES.OUTDOOR_TEMPERATURE,
                 "dtype": "Int16",
-                "channel": Channels.WEATHER,
-                "unit": Units.FARHENHEIT,
+                "channel": CHANNELS.WEATHER,
+                "unit": UNITS.FARHENHEIT,
             },
             "RH_out": {
-                "internal_name": "outdoor_relative_humidity",
+                "internal_state": STATES.OUTDOOR_RELATIVE_HUMIDITY,
                 "dtype": "Float32",
-                "channel": Channels.WEATHER,
-                "unit": Units.RELATIVE_HUMIDITY,
+                "channel": CHANNELS.WEATHER,
+                "unit": UNITS.RELATIVE_HUMIDITY,
             },
         },
     )
 
     full = Spec(
         datetime_column=datetime_column,
-        null_check_column=[
-            datetime.null_check_column
-            + hvac.null_check_column
-            + sensors.null_check_column
-            + weather.null_check_column
+        null_check_columns=[
+            datetime.null_check_columns
+            + hvac.null_check_columns
+            + sensors.null_check_columns
+            + weather.null_check_columns
         ],
         spec={**datetime.spec, **hvac.spec, **sensors.spec, **weather.spec,},
     )
@@ -820,7 +867,7 @@ class EnergyPlusWeather:
 
     output_rename_dict = {
         Internal.datetime_column: datetime_column,
-        "outdoor_temperature": "temp_air",
-        "outdoor_relative_humidity": "relative_humidity",
+        STATES.OUTDOOR_TEMPERATURE: "temp_air",
+        STATES.OUTDOOR_RELATIVE_HUMIDITY: "relative_humidity",
     }
 

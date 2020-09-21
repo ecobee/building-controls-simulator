@@ -7,6 +7,7 @@ import pandas as pd
 import numpy as np
 import attr
 
+from BuildingControlsSimulator.DataClients.DataStates import STATES
 from BuildingControlsSimulator.BuildingModels.EnergyPlusBuildingModel import (
     EnergyPlusBuildingModel,
 )
@@ -28,43 +29,92 @@ class Simulation:
 
     building_model = attr.ib()
     controller_model = attr.ib()
-    # TODO add validator
-    step_size_minutes = attr.ib()
-    start_time_days = attr.ib()
-    final_time_days = attr.ib()
+    data_client = attr.ib()
+    config = attr.ib()
     output_data_dir = attr.ib(
         default=os.path.join(os.environ.get("OUTPUT_DIR"), "data")
     )
     output_plot_dir = attr.ib(
         default=os.path.join(os.environ.get("OUTPUT_DIR"), "plot")
     )
+    start_utc = attr.ib(default=None)
+    end_utc = attr.ib(default=None)
+
+    def __attrs_post_init__(self):
+        """validate input/output specs
+        next input must be minimally satisfied by previous output
+        """
+        # init with sim config
+        # this will get overriden with full_data_periods if data is missing
+        self.start_utc = self.config.start_utc
+        self.end_utc = self.config.end_utc
+
+        # get all data states that can be input to each model
+        available_data_states = [
+            v["internal_state"]
+            for k, v in self.data_client.source.data_spec.hvac.spec.items()
+        ]
+        available_data_states += [
+            v["internal_state"]
+            for k, v in self.data_client.source.data_spec.sensors.spec.items()
+        ]
+        available_data_states += [
+            v["internal_state"]
+            for k, v in self.data_client.source.data_spec.weather.spec.items()
+        ]
+
+        missing_controller_output_states = [
+            k
+            for k in self.building_model.input_states
+            if k
+            not in self.controller_model.output_states + available_data_states
+        ]
+        if any(missing_controller_output_states):
+            raise ValueError(
+                f"type(controller_model)={type(self.controller_model)}\n",
+                f"Missing controller output keys: {missing_controller_output_states}\n",
+            )
+
+        missing_building_output_keys = [
+            k
+            for k in self.controller_model.input_states
+            if k
+            not in self.building_model.output_states + available_data_states
+        ]
+        if any(missing_building_output_keys):
+            raise ValueError(
+                f"type(building_model)={type(self.building_model)}\n",
+                f"Missing building model output keys: {missing_building_output_keys}\n",
+            )
 
     @property
     def steps_per_hour(self):
-        return int(60 / self.step_size_minutes)
+        return int(60 / self.config.step_size_minutes)
 
     @property
     def step_size_seconds(self):
-        return int(self.step_size_minutes * 60)
+        return int(self.config.step_size_minutes * 60)
 
     @property
     def start_time_seconds(self):
-        return int(self.start_time_days * 86400)
+        t_offset = self.start_utc - pd.Timestamp(
+            year=self.start_utc.year, month=1, day=1, tz="UTC"
+        )
+        return int(t_offset.total_seconds())
 
     @property
     def final_time_seconds(self):
-        return int(self.final_time_days * 86400)
-
-    @property
-    def simulator_output_keys(self):
-        return ["time_seconds", "step_status", "t_ctrl"]
+        t_offset = self.end_utc - pd.Timestamp(
+            year=self.start_utc.year, month=1, day=1, tz="UTC"
+        )
+        return int(t_offset.total_seconds())
 
     @property
     def output_keys(self):
         return (
             self.simulator_output_keys
-            + self.controller_model.output_keys()
-            + list(self.building_model.fmu.get_model_variables().keys())
+            + self.controller_model.output_keys
+            + self.building_model.output_keys
         )
 
     @property
@@ -72,92 +122,81 @@ class Simulation:
         return self.building_model.fmu.get_model_variables().keys()
 
     def create_models(self, preprocess_check=False):
-        self.building_model.idf.preprocess(
-            timesteps_per_hour=self.steps_per_hour,
+        return self.building_model.create_model_fmu(
+            epw_path=self.data_client.weather.epw_path,
             preprocess_check=preprocess_check,
         )
-        return self.building_model.create_model_fmu()
 
-    def initialize(self):
-        """initialize FMU models
+    def initialize(self, data_period):
+        """initialize sub-system models
         """
+        self.start_utc = data_period[0]
+        self.end_utc = data_period[1]
         self.building_model.initialize(
-            self.start_time_seconds, self.final_time_seconds
+            t_start=self.start_time_seconds,
+            t_end=self.final_time_seconds,
+            t_step=self.step_size_seconds,
+            categories_dict=self.data_client.hvac.get_categories_dict(),
         )
         self.controller_model.initialize(
-            self.start_time_seconds, self.final_time_seconds
+            t_start=self.start_time_seconds,
+            t_end=self.final_time_seconds,
+            t_step=self.step_size_seconds,
+            categories_dict=self.data_client.hvac.get_categories_dict(),
         )
 
-    def get_air_temp_output_idx(self):
-        """
-        """
-        air_temp_var_names = [
-            "FMU_" + z + "_Zone_Air_Temperature"
-            for z in self.building_model.occupied_zones()
-        ]
-        return [
-            i
-            for i, k in enumerate(
-                self.building_model.fmu.get_model_variables().keys()
-            )
-            if k in air_temp_var_names
-        ]
+    def tear_down(self):
+        logger.info("Tearing down co-simulation models")
+        self.building_model.tear_down()
+        self.controller_model.tear_down()
 
-    def calc_T_control(self, building_model_output, air_temp_output_idx):
-        """
-        """
-        return np.mean(building_model_output[air_temp_output_idx])
+    def run(self, data_period, local=True):
+        """Main co-simulation loop"""
+        logger.info("Initializing co-simulation models")
+        self.initialize(data_period=data_period)
 
-    def run(self):
-        """
-        """
-        logger.info("Initializing FMU models ...")
-        self.initialize()
+        sim_data_channel_idx_offset = self.data_client.hvac.data[
+            self.data_client.hvac.data[STATES.DATE_TIME] == data_period[0]
+        ].index.values[0]
 
-        logger.info("Running co-simulation ...")
-        output = []
-        t_ctrl = self.building_model.init_temperature
-        air_temp_output_idx = self.get_air_temp_output_idx()
-
-        for t_step_seconds in range(
+        # pre-allocate output arrays
+        sim_time = np.arange(
             self.start_time_seconds,
             self.final_time_seconds,
             self.step_size_seconds,
-        ):
-            controller_output = self.controller_model.do_step(t_ctrl)
-
-            self.building_model.actuate_HVAC_equipment(
-                self.controller_model.HVAC_mode
-            )
-            step_status = self.building_model.fmu.do_step(
-                current_t=t_step_seconds,
-                step_size=self.step_size_seconds,
-                new_step=True,
-            )
-            # save data as row
-            building_model_output = np.array(
-                [
-                    self.building_model.fmu.get(k)[0]
-                    for k in self.building_model_output_keys
-                ]
-            )
-
-            t_ctrl = self.calc_T_control(
-                building_model_output, air_temp_output_idx
-            )
-
-            step_output = (
-                [t_step_seconds, step_status, t_ctrl]
-                + controller_output
-                + list(building_model_output)
-            )
-            output.append(step_output)
-            # TODO add multizone support
-
-        self.output_df = pd.DataFrame.from_records(
-            output, columns=self.output_keys
+            dtype="int64",
         )
-        return self.output_df
+
+        logger.info(
+            f"Running co-simulation from {data_period[0]} to {data_period[1]}"
+        )
+        for i in range(0, len(sim_time)):
+            self.controller_model.do_step(
+                t_start=sim_time[i],
+                t_step=self.step_size_seconds,
+                step_hvac_input=self.data_client.hvac.data.iloc[
+                    sim_data_channel_idx_offset + i
+                ],
+                step_sensor_input=self.building_model.step_output,
+                step_weather_input=self.data_client.weather.data.iloc[
+                    sim_data_channel_idx_offset + i
+                ],
+            )
+            self.building_model.do_step(
+                t_start=sim_time[i],
+                t_step=self.step_size_seconds,
+                step_control_input=self.controller_model.step_output,
+                step_sensor_input=self.data_client.sensors.data.iloc[
+                    sim_data_channel_idx_offset + i
+                ],
+                step_weather_input=self.data_client.weather.data.iloc[
+                    sim_data_channel_idx_offset + i
+                ],
+            )
+
+        logger.info("Finished co-simulation")
+
+        self.tear_down()
 
     def show_plots(self):
         output_analysis = OutputAnalysis(df=self.output_df)
