@@ -5,19 +5,18 @@ import subprocess
 import shlex
 import shutil
 import logging
-import fileinput
 
 import pandas as pd
-
 import attr
 import numpy as np
+
 from eppy.modeleditor import IDF
 
 logger = logging.getLogger(__name__)
 
 
 @attr.s(kw_only=True)
-class IDFPreprocessor(object):
+class IDFPreprocessor:
     """Converts IDFs (Input Data Files) for EnergyPlus into working IDFs.
     Example:
     ```python
@@ -39,22 +38,19 @@ class IDFPreprocessor(object):
     fmi_version = attr.ib(type=float, default=1.0)
 
     # first, terminate env vars, these will raise exceptions if undefined
-    ep_version = attr.ib(default=os.environ["ENERGYPLUS_INSTALL_VERSION"])
-    idf_dir = attr.ib(default=os.environ["IDF_DIR"])
-    idd_path = attr.ib(default=os.environ["EPLUS_IDD"])
-    fmu_dir = attr.ib(default=os.environ["FMU_DIR"])
-    eplustofmu_path = attr.ib(
-        default=os.path.join(
-            os.environ["EXT_DIR"], "EnergyPlusToFMU/Scripts/EnergyPlusToFMU.py"
-        )
-    )
+    ep_version = attr.ib(default=os.environ.get("ENERGYPLUS_INSTALL_VERSION"))
+    idf_dir = attr.ib(default=os.environ.get("IDF_DIR"))
+    idd_path = attr.ib(default=os.environ.get("EPLUS_IDD"))
+    fmu_dir = attr.ib(default=os.environ.get("FMU_DIR"))
+    eplustofmu_path = attr.ib(default=os.environ.get("ENERGYPLUSTOFMUSCRIPT"))
 
     def __attrs_post_init__(self):
         """Initialize `IDFPreprocessor` with an IDF file and desired actions"""
-        # set energyplus dictionary version for eppy
+        # make output dirs
+        os.makedirs(self.idf_prep_dir, exist_ok=True)
 
+        # set energyplus dictionary version for eppy
         IDF.setiddname(self.idd_path)
-        # IDF.setiddname("/home/bcs/lib/external/EnergyPlus/EnergyPlus-9-3-0/PreProcess/IDFVersionUpdater/V8-6-0-Energy+.idd")
 
         # first make sure idf file exists
         if os.path.isfile(self.idf_file):
@@ -68,7 +64,9 @@ class IDFPreprocessor(object):
         if not self.check_valid_idf(self.idf_file):
             raise ValueError(f"""{self.idf_file} is not a valid IDF file.""")
 
-        logger.info("IDFPreprocessor loading .idf file: {}".format(self.idf_file))
+        logger.info(
+            "IDFPreprocessor loading .idf file: {}".format(self.idf_file)
+        )
         self.ep_idf = IDF(self.idf_file)
         # select .idf output type
         self.ep_idf.outputtype = "standard"
@@ -131,7 +129,9 @@ class IDFPreprocessor(object):
         if preprocess_check and self.check_valid_idf(
             self.idf_prep_path, target_version=self.ep_version
         ):
-            logger.info(f"Found correct preprocessed IDF: {self.idf_prep_path}")
+            logger.info(
+                f"Found correct preprocessed IDF: {self.idf_prep_path}"
+            )
             logger.info(f"IDF version: {self.ep_version}")
         else:
             logger.info(f"Making new preprocessed IDF: {self.idf_prep_path}")
@@ -196,13 +196,23 @@ class IDFPreprocessor(object):
         return self.idf_prep_path
 
     def make_fmu(self, weather):
-        """make the fmu"""
+        """make the fmu
 
-        cmd = f"python2.7 {self.eplustofmu_path} -i {self.idd_path} -w {weather} -a {self.fmi_version} -d {self.idf_prep_path}"
+        Calls FMU model generation script from https://github.com/lbl-srg/EnergyPlusToFMU.
+        This script litters temporary files of fixed names which get clobbered
+        if running in parallel. Need to fix scripts to be able to run in parallel.
+        """
+        cmd = f"python2.7 {self.eplustofmu_path}"
+        cmd += f" -i {self.idd_path}"
+        cmd += f" -w {weather}"
+        cmd += f" -a {self.fmi_version}"
+        cmd += f" -d {self.idf_prep_path}"
 
         proc = subprocess.run(shlex.split(cmd), stdout=subprocess.PIPE)
         if not proc.stdout:
-            raise ValueError(f"Empty STDOUT. Invalid EnergyPlusToFMU cmd={cmd}")
+            raise ValueError(
+                f"Empty STDOUT. Invalid EnergyPlusToFMU cmd={cmd}"
+            )
 
         # EnergyPlusToFMU puts fmu in cwd always, move out of cwd
         shutil.move(
@@ -223,6 +233,7 @@ class IDFPreprocessor(object):
         # subprocess.run(cmd.split(), stdout=subprocess.PIPE)
         # if not proc.stdout:
         #     raise ValueError(f"Empty STDOUT. Invalid EnergyPlusToFMU cmd={cmd}")
+
         return self.fmu_path
 
     def prep_runtime(self):
@@ -245,61 +256,61 @@ class IDFPreprocessor(object):
         From V8-9-0-Energy+.idd:
 
         SimulationControl,
-          unique-object
-          memo Note that the following 3 fields are related to the Sizing:Zone, Sizing:System,
-          memo and Sizing:Plant objects.  Having these fields set to Yes but no corresponding
-          memo Sizing object will not cause the sizing to be done. However, having any of these
-          memo fields set to No, the corresponding Sizing object is ignored.
-          memo Note also, if you want to do system sizing, you must also do zone sizing in the same
-          memo run or an error will result.
-          min-fields 5
+            unique-object
+            memo Note that the following 3 fields are related to the Sizing:Zone, Sizing:System,
+            memo and Sizing:Plant objects.  Having these fields set to Yes but no corresponding
+            memo Sizing object will not cause the sizing to be done. However, having any of these
+            memo fields set to No, the corresponding Sizing object is ignored.
+            memo Note also, if you want to do system sizing, you must also do zone sizing in the same
+            memo run or an error will result.
+            min-fields 5
         A1, field Do Zone Sizing Calculation
-          note If Yes, Zone sizing is accomplished from corresponding Sizing:Zone objects
-          note and autosize fields.
-          type choice
-          key Yes
-          key No
-          default No
+            note If Yes, Zone sizing is accomplished from corresponding Sizing:Zone objects
+            note and autosize fields.
+            type choice
+            key Yes
+            key No
+            default No
         A2, field Do System Sizing Calculation
-          note If Yes, System sizing is accomplished from corresponding Sizing:System objects
-          note and autosize fields.
-          note If Yes, Zone sizing (previous field) must also be Yes.
-          type choice
-          key Yes
-          key No
-          default No
+            note If Yes, System sizing is accomplished from corresponding Sizing:System objects
+            note and autosize fields.
+            note If Yes, Zone sizing (previous field) must also be Yes.
+            type choice
+            key Yes
+            key No
+            default No
         A3 field Do Plant Sizing Calculation
-          note If Yes, Plant sizing is accomplished from corresponding Sizing:Plant objects
-          note and autosize fields.
-          type choice
-          key Yes
-          key No
-          default No
+            note If Yes, Plant sizing is accomplished from corresponding Sizing:Plant objects
+            note and autosize fields.
+            type choice
+            key Yes
+            key No
+            default No
         A4, field Run Simulation for Sizing Periods
-          note If Yes, SizingPeriod:* objects are executed and results from those may be displayed..
-          type choice
-          key Yes
-          key No
-          default Yes
+            note If Yes, SizingPeriod:* objects are executed and results from those may be displayed..
+            type choice
+            key Yes
+            key No
+            default Yes
         A5, field Run Simulation for Weather File Run Periods
-          note If Yes, RunPeriod:* objects are executed and results from those may be displayed..
-          type choice
-          key Yes
-          key No
-          default Yes
+            note If Yes, RunPeriod:* objects are executed and results from those may be displayed..
+            type choice
+            key Yes
+            key No
+            default Yes
         A6, field Do HVAC Sizing Simulation for Sizing Periods
-          note If Yes, SizingPeriod:* objects are exectuted additional times for advanced sizing.
-          note Currently limited to use with coincident plant sizing, see Sizing:Plant object
-          type choice
-          key Yes
-          key No
-          default No
+            note If Yes, SizingPeriod:* objects are exectuted additional times for advanced sizing.
+            note Currently limited to use with coincident plant sizing, see Sizing:Plant object
+            type choice
+            key Yes
+            key No
+            default No
         N1; field Maximum Number of HVAC Sizing Simulation Passes
-          note the entire set of SizingPeriod:* objects may be repeated to fine tune size results
-          note this input sets a limit on the number of passes that the sizing algorithms can repeate the set
-          type integer
-          minimum 1
-          default 1
+            note the entire set of SizingPeriod:* objects may be repeated to fine tune size results
+            note this input sets a limit on the number of passes that the sizing algorithms can repeate the set
+            type integer
+            minimum 1
+            default 1
         """
         self.popallidfobjects("SimulationControl")
         self.ep_idf.newidfobject(
@@ -316,7 +327,6 @@ class IDFPreprocessor(object):
     def prep_timesteps(self, timesteps_per_hour):
         """
         From V8-9-0-Energy+.idd:
-         
         Timestep,
             memo Specifies the "basic" timestep for the simulation. The
             memo value entered here is also known as the Zone Timestep.  This is used in
@@ -365,22 +375,29 @@ class IDFPreprocessor(object):
         cur_version = self.get_idf_version(self.ep_idf)
 
         # check if current version above target
-        if int(cur_version.replace("-", "")) > int(target_version.replace("-", "")):
+        if int(cur_version.replace("-", "")) > int(
+            target_version.replace("-", "")
+        ):
             logger.error(
                 f".idf current_version={cur_version} above target_version={target_version}"
             )
         elif cur_version == target_version:
-            logger.info(f"Correct .idf version {cur_version}. Using {self.idf_file}")
+            logger.info(
+                f"Correct .idf version {cur_version}. Using {self.idf_file}"
+            )
         else:
             # first check for previous upgrade
-            transition_fpath = self.idf_file.replace(".idf", f"_{target_version}.idf")
+            transition_fpath = self.idf_file.replace(
+                ".idf", f"_{target_version}.idf"
+            )
             if not os.path.isfile(transition_fpath):
                 # upgrade .idf file repeatedly
                 first_transition = True
                 for i in range(len(conversion_dict)):
                     if cur_version != target_version:
                         transition_dir = os.path.join(
-                            os.environ["EPLUS_DIR"], "PreProcess/IDFVersionUpdater"
+                            os.environ["EPLUS_DIR"],
+                            "PreProcess/IDFVersionUpdater",
                         )
                         transistion_path = os.path.join(
                             transition_dir, conversion_dict[cur_version]
@@ -396,19 +413,24 @@ class IDFPreprocessor(object):
                         cmd = f"{transistion_path} {self.idf_file}"
 
                         # make transition call
-                        subprocess.call(shlex.split(cmd), stdout=subprocess.PIPE)
+                        subprocess.call(
+                            shlex.split(cmd), stdout=subprocess.PIPE
+                        )
                         os.chdir(original_wd)
 
                         cur_version = conversion_dict[cur_version][-5:]
                         if self.debug:
                             shutil.move(
                                 self.idf_file + "new",
-                                self.idf_file.replace(".idf", f"_{cur_version}.idf"),
+                                self.idf_file.replace(
+                                    ".idf", f"_{cur_version}.idf"
+                                ),
                             )
 
                         if first_transition:
                             shutil.move(
-                                self.idf_file + "old", self.idf_file + "original"
+                                self.idf_file + "old",
+                                self.idf_file + "original",
                             )
                             first_transition = False
 
@@ -556,7 +578,8 @@ class IDFPreprocessor(object):
         create external interface.
         """
         self.ep_idf.newidfobject(
-            "EXTERNALINTERFACE", Name_of_External_Interface="FunctionalMockupUnitExport"
+            "EXTERNALINTERFACE",
+            Name_of_External_Interface="FunctionalMockupUnitExport",
         )
 
     def get_heating_equipment(self):
@@ -686,7 +709,9 @@ class IDFPreprocessor(object):
     def popifdobject_by_name(self, idf_objs, name):
         """
         """
-        for i, s_obj in enumerate(self.ep_idf.idfobjects["ScheduleTypeLimits"]):
+        for i, s_obj in enumerate(
+            self.ep_idf.idfobjects["ScheduleTypeLimits"]
+        ):
             if "temperature" in s_obj.Name.lower():
                 self.ep_idf.popidfobject("ScheduleTypeLimits", i)
 
@@ -730,7 +755,9 @@ def fix_idf_version_line(idf_path, ep_version):
 
                 if line == "Version,\n":
                     output.write(
-                        line.replace("\n", "{};\n".format(ep_version.replace("-", ".")))
+                        line.replace(
+                            "\n", "{};\n".format(ep_version.replace("-", "."))
+                        )
                     )
                 elif "!- Version Identifier" not in line:
                     output.write(line)

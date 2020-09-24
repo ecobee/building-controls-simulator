@@ -116,9 +116,6 @@ if ! shopt -oq posix; then
     fi
 fi
 
-# env variables
-export JUPYTER_LOG_DIR="${HOME}/jupyter_lab_logs"
-
 # manage shell for interactive login shell
 if [ "${PIPENV_ACTIVE:-0}" = "0" ]; then
    # if not in pipenv shell setup environment
@@ -148,8 +145,6 @@ EndOfMessage
         echo "${HOME}/.jupyter/jupyter_notebook_config.py already exists. Not overriden."
         echo "If jupyter server is inaccessible without password delete this file and re-run."
     fi
-    # this is configured in Pipfile [scripts] to start headless jupyter server
-    pipenv run jupyter_lab_bkgrnd
     pipenv shell
 fi
 

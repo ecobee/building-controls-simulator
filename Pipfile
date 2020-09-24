@@ -10,6 +10,7 @@ black = "*"
 coverage = "*"
 sphinx = "*"
 sphinx-rtd-theme = "*"
+flake8 = "*"
 
 [packages]
 matplotlib = "*"
@@ -18,7 +19,7 @@ cython = "*"
 lxml = "*"
 scipy = "*"
 eppy = "*"
-pandas = ">=1.0.3"
+pandas = ">=1.1.0"
 jupyterlab = "*"
 setuptools = "*"
 plotly = "*"
@@ -30,9 +31,14 @@ pandas-gbq = "*"
 tqdm = "*"
 BuildingControlsSimulator = {editable = true,path = "."}
 numba = "*"
+gcsfs = "*"
+dask = {extras = ["complete"],version = "*"}
+requests = "*"
+scikit-learn = "*"
+statsmodels = "*"
 
 [requires]
-python_version = "3.7"
+python_version = "3.7.6"
 
 [scripts]
 jupyter_lab_bkgrnd = "${PACKAGE_DIR:?}/scripts/setup/jupyter_lab_bkgrnd.sh"
