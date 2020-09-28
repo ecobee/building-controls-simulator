@@ -16,6 +16,16 @@ class DataChannel:
     data = attr.ib()
     spec = attr.ib()
     full_data_periods = attr.ib(default=[])
+    sim_data = attr.ib(default=[])
+
+    def get_categories_dict(self):
+        """Get dict of all categories for categorical dtypes to sync with models"""
+        _cat_dict = {}
+        for _col in self.data.columns:
+            if isinstance(self.data[_col].dtype, pd.CategoricalDtype):
+                _cat_dict[_col] = self.data[_col].dtype.categories
+
+        return _cat_dict
 
     def get_full_data_periods(self, expected_period):
         # if self.data has no records then there are no full_data_periods
@@ -25,13 +35,22 @@ class DataChannel:
                 self.spec.datetime_column, ascending=True
             )
             # drop records that are incomplete
+            original_len = len(self.data)
+            # TODO: can we overwrite self.data?
             _df = (
-                self.data[~self.data[self.spec.null_check_column].isnull()]
-                .reset_index()
-                .copy(deep=True)
+                self.data.dropna(
+                    axis=0, how="any", subset=self.spec.null_check_columns
+                )
+                .reset_index(drop=True)
+                .sort_values(self.spec.datetime_column, ascending=True)
             )
 
-            # if null_check_column is always null then all missing data
+            null_rows = original_len - len(_df)
+            logger.info(
+                f"Dropped {null_rows} null_rows with no columns={self.spec.null_check_columns}",
+            )
+
+            # if null_check_columns is always null then all missing data
             if not _df.empty:
 
                 diffs = _df[self.spec.datetime_column].diff()

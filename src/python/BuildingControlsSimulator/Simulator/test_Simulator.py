@@ -7,7 +7,10 @@ import pandas as pd
 import os
 import shutil
 
-from BuildingControlsSimulator.Simulator.Simulation import Simulation
+from BuildingControlsSimulator.Simulator.Simulator import Simulator
+from BuildingControlsSimulator.Simulator.Config import Config
+from BuildingControlsSimulator.DataClients.DataClient import DataClient
+from BuildingControlsSimulator.DataClients.GCSDYDSource import GCSDYDSource
 from BuildingControlsSimulator.BuildingModels.IDFPreprocessor import (
     IDFPreprocessor,
 )
@@ -40,8 +43,38 @@ class TestSimulator:
 
         cls.idf_name = "AZ_Phoenix_gasfurnace_crawlspace_IECC_2018_cycles.idf"
 
-        cls.fmu_path = (
+        cls.deadband_fmu_path = (
             f"{os.environ.get('FMU_DIR')}/../fmu-models/deadband/deadband.fmu"
+        )
+
+        cls.idtm_fmu_path = f"{os.environ.get('FMU_DIR')}/../fmu-models/idtm.0f94bb5d90d898380ff165b5caf1a70171c3bacc.fmu"
+
+        cls.dc = DataClient(
+            source=GCSDYDSource(
+                gcp_project=os.environ.get("GOOGLE_CLOUD_PROJECT"),
+                gcs_uri_base=os.environ.get("DYD_GCS_URI_BASE"),
+            ),
+            nrel_dev_api_key=os.environ.get("NREL_DEV_API_KEY"),
+            nrel_dev_email=os.environ.get("NREL_DEV_EMAIL"),
+            archive_tmy3_meta=os.environ.get("ARCHIVE_TMY3_META"),
+            archive_tmy3_data_dir=os.environ.get("ARCHIVE_TMY3_DATA_DIR"),
+            ep_tmy3_cache_dir=os.environ.get("EP_TMY3_CACHE_DIR"),
+            simulation_epw_dir=os.environ.get("SIMULATION_EPW_DIR"),
+        )
+
+        cls.sim_config = Config.make_sim_config(
+            identifier=[
+                # "f2254479e14daf04089082d1cd9df53948f98f1e",  # missing thermostat_temperature data
+                "2df6959cdf502c23f04f3155758d7b678af0c631",  # has full data periods
+                # "6e63291da5427ae87d34bb75022ee54ee3b1fc1a",  # file not found
+            ],
+            latitude=33.481136,
+            longitude=-112.078232,
+            start_utc="2019-01-01",
+            end_utc="2019-12-31",
+            min_sim_period="14D",
+            min_chunk_period="30D",
+            step_size_minutes=5,
         )
 
     @classmethod
@@ -53,46 +86,14 @@ class TestSimulator:
 
     def test_deadband_fmu_simulation_equivalence(self):
         # test HVAC data returns dict of non-empty pd.DataFrame
-        s = Simulation(
-            building_model=EnergyPlusBuildingModel(
-                idf=IDFPreprocessor(
-                    idf_file=self.idf_name, init_temperature=22.0,
-                ),
-                weather_file=self.test_weather_path,
-            ),
-            controller_model=Deadband(
-                deadband=2.0, stp_heat=21.0, stp_cool=24.0
-            ),
-            step_size_minutes=5,
-            start_time_days=182,
-            final_time_days=189,
+        master = Simulator(
+            data_client=self.dc,
+            sim_config=self.sim_config,
+            building_models=[
+                EnergyPlusBuildingModel(
+                    idf=IDFPreprocessor(idf_file=self.idf_name,),
+                )
+            ],
+            controller_models=[Deadband(),],
         )
-
-        s.create_models(preprocess_check=False)
-
-        output_df_python = s.run()
-
-        s = Simulation(
-            building_model=EnergyPlusBuildingModel(
-                idf=IDFPreprocessor(
-                    idf_file=self.idf_name, init_temperature=22.0,
-                ),
-                weather_file=self.test_weather_path,
-            ),
-            controller_model=FMIController(
-                fmu_path=self.fmu_path,
-                deadband=2.0,
-                stp_heat=21.0,
-                stp_cool=24.0,
-            ),
-            step_size_minutes=5,
-            start_time_days=182,
-            final_time_days=189,
-        )
-
-        # don't need to recreate EnergyPlus FMU
-        s.create_models(preprocess_check=True)
-
-        output_df_fmi = s.run()
-
-        assert output_df_python.equals(output_df_fmi)
+        master.simulate(local=True, preprocess_check=True)

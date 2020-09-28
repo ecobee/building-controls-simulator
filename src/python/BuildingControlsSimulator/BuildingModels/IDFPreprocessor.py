@@ -18,31 +18,82 @@ logger = logging.getLogger(__name__)
 @attr.s(kw_only=True)
 class IDFPreprocessor:
     """Converts IDFs (Input Data Files) for EnergyPlus into working IDFs.
-    Example:
-    ```python
-    from BuildingControlsSimulator.BuildingModels import IDFPreprocessor
-    idf = IDFPreprocessor(
-        idf_file=self.dummy_idf_file,
-        weather_file=self.dummy_weather_file,
-    )
-    ```
     """
 
     # user must supply an idf file as either 1) full path, or 2) a file in self.idf_dir
     idf_file = attr.ib()
 
     init_temperature = attr.ib(type=float, default=21.0)
-    init_control_type = attr.ib(type=int, default=2)
+    init_humidity = attr.ib(type=float, default=50.0)
+    init_control_type = attr.ib(type=int, default=1)
     debug = attr.ib(type=bool, default=False)
-    timesteps = attr.ib(type=int, default=12)
-    fmi_version = attr.ib(type=float, default=1.0)
+    timesteps_per_hour = attr.ib(type=int, default=12)
+    conditioned_zones = attr.ib(default=[])
+    occupied_zones = attr.ib(default=[])
+    thermostat_zones = attr.ib(default=[])
+    zone_lists = attr.ib(default={})
+    zone_outputs = attr.ib(default=[])
+    building_outputs = attr.ib(default=[])
 
     # first, terminate env vars, these will raise exceptions if undefined
     ep_version = attr.ib(default=os.environ.get("ENERGYPLUS_INSTALL_VERSION"))
     idf_dir = attr.ib(default=os.environ.get("IDF_DIR"))
     idd_path = attr.ib(default=os.environ.get("EPLUS_IDD"))
-    fmu_dir = attr.ib(default=os.environ.get("FMU_DIR"))
-    eplustofmu_path = attr.ib(default=os.environ.get("ENERGYPLUSTOFMUSCRIPT"))
+
+    # output variable spec
+    # .rdd file for all output variables
+    zone_output_spec = attr.ib(
+        default={
+            "zone_air_temperature": {
+                "dtype": "float32",
+                "eplus_name": "Zone Air Temperature",
+            },
+            "zone_thermostat_heating_setpoint_temperature": {
+                "dtype": "float32",
+                "eplus_name": "Zone Thermostat Heating Setpoint Temperature",
+            },
+            "zone_thermostat_cooling_setpoint_temperature": {
+                "dtype": "float32",
+                "eplus_name": "Zone Thermostat Cooling Setpoint Temperature",
+            },
+            "zone_air_system_sensible_heating_rate": {
+                "dtype": "float32",
+                "eplus_name": "Zone Air System Sensible Heating Rate",
+            },
+            "zone_air_system_sensible_cooling_rate": {
+                "dtype": "float32",
+                "eplus_name": "Zone Air System Sensible Cooling Rate",
+            },
+            "zone_total_internal_total_heating_rate": {
+                "dtype": "float32",
+                "eplus_name": "Zone Total Internal Total Heating Rate",
+            },
+            "zone_mean_air_dewpoint_temperature": {
+                "dtype": "float32",
+                "eplus_name": "Zone Mean Air Dewpoint Temperature",
+            },
+            "zone_mean_air_humidity_ratio": {
+                "dtype": "float32",
+                "eplus_name": "Zone Mean Air Humidity Ratio",
+            },
+        }
+    )
+
+    building_output_spec = {
+        "environment": {
+            "site_outdoor_air_relative_humidity": {
+                "dtype": "float32",
+                "eplus_name": "Site Outdoor Air Relative Humidity",
+            },
+            "site_outdoor_air_drybulb_temperature": {
+                "dtype": "float32",
+                "eplus_name": "Site Outdoor Air Drybulb Temperature",
+            },
+            "eplus_name": "Environment",
+        },
+    }
+    # the output spec is created during preprocessing of IDF file
+    output_spec = attr.ib(default={})
 
     def __attrs_post_init__(self):
         """Initialize `IDFPreprocessor` with an IDF file and desired actions"""
@@ -71,10 +122,7 @@ class IDFPreprocessor:
         # select .idf output type
         self.ep_idf.outputtype = "standard"
 
-        self.zone_outputs = []
-        self.building_outputs = []
-
-        # config
+        # constants
         self.FMU_control_dual_stp_name = "FMU_T_dual_stp"
         self.FMU_control_cooling_stp_name = "FMU_T_cooling_stp"
         self.FMU_control_heating_stp_name = "FMU_T_heating_stp"
@@ -92,36 +140,8 @@ class IDFPreprocessor:
     def idf_prep_path(self):
         return os.path.join(self.idf_prep_dir, self.idf_prep_name)
 
-    @property
-    def fmu_name(self):
-        fmu_name = os.path.splitext(self.idf_prep_name)[0]
-        # add automatic conversion rules for fmu naming
-        idf_bad_chars = [" ", "-", "+", "."]
-        for c in idf_bad_chars:
-            fmu_name = fmu_name.replace(c, "_")
-
-        if fmu_name[0].isdigit():
-            fmu_name = "f_" + fmu_name
-
-        fmu_name = fmu_name + ".fmu"
-
-        return fmu_name
-
-    @property
-    def fmu_path(self):
-        return os.path.join(self.fmu_dir, self.fmu_name)
-
-    def output_keys(self):
-        """
-        """
-        return self.building_outputs + self.zone_outputs
-
     def preprocess(
-        self,
-        init_control_type=1,
-        init_temperature=21.0,
-        timesteps_per_hour=60,
-        preprocess_check=False,
+        self, init_temperature=21.0, preprocess_check=False,
     ):
         """add control signals to IDF before making FMU"""
 
@@ -129,6 +149,11 @@ class IDFPreprocessor:
         if preprocess_check and self.check_valid_idf(
             self.idf_prep_path, target_version=self.ep_version
         ):
+            self.ep_idf = IDF(self.idf_prep_path)
+            self.get_zone_info()
+            # this sets fmu output keys
+            # TODO: generalize so doesnt wrap editing .idf
+            self.prep_ext_int_output()
             logger.info(
                 f"Found correct preprocessed IDF: {self.idf_prep_path}"
             )
@@ -136,8 +161,9 @@ class IDFPreprocessor:
         else:
             logger.info(f"Making new preprocessed IDF: {self.idf_prep_path}")
             self.prep_ep_version(self.ep_version)
+            self.get_zone_info()
             self.prep_simulation_control()
-            self.prep_timesteps(timesteps_per_hour)
+            self.prep_timesteps(self.timesteps_per_hour)
             self.prep_runtime()
             self.prep_ext_int()
 
@@ -149,42 +175,7 @@ class IDFPreprocessor:
                 FMU_control_cooling_stp_init=self.init_temperature,
             )
             # create per zone outputs depending on HVAC system type
-
-            # Output:Variable,*,Facility Total HVAC Electric Demand Power,hourly; !- HVAC Average [W]
-            zone_outputs = [
-                "Zone Air Temperature",
-                "Zone Thermostat Heating Setpoint Temperature",
-                "Zone Thermostat Cooling Setpoint Temperature",
-                "Zone Air System Sensible Heating Rate",
-                "Zone Air System Sensible Cooling Rate",
-                "Zone Total Internal Total Heating Rate",
-                # "Zone Total Internal Latent Gain Rate",
-                # "Zone Total Internal Convective Heating Rate",
-                # "Zone Total Internal Radiant Heating Rate",
-                # "Zone Total Internal Visible Radiation Heating Rate"
-                # "Air System Electric Energy"
-                # "Air System Gas Energy"
-                # "Air System Fan Electric Energy"
-                # "Air System Cooling Coil Chilled Water Energy"
-                # "Air System Heating Coil Hot Water Energy"
-                # "Air System DX Cooling Coil Electric Energy"
-                # "Air System Heating Coil Gas Energy"
-            ]
-            building_outputs = {
-                "Environment": [
-                    "Site Outdoor Air Relative Humidity",
-                    "Site Outdoor Air Drybulb Temperature",
-                    # "Site Diffuse Solar Radiation Rate per Area",
-                    # "Site Direct Solar Radiation Rate per Area"
-                ],
-                #  "Main Chiller": [
-                #      "Chiller Electric Power",
-                # ]
-            }
-
-            self.prep_ext_int_output(
-                zone_outputs=zone_outputs, building_outputs=building_outputs
-            )
+            self.prep_ext_int_output()
 
             # finally before saving expand objects
             self.prep_expand_objects()
@@ -195,46 +186,86 @@ class IDFPreprocessor:
 
         return self.idf_prep_path
 
-    def make_fmu(self, weather):
-        """make the fmu
+    def get_zone_info(self):
+        self.zone_lists = self.get_zone_lists()
+        # TODO: check that zone geometry exists
 
-        Calls FMU model generation script from https://github.com/lbl-srg/EnergyPlusToFMU.
-        This script litters temporary files of fixed names which get clobbered
-        if running in parallel. Need to fix scripts to be able to run in parallel.
-        """
-        cmd = f"python2.7 {self.eplustofmu_path}"
-        cmd += f" -i {self.idd_path}"
-        cmd += f" -w {weather}"
-        cmd += f" -a {self.fmi_version}"
-        cmd += f" -d {self.idf_prep_path}"
+        self.get_condtioned_zones()
+        self.get_occupied_zones()
+        self.get_tstat_zone()
 
-        proc = subprocess.run(shlex.split(cmd), stdout=subprocess.PIPE)
-        if not proc.stdout:
+    def get_zone_lists(self):
+        zone_lists = {}
+        for obj in self.ep_idf.idfobjects["ZoneList"]:
+            zone_lists[obj.Name] = [
+                obj[f"Zone_{i}_Name"]
+                for i in range(1, 500)
+                if obj[f"Zone_{i}_Name"] != ""
+            ]
+
+        return zone_lists
+
+    def zone_list_lookup(self, zone_name):
+        for k, v in self.zone_lists.items():
+            if zone_name in v:
+                return k
+
+    def expand_zones(self, zone_list):
+        if zone_list in self.zone_lists.keys():
+            return self.zone_lists[zone_list]
+        else:
+            return zone_list
+
+    def get_tstat_zone(self):
+        tstats = self.ep_idf.idfobjects["zonecontrol:thermostat"]
+        if len(tstats) > 1:
             raise ValueError(
-                f"Empty STDOUT. Invalid EnergyPlusToFMU cmd={cmd}"
+                f"Multiple thermostats in IDF file: {self.idf_file}"
             )
 
-        # EnergyPlusToFMU puts fmu in cwd always, move out of cwd
-        shutil.move(
-            os.path.join(
-                os.getcwd(),
-                self.fmu_name.replace(
-                    self.ep_version, self.ep_version.replace("-", "_")
-                ),
-            ),
-            self.fmu_path,
+        self.thermostat_zone = tstats[0].Zone_or_ZoneList_Name
+
+    def get_condtioned_zones(self):
+        """ get list of all zones that are condtioned
+        conditioned zones are defined in IDF by:
+        1. ZoneHVAC:EquipmentConnections
+        2. ZoneVentilation:DesignFlowRate
+        3. sizing:Zone
+        """
+        equip_conn_zones = [
+            self.expand_zones(obj.Zone_Name)
+            for obj in self.ep_idf.idfobjects["ZoneHVAC:EquipmentConnections"]
+        ]
+
+        vent_design_zones = [
+            self.expand_zones(obj.Zone_or_ZoneList_Name)
+            for obj in self.ep_idf.idfobjects["ZoneVentilation:DesignFlowRate"]
+        ]
+
+        sizing_zones = [
+            self.expand_zones(obj.Zone_or_ZoneList_Name)
+            for obj in self.ep_idf.idfobjects["sizing:Zone"]
+        ]
+
+        self.conditioned_zones = list(
+            set(equip_conn_zones) | set(vent_design_zones) | set(sizing_zones)
         )
-        # check FMI compliance
-        # -h specifies the step size in seconds, -s is the stop time in seconds.
-        # Stop time must be a multiple of 86400.
-        # The step size needs to be the same as the .idf file specifies
 
-        cmd = f'yes | {os.environ["EXT_DIR"]}/FMUComplianceChecker/fmuCheck.linux64 -h {self.timesteps} -s 172800 {self.fmu_path}'.split()
-        # subprocess.run(cmd.split(), stdout=subprocess.PIPE)
-        # if not proc.stdout:
-        #     raise ValueError(f"Empty STDOUT. Invalid EnergyPlusToFMU cmd={cmd}")
+    def get_occupied_zones(self):
+        """ get list of all zones that are condtioned
+        conditioned zones are defined in IDF by:
+        1. people
+        """
+        self.occupied_zones = [
+            self.expand_zones(obj.Zone_or_ZoneList_Name)
+            for obj in self.ep_idf.idfobjects["people"]
+        ]
 
-        return self.fmu_path
+        if any([z not in self.conditioned_zones for z in self.occupied_zones]):
+            info.error(
+                f"IDF file: {self.idf_file} contains occupied zones that"
+                " do not appear to be conditioned."
+            )
 
     def prep_runtime(self):
         """
@@ -253,64 +284,8 @@ class IDFPreprocessor:
 
     def prep_simulation_control(self):
         """
-        From V8-9-0-Energy+.idd:
-
-        SimulationControl,
-            unique-object
-            memo Note that the following 3 fields are related to the Sizing:Zone, Sizing:System,
-            memo and Sizing:Plant objects.  Having these fields set to Yes but no corresponding
-            memo Sizing object will not cause the sizing to be done. However, having any of these
-            memo fields set to No, the corresponding Sizing object is ignored.
-            memo Note also, if you want to do system sizing, you must also do zone sizing in the same
-            memo run or an error will result.
-            min-fields 5
-        A1, field Do Zone Sizing Calculation
-            note If Yes, Zone sizing is accomplished from corresponding Sizing:Zone objects
-            note and autosize fields.
-            type choice
-            key Yes
-            key No
-            default No
-        A2, field Do System Sizing Calculation
-            note If Yes, System sizing is accomplished from corresponding Sizing:System objects
-            note and autosize fields.
-            note If Yes, Zone sizing (previous field) must also be Yes.
-            type choice
-            key Yes
-            key No
-            default No
-        A3 field Do Plant Sizing Calculation
-            note If Yes, Plant sizing is accomplished from corresponding Sizing:Plant objects
-            note and autosize fields.
-            type choice
-            key Yes
-            key No
-            default No
-        A4, field Run Simulation for Sizing Periods
-            note If Yes, SizingPeriod:* objects are executed and results from those may be displayed..
-            type choice
-            key Yes
-            key No
-            default Yes
-        A5, field Run Simulation for Weather File Run Periods
-            note If Yes, RunPeriod:* objects are executed and results from those may be displayed..
-            type choice
-            key Yes
-            key No
-            default Yes
-        A6, field Do HVAC Sizing Simulation for Sizing Periods
-            note If Yes, SizingPeriod:* objects are exectuted additional times for advanced sizing.
-            note Currently limited to use with coincident plant sizing, see Sizing:Plant object
-            type choice
-            key Yes
-            key No
-            default No
-        N1; field Maximum Number of HVAC Sizing Simulation Passes
-            note the entire set of SizingPeriod:* objects may be repeated to fine tune size results
-            note this input sets a limit on the number of passes that the sizing algorithms can repeate the set
-            type integer
-            minimum 1
-            default 1
+        See V8-9-0-Energy+.idd:
+        and Input Reference
         """
         self.popallidfobjects("SimulationControl")
         self.ep_idf.newidfobject(
@@ -326,26 +301,7 @@ class IDFPreprocessor:
 
     def prep_timesteps(self, timesteps_per_hour):
         """
-        From V8-9-0-Energy+.idd:
-        Timestep,
-            memo Specifies the "basic" timestep for the simulation. The
-            memo value entered here is also known as the Zone Timestep.  This is used in
-            memo the Zone Heat Balance Model calculation as the driving timestep for heat
-            memo transfer and load calculations.
-            unique-object
-            format singleLine
-        N1 ; field Number of Timesteps per Hour
-            note Number in hour: normal validity 4 to 60: 6 suggested
-            note Must be evenly divisible into 60
-            note Allowable values include 1, 2, 3, 4, 5, 6, 10, 12, 15, 20, 30, and 60
-            note Normal 6 is minimum as lower values may cause inaccuracies
-            note A minimum value of 20 is suggested for both ConductionFiniteDifference
-            note and CombinedHeatAndMoistureFiniteElement surface heat balance algorithms
-            note A minimum of 12 is suggested for simulations involving a Vegetated Roof (Material:RoofVegetation).
-            default 6
-            type integer
-            minimum 1
-            maximum 60
+        See V8-9-0-Energy+.idd:
         """
         self.ep_idf.idfobjects["TIMESTEP"][
             0
@@ -517,12 +473,7 @@ class IDFPreprocessor:
             FMU_Variable_Name=self.FMU_control_cooling_stp_name,
             Initial_Value=FMU_control_cooling_stp_init,
         )
-        # create a control type schedule limits
-        # 0 - Uncontrolled (No specification or default)
-        # 1 - Single Heating Setpoint
-        # 2 - Single Cooling SetPoint
-        # 3 - Single Heating Cooling Setpoint
-        # 4 - Dual Setpoint with Deadband (Heating and Cooling)
+        # create a control type schedule limits. See `ControlModels.EPLUS_THERMOSTAT_MODES`
         if not [
             s_obj
             for s_obj in self.ep_idf.idfobjects["ScheduleTypeLimits"]
@@ -577,6 +528,7 @@ class IDFPreprocessor:
         """
         create external interface.
         """
+        self.popallidfobjects("EXTERNALINTERFACE")
         self.ep_idf.newidfobject(
             "EXTERNALINTERFACE",
             Name_of_External_Interface="FunctionalMockupUnitExport",
@@ -607,25 +559,11 @@ class IDFPreprocessor:
                 amln = g.Availability_Manager_List_Name
         pass
 
-    def prep_ext_int_output(self, zone_outputs=[], building_outputs={}):
+    def prep_ext_int_output(self):
         """
         add external interface output variables
         Note: FMU input variables cannot be read directly and must be read through an
         OUTPUT:VARIABLE set in the .idf file.
-        example input:
-            zone_outputs = [
-                "Zone Air Temperature",
-                "Zone Thermostat Heating Setpoint Temperature",
-                "Zone Air System Sensible Heating Rate"
-            ]
-            building_outputs = {
-                "Environment": [
-                    "Site Outdoor Air Drybulb Temperature",
-                    "Site Outdoor Air Relative Humidity",
-                    "Site Diffuse Solar Radiation Rate per Area",
-                    "Site Direct Solar Radiation Rate per Area"
-                ]
-            }
         """
         # no need for meter file
         self.popallidfobjects("Output:Meter:MeterFileOnly")
@@ -639,54 +577,58 @@ class IDFPreprocessor:
         self.popallidfobjects(
             "EXTERNALINTERFACE:FUNCTIONALMOCKUPUNITEXPORT:FROM:VARIABLE"
         )
-        # add building_outputs
 
-        for e in building_outputs.keys():
-            for o in building_outputs[e]:
-                nzo = "FMU_{}_{}".format(
-                    e.replace(" ", "_").replace("-", "_"),
-                    o.replace(" ", "_").replace("-", "_"),
-                )
+        # add building_outputs as flattened dict of variable meta data
+        for ek, ev in self.building_output_spec.items():
+            for ok, ov in ev.items():
+                if ok != "eplus_name":
+                    # set name of variable in FMU and internally
+                    var_k = "FMU_{}_{}".format(
+                        ev["eplus_name"].replace(" ", "_").replace("-", "_"),
+                        ov["eplus_name"].replace(" ", "_").replace("-", "_"),
+                    )
 
-                self.ep_idf.newidfobject(
-                    "Output:variable",
-                    Key_Value=e,
-                    Variable_Name=o,
-                    Reporting_Frequency="timestep",
-                )
-                self.ep_idf.newidfobject(
-                    "ExternalInterface:FunctionalMockupUnitExport:From:Variable",
-                    OutputVariable_Index_Key_Name=e,
-                    OutputVariable_Name=o,
-                    FMU_Variable_Name=nzo,
-                )
-                self.building_outputs.append(nzo)
+                    # add fmi name as key to output spec
+                    self.output_spec[var_k] = ov
+
+                    self.ep_idf.newidfobject(
+                        "Output:variable",
+                        Key_Value=ev["eplus_name"],
+                        Variable_Name=ov["eplus_name"],
+                        Reporting_Frequency="timestep",
+                    )
+                    self.ep_idf.newidfobject(
+                        "ExternalInterface:FunctionalMockupUnitExport:From:Variable",
+                        OutputVariable_Index_Key_Name=ev["eplus_name"],
+                        OutputVariable_Name=ov["eplus_name"],
+                        FMU_Variable_Name=var_k,
+                    )
 
         # add zone_outputs
         # output IDF obj is broken out because the * key value can be used to select
         # all zones and is standard in E+ .idf files
-        for o in zone_outputs:
-            self.ep_idf.newidfobject(
-                "Output:variable",
-                Key_Value="*",
-                Variable_Name=o,
-                Reporting_Frequency="Timestep",
-            )
+        for z in self.conditioned_zones:
+            for ok, ov in self.zone_output_spec.items():
 
-        for z in self.ep_idf.idfobjects["Zone"]:
-            for o in zone_outputs:
+                zk = z.replace(" ", "_").replace("-", "_")
+                var_k = zk + "_" + ok
 
-                zo = "FMU_{}_{}".format(
-                    z.Name.replace(" ", "_").replace("-", "_"),
-                    o.replace(" ", "_").replace("-", "_"),
+                # add fmi name as key to output spec
+                self.output_spec[var_k] = ov
+
+                self.ep_idf.newidfobject(
+                    "Output:variable",
+                    Key_Value=z,
+                    Variable_Name=ov["eplus_name"],
+                    Reporting_Frequency="Timestep",
                 )
+
                 self.ep_idf.newidfobject(
                     "ExternalInterface:FunctionalMockupUnitExport:From:Variable",
-                    OutputVariable_Index_Key_Name=z.Name,
-                    OutputVariable_Name=o,
-                    FMU_Variable_Name=zo,
+                    OutputVariable_Index_Key_Name=z,
+                    OutputVariable_Name=ov["eplus_name"],
+                    FMU_Variable_Name=var_k,
                 )
-                self.zone_outputs.append(zo)
 
     """
     TODO: Changes to eppy:
