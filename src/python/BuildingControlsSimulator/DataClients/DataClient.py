@@ -67,8 +67,7 @@ class DataClient:
                     self.sim_config, self.source
                 )
             )
-            if _data.empty:
-                _data = Internal.get_empty_df()
+            _data = Internal.get_empty_df()
 
         # finally create the data channel objs for usage during simulation
 
@@ -158,30 +157,5 @@ class DataClient:
                 # advance time period
                 p_start = p_end
 
-            # select data only within periods
-            # for p_start, p_end in self.full_data_periods:
-            #     if (p_end - p_start) > self.sim_config["min_sim_period"]:
-            #         for _data_channel in [
-            #             self.hvac,
-            #             self.sensors,
-            #             self.weather,
-            #         ]:
-            #             _data_channel.sim_data.append(
-            #                 _data_channel.data[
-            #                     (
-            #                         _data_channel.data[
-            #                             _data_channel.spec.datetime_column
-            #                         ]
-            #                         >= p_start
-            #                     )
-            #                     & (
-            #                         _data_channel.data[
-            #                             _data_channel.spec.datetime_column
-            #                         ]
-            #                         <= p_end
-            #                     )
-            #                 ]
-            #             )
         else:
             logger.info("No valid simulation periods.")
-

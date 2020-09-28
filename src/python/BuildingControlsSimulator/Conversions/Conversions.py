@@ -51,6 +51,12 @@ class Conversions:
 
     @staticmethod
     def default_value_by_type(dtype):
+        """Default values for numpy/pandas dtypes. These are used when setting 
+        initial values for input and output data. This mostly chooses sane defaults
+        that allows for not using nullable dtypes that consume much more memory.
+        Checks for these coded default values should be done before using simulation
+        output data.
+        """
         if dtype in ["bool", "boolean"]:
             return False
         elif dtype in ["float32", "Float32"]:
