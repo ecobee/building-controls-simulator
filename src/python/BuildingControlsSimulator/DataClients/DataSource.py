@@ -47,8 +47,8 @@ class DataSource(ABC):
 
         else:
             _df = self.get_empty_df()
-        breakpoint()
 
+        breakpoint()
         return _df
 
     def get_empty_df(self):

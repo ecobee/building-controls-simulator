@@ -132,6 +132,7 @@ class DataClient:
             + self.sensors.spec.null_check_columns
             + self.weather.spec.null_check_columns
         )
+        breakpoint()
 
         full_data = (
             full_data.dropna(

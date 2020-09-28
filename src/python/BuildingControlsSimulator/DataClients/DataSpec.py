@@ -668,12 +668,6 @@ class DonateYourDataSpec:
                 "channel": CHANNELS.HVAC,
                 "unit": UNITS.FARHENHEIT,
             },
-            "Humidity": {
-                "internal_state": STATES.HUMIDITY,
-                "dtype": "Float32",
-                "channel": CHANNELS.HVAC,
-                "unit": UNITS.RELATIVE_HUMIDITY,
-            },
             "HumidityExpectedLow": {
                 "internal_state": STATES.HUMIDITY_EXPECTED_LOW,
                 "dtype": "Float32",
