@@ -84,7 +84,6 @@ class TestSimulator:
         """
         pass
 
-    # @pytest.mark.skip()
     def test_deadband_fmu_simulation_equivalence(self):
         # test HVAC data returns dict of non-empty pd.DataFrame
         master = Simulator(

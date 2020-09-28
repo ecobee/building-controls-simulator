@@ -2,6 +2,7 @@
 
 import os
 import logging
+import time
 
 import pandas as pd
 import numpy as np
@@ -170,6 +171,8 @@ class Simulation:
         logger.info(
             f"Running co-simulation from {data_period[0]} to {data_period[1]}"
         )
+        _sim_start_wall_time = time.perf_counter()
+        _sim_start_proc_time = time.process_time()
         for i in range(0, len(sim_time)):
             self.controller_model.do_step(
                 t_start=sim_time[i],
@@ -194,7 +197,11 @@ class Simulation:
                 ],
             )
 
-        logger.info("Finished co-simulation")
+        logger.info(
+            "Finished co-simulation\n"
+            + f"Elapsed time: {time.perf_counter() - _sim_start_wall_time} seconds\n"
+            + f"Process time: {time.process_time() - _sim_start_proc_time} seconds"
+        )
 
         self.tear_down()
 

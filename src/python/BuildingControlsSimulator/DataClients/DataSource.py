@@ -40,11 +40,6 @@ class DataSource(ABC):
         )
 
     def get_local_cache(self, local_cache_path):
-        # cache_file = os.path.join(
-        #     self.local_cache,
-        #     self.source_name,
-        #     "{}.{}".format(identifier, self.file_extension),
-        # )
         if os.path.exists(local_cache_path):
             _df = pd.read_csv(
                 local_cache_path, usecols=self.data_spec.full.columns,

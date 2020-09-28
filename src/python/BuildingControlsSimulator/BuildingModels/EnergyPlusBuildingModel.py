@@ -178,21 +178,6 @@ class EnergyPlusBuildingModel(BuildingModel):
         shutil.move(
             os.path.join(os.getcwd(), self.init_fmu_name), self.fmu_path,
         )
-        # check FMI compliance
-        # -h specifies the step size in seconds, -s is the stop time in seconds.
-        # Stop time must be a multiple of 86400.
-        # The step size needs to be the same as the .idf file specifies
-
-        cmd = (
-            "yes |"
-            f" {self.ext_dir}/FMUComplianceChecker/fmuCheck.linux64"
-            f" -h {self.timesteps_per_hour}"
-            " -s 172800"
-            f" {self.fmu_path}"
-        )
-        # subprocess.run(cmd.split(), stdout=subprocess.PIPE)
-        # if not proc.stdout:
-        #     raise ValueError(f"Empty STDOUT. Invalid EnergyPlusToFMU cmd={cmd}")
 
         return self.fmu_path
 
@@ -208,8 +193,9 @@ class EnergyPlusBuildingModel(BuildingModel):
 
     def tear_down(self):
         """tear down FMU"""
-        # self.fmu.terminate()
-        # self.fmu.free_instance()
+        # Note: calling fmu.terminate() and fmu.free_instance() should not be needed
+        # this causes segfault sometimes
+        # energyplus FMU should take care of its own destruction
         pass
 
     def init_step_output(self):

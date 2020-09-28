@@ -81,16 +81,8 @@ class STATES(enum.IntEnum):
     OUTDOOR_TEMPERATURE = enum.auto()
     OUTDOOR_RELATIVE_HUMIDITY = enum.auto()
     # HVAC actuation states
-    # HEAT_STAGE_ONE = enum.auto()
-    # HEAT_STAGE_TWO = enum.auto()
-    # HEAT_STAGE_THREE = enum.auto()
-    # COMPRESSOR_COOL_STAGE_ONE = enum.auto()
-    # COMPRESSOR_COOL_STAGE_TWO = enum.auto()
-    # COMPRESSOR_HEAT_STAGE_ONE = enum.auto()
-    # COMPRESSOR_HEAT_STAGE_TWO = enum.auto()
     FAN_STAGE_ONE = enum.auto()
     FAN_STAGE_TWO = enum.auto()
     FAN_STAGE_THREE = enum.auto()
     STEP_STATUS = enum.auto()
     SIMULATION_TIME = enum.auto()
-
