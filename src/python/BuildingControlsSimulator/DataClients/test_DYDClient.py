@@ -11,7 +11,7 @@ from BuildingControlsSimulator.Simulator.Config import Config
 from BuildingControlsSimulator.DataClients.DataClient import DataClient
 from BuildingControlsSimulator.DataClients.GCSDYDSource import GCSDYDSource
 from BuildingControlsSimulator.DataClients.DataSpec import EnergyPlusWeather
-
+from BuildingControlsSimulator.DataClients.DataStates import STATES
 
 logger = logging.getLogger(__name__)
 
@@ -43,6 +43,7 @@ class TestFlatFilesClient:
             ),
             nrel_dev_api_key=os.environ.get("NREL_DEV_API_KEY"),
             nrel_dev_email=os.environ.get("NREL_DEV_EMAIL"),
+            archive_tmy3_dir=os.environ.get("ARCHIVE_TMY3_DIR"),
             archive_tmy3_meta=os.environ.get("ARCHIVE_TMY3_META"),
             archive_tmy3_data_dir=os.environ.get("ARCHIVE_TMY3_DATA_DIR"),
             ep_tmy3_cache_dir=os.environ.get("EP_TMY3_CACHE_DIR"),
@@ -100,4 +101,25 @@ class TestFlatFilesClient:
                 assert (
                     dc.weather.data[dc.weather.spec.datetime_column].dt.tz
                     == pytz.utc
+                )
+
+    def test_fill_missing_data(self):
+        """Check that filled data exists and doesnt over fill"""
+        for dc in self.data_clients:
+            if (
+                dc.sim_config["identifier"]
+                == "2df6959cdf502c23f04f3155758d7b678af0c631"
+            ):
+                # verify that data ffill and bfill works with full_data_periods
+                assert (
+                    pytest.approx(21.11111)
+                    == dc.hvac.data[1382:1385][STATES.TEMPERATURE_CTRL].mean()
+                )
+                assert (
+                    pytest.approx(20.555555)
+                    == dc.hvac.data[1385:1389][STATES.TEMPERATURE_CTRL].mean()
+                )
+                assert dc.full_data_periods[0] == (
+                    pd.to_datetime("2018-04-13 17:00:00", utc=True),
+                    pd.to_datetime("2018-04-26 16:10:00", utc=True),
                 )

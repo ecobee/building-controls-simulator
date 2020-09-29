@@ -20,15 +20,16 @@ logger = logging.getLogger(__name__)
 class DataClient:
 
     # data channels
-    hvac = attr.ib(default={})
-    sensors = attr.ib(default={})
-    weather = attr.ib(default={})
+    hvac = attr.ib(default=None)
+    sensors = attr.ib(default=None)
+    weather = attr.ib(default=None)
     full_data_periods = attr.ib(default=[])
 
     # input variables
     source = attr.ib(validator=attr.validators.instance_of(DataSource))
     nrel_dev_api_key = attr.ib(default=None)
     nrel_dev_email = attr.ib(default=None)
+    archive_tmy3_dir = attr.ib(default=os.environ.get("ARCHIVE_TMY3_DIR"))
     archive_tmy3_meta = attr.ib(default=None)
     archive_tmy3_data_dir = attr.ib(
         default=os.environ.get("ARCHIVE_TMY3_DATA_DIR")
@@ -69,6 +70,25 @@ class DataClient:
             )
             _data = Internal.get_empty_df()
 
+        _data = _data.drop_duplicates(ignore_index=True).reset_index(drop=True)
+        _data = _data.sort_values(Internal.datetime_column, ascending=True)
+
+        # ffill first 15 minutes of missing data
+        _data = DataClient.fill_missing_data(
+            full_data=_data,
+            expected_period=f"{self.sim_config['step_size_minutes']}M",
+        )
+
+        # compute full_data_periods with only first 15 minutes ffilled
+        self.full_data_periods = DataClient.get_full_data_periods(
+            full_data=_data,
+            expected_period=f"{self.sim_config['step_size_minutes']}M",
+            min_sim_period=self.sim_config["min_sim_period"],
+        )
+
+        # bfill remaining missing data
+        _data = _data.fillna(method="bfill", limit=None)
+
         # finally create the data channel objs for usage during simulation
 
         self.hvac = HVACChannel(
@@ -78,7 +98,6 @@ class DataClient:
             ],
             spec=Internal.hvac,
         )
-        # self.hvac.get_full_data_periods(expected_period="5M")
 
         self.sensors = SensorsChannel(
             data=_data[
@@ -90,7 +109,6 @@ class DataClient:
             spec=Internal.sensors,
         )
         self.sensors.drop_unused_room_sensors()
-        # self.sensors.get_full_data_periods(expected_period="5M")
 
         self.weather = WeatherChannel(
             data=_data[
@@ -100,80 +118,116 @@ class DataClient:
                 )
             ],
             spec=Internal.weather,
+            archive_tmy3_dir=self.archive_tmy3_dir,
             archive_tmy3_data_dir=self.archive_tmy3_data_dir,
             ep_tmy3_cache_dir=self.ep_tmy3_cache_dir,
             simulation_epw_dir=self.simulation_epw_dir,
         )
-        # self.weather.get_full_data_periods(expected_period="5M")
 
-        # post-processing of data channels
+        # post-processing of weather channel for EnergyPlus usage
         self.weather.make_epw_file(sim_config=self.sim_config)
-
-        self.get_full_data_periods(full_data=_data, expected_period="5M")
 
     def get_metadata(self):
         return pd.read_csv(self.meta_gs_uri).drop_duplicates(
             subset=["Identifier"]
         )
 
-    def get_full_data_periods(self, full_data, expected_period="5M"):
-        """Set `sim_data` in each data channel with periods data exists in all
-        channels.
+    @staticmethod
+    def get_full_data_periods(
+        full_data, expected_period="5M", min_sim_period="7D"
+    ):
+        """Get full data periods. These are the periods for which there is data
+        on all channels. Preliminary forward filling of the data is used to 
+        fill small periods of missing data where padding values is advantageous
+        for examplem the majority of missing data periods are less than 15 minutes
+        (3 message intervals).
+
+        The remaining missing data is back filled after the full_data_periods are
+        computed to allow the simulations to run continously. Back fill is used
+        because set point changes during the missing data period should be 
+        assumed to be not in tracking mode and in regulation mode after greater
+        than 
         """
 
-        # iterate through data sources
-        # data_source_periods = [
-        #     self.hvac.full_data_periods,
-        #     self.sensors.full_data_periods,
-        #     self.weather.full_data_periods,
-        # ]
-        null_check_cols = (
-            self.hvac.spec.null_check_columns
-            + self.sensors.spec.null_check_columns
-            + self.weather.spec.null_check_columns
-        )
-        breakpoint()
+        if full_data.empty:
+            return []
 
-        full_data = (
-            full_data.dropna(
-                axis=0, how="any", subset=null_check_cols
-            ).drop_duplicates(ignore_index=True)
-            # .reset_index(drop=True)
-            .sort_values(self.hvac.spec.datetime_column, ascending=True)
-        )
+        # compute time deltas between records
+        diffs = full_data.dropna(
+            axis="rows", subset=Internal.full.null_check_columns
+        )[Internal.datetime_column].diff()
 
-        diffs = full_data[self.hvac.spec.datetime_column].diff()
-
-        breakpoint()
-
-        # check for missing records?
-        missing_start_idx = diffs[
+        periods_df = diffs[
             diffs > pd.to_timedelta(expected_period)
-        ].index.to_list()
+        ].reset_index()
 
-        missing_end_idx = [idx - 1 for idx in missing_start_idx] + [
-            len(diffs) - 1
+        # make df of periods
+        periods_df["start"] = full_data.loc[
+            periods_df["index"], Internal.datetime_column
+        ].reset_index(drop=True)
+
+        periods_df["end"] = periods_df["start"] - periods_df[1]
+
+        periods_df = periods_df.drop(axis="columns", columns=["index", 1])
+
+        # append start and end datetimes from full_data
+        periods_df.loc[len(periods_df)] = [
+            pd.NA,
+            full_data.loc[len(full_data) - 1, Internal.datetime_column],
         ]
-        missing_start_idx = [0] + missing_start_idx
-        # ensoure ascending before zip
-        missing_start_idx.sort()
-        missing_end_idx.sort()
+        periods_df["start"] = periods_df["start"].shift(1)
+        periods_df.loc[0, "start"] = full_data.loc[0, Internal.datetime_column]
 
-        _full_data_periods = list(
-            zip(
-                pd.to_datetime(
-                    full_data[self.hvac.spec.datetime_column][
-                        missing_start_idx
-                    ].values,
-                    utc=True,
-                ),
-                pd.to_datetime(
-                    full_data[self.hvac.pec.datetime_column][
-                        missing_end_idx
-                    ].values,
-                    utc=True,
-                ),
-            )
+        # only include full_data_periods that are geq min_sim_period
+        _full_data_periods = [
+            tuple(rec)
+            for rec in periods_df[
+                periods_df["end"] - periods_df["start"]
+                >= pd.Timedelta(min_sim_period)
+            ].to_numpy()
+        ]
+
+        return _full_data_periods
+
+    @staticmethod
+    def fill_missing_data(
+        full_data, expected_period, limit=3, method="ffill",
+    ):
+        if full_data.empty:
+            return full_data
+
+        # need to convert all categorical dtypes to objects for fillna limits
+        # see: https://github.com/pandas-dev/pandas/issues/29987
+        _categorical_cols = [
+            k
+            for k, v in full_data.dtypes.items()
+            if isinstance(v, pd.CategoricalDtype)
+        ]
+        full_data = full_data.astype(
+            {_col: "object" for _col in _categorical_cols}
         )
 
-        breakpoint()
+        # frequency rules have different str format
+        _str_format_dict = {
+            "M": "T",  # covert minutes formats
+        }
+        # replace last char using format conversion dict
+        resample_freq = (
+            expected_period[0:-1] + _str_format_dict[expected_period[-1]]
+        )
+
+        # need a datetime index to resample
+        full_data = full_data.set_index(Internal.datetime_column)
+        # note that resampler must use .asfreq() to add missing null values
+        # before calling .fillna()
+        full_data = (
+            full_data.resample(resample_freq)
+            .asfreq()
+            .fillna(method=method, limit=limit)
+        )
+        full_data = full_data.astype(
+            {_col: "category" for _col in _categorical_cols}
+        )
+        full_data = full_data.reset_index()
+
+        return full_data

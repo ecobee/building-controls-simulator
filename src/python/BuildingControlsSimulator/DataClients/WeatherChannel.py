@@ -3,6 +3,7 @@
 import os
 import logging
 import re
+from datetime import datetime
 
 import pandas as pd
 import numpy as np
@@ -30,8 +31,9 @@ class WeatherChannel(DataChannel):
     # env variables
     nrel_dev_api_key = attr.ib(default=None)
     nrel_dev_email = attr.ib(default=None)
+    archive_tmy3_dir = attr.ib(default=None)
     archive_tmy3_meta = attr.ib(default=None)
-    archive_tmy3_data_dir = attr.ib()
+    archive_tmy3_data_dir = attr.ib(default=None)
     ep_tmy3_cache_dir = attr.ib()
     simulation_epw_dir = attr.ib()
 
@@ -213,23 +215,45 @@ class WeatherChannel(DataChannel):
         pass
 
     def get_tmy_epw(self, lat, lon):
+
+        eplus_github_weather_geojson_url = "https://raw.githubusercontent.com/NREL/EnergyPlus/develop/weather/master.geojson"
+
+        # check for cached eplus geojson
+        # cache is updated daily
+        cache_name = (
+            f"eplus_geojson_cache_{datetime.today().strftime('%Y_%m_%d')}.csv"
+        )
+        cache_path = os.path.join(self.archive_tmy3_dir, cache_name)
+        if self.archive_tmy3_dir and os.path.exists(cache_path):
+            logger.info(
+                f"Reading TMY weather geojson from cache: {cache_path}"
+            )
+            df = pd.read_csv(cache_path)
+            if df.empty:
+                logging.error("Cached TMY weather geojson is empty.")
+        else:
+            logger.info(
+                f"Downloading TMY weather geojson from: {eplus_github_weather_geojson_url}"
+            )
+            df = pd.json_normalize(
+                pd.read_json(eplus_github_weather_geojson_url).features
+            )
+            # parse coordinates column to lat lon in radians for usage
+            # the geojson coordinates are [lon, lat]
+            coordinates_col = "geometry.coordinates"
+            df[["lon", "lat"]] = pd.DataFrame(
+                df[coordinates_col].to_list(), columns=["lon", "lat"]
+            )
+            df = df.drop(axis="columns", columns=[coordinates_col])
+            df["lat"] = np.radians(df["lat"])
+            df["lon"] = np.radians(df["lon"])
+
+        if self.archive_tmy3_dir and os.path.isdir(self.archive_tmy3_dir):
+            df.to_csv(cache_path, index=False)
+
         # convert query point to radians and set dimensionality to (2,1)
         qp = np.radians(np.atleast_2d(np.array([lat, lon])))
-
-        df = pd.json_normalize(
-            pd.read_json(
-                "https://raw.githubusercontent.com/NREL/EnergyPlus/develop/weather/master.geojson"
-            ).features
-        )
-
-        # the geojson coordinates are [lon, lat]
-        df_coord = pd.DataFrame(
-            df["geometry.coordinates"].to_list(), columns=["lon", "lat"]
-        )
-        df_coord["lat"] = np.radians(df_coord["lat"])
-        df_coord["lon"] = np.radians(df_coord["lon"])
-
-        dis = haversine_distances(df_coord[["lat", "lon"]].values, qp)
+        dis = haversine_distances(df[["lat", "lon"]].values, qp)
 
         # TODO: add finding of TMY3 datasets over TMY of same/similar location
         # e.g. for phoenix this method find TMY data while TMY3 data exists but
@@ -247,6 +271,9 @@ class WeatherChannel(DataChannel):
                 fpath = os.path.join(self.ep_tmy3_cache_dir, fname)
                 # if already downloaded return name and path to cache
                 if not os.path.exists(fpath):
+                    logging.info(
+                        f"Downloading TMY weather data from: {epw_url}"
+                    )
                     res = requests.get(epw_url, allow_redirects=True)
                     if res.status_code == 200:
                         with open(fpath, "wb") as f:
