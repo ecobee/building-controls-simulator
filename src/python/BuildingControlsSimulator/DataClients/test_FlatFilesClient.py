@@ -25,9 +25,9 @@ class TestFlatFilesClient:
         # initialize with data to avoid pulling multiple times
         cls.sim_config = Config.make_sim_config(
             identifier=[
-                "311019762466",  # missing data
+                # "311019762466",  # missing data
                 "310106342367",  # full
-                "17676",  # file not found
+                # "17676",  # file not found
             ],
             latitude=33.481136,
             longitude=-112.078232,
@@ -55,7 +55,7 @@ class TestFlatFilesClient:
             dc = copy.deepcopy(cls.data_client)
             dc.sim_config = _sim_config
 
-            dc.get_data(_sim_config)
+            dc.get_data()
 
             cls.data_clients.append(dc)
 

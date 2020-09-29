@@ -48,7 +48,15 @@ class Simulation:
         # init with sim config
         # this will get overriden with full_data_periods if data is missing
         self.start_utc = self.config.start_utc
-        self.end_utc = self.config.end_utc
+        if isinstance(self.building_model, EnergyPlusBuildingModel):
+            # end_utc must be trimmed to full day periods for EPlus
+            self.end_utc = self.config.start_utc + pd.Timedelta(
+                days=(self.config.start_utc - self.config.end_utc).days
+            )
+            # TODO: modify data_period
+            # data_period = (data_period[0], _end)
+        else:
+            self.end_utc = self.config.end_utc
 
         # get all data states that can be input to each model
         available_data_states = [

@@ -79,20 +79,11 @@ class Simulator:
 
     def simulate(self, local=True, preprocess_check=False):
         """Run all simulations locally or in cloud.
-
-
-        :param local:
+        :param local: run simulations locally
         """
         if local:
             for sim in self.simulations:
+                # weather data is required during model creation
                 sim.data_client.get_data()
                 sim.create_models(preprocess_check=preprocess_check)
-                for data_period in sim.data_client.full_data_periods:
-                    if isinstance(sim.building_model, EnergyPlusBuildingModel):
-                        # data_periods must be trimmed to full day periods for EPlus
-                        _end = data_period[0] + pd.Timedelta(
-                            days=(data_period[1] - data_period[0]).days
-                        )
-                        data_period = (data_period[0], _end)
-
-                    sim.run(local=True, data_period=data_period)
+                sim.run(local=True)

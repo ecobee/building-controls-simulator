@@ -78,7 +78,7 @@ class DataClient:
             ],
             spec=Internal.hvac,
         )
-        self.hvac.get_full_data_periods(expected_period="5M")
+        # self.hvac.get_full_data_periods(expected_period="5M")
 
         self.sensors = SensorsChannel(
             data=_data[
@@ -90,7 +90,7 @@ class DataClient:
             spec=Internal.sensors,
         )
         self.sensors.drop_unused_room_sensors()
-        self.sensors.get_full_data_periods(expected_period="5M")
+        # self.sensors.get_full_data_periods(expected_period="5M")
 
         self.weather = WeatherChannel(
             data=_data[
@@ -104,58 +104,75 @@ class DataClient:
             ep_tmy3_cache_dir=self.ep_tmy3_cache_dir,
             simulation_epw_dir=self.simulation_epw_dir,
         )
-        self.weather.get_full_data_periods(expected_period="5M")
+        # self.weather.get_full_data_periods(expected_period="5M")
 
         # post-processing of data channels
         self.weather.make_epw_file(sim_config=self.sim_config)
 
-        self.get_simulation_data()
+        self.get_full_data_periods(full_data=_data, expected_period="5M")
 
     def get_metadata(self):
         return pd.read_csv(self.meta_gs_uri).drop_duplicates(
             subset=["Identifier"]
         )
 
-    def get_simulation_data(self):
+    def get_full_data_periods(self, full_data, expected_period="5M"):
         """Set `sim_data` in each data channel with periods data exists in all
         channels.
         """
-        # self.hvac.sim_data = []
-        # self.weather.sim_data = []
 
         # iterate through data sources
-        data_source_periods = [
-            self.hvac.full_data_periods,
-            self.weather.full_data_periods,
-            self.sensors.full_data_periods,
+        # data_source_periods = [
+        #     self.hvac.full_data_periods,
+        #     self.sensors.full_data_periods,
+        #     self.weather.full_data_periods,
+        # ]
+        null_check_cols = (
+            self.hvac.spec.null_check_columns
+            + self.sensors.spec.null_check_columns
+            + self.weather.spec.null_check_columns
+        )
+
+        full_data = (
+            full_data.dropna(
+                axis=0, how="any", subset=null_check_cols
+            ).drop_duplicates(ignore_index=True)
+            # .reset_index(drop=True)
+            .sort_values(self.hvac.spec.datetime_column, ascending=True)
+        )
+
+        diffs = full_data[self.hvac.spec.datetime_column].diff()
+
+        breakpoint()
+
+        # check for missing records?
+        missing_start_idx = diffs[
+            diffs > pd.to_timedelta(expected_period)
+        ].index.to_list()
+
+        missing_end_idx = [idx - 1 for idx in missing_start_idx] + [
+            len(diffs) - 1
         ]
+        missing_start_idx = [0] + missing_start_idx
+        # ensoure ascending before zip
+        missing_start_idx.sort()
+        missing_end_idx.sort()
 
-        # check for missing data sources
-        if all([len(d) != 0 for d in data_source_periods]):
-            # set period start of simulation time
-            p_start = self.sim_config["start_utc"]
-            p_end = self.sim_config["end_utc"]
-            # create list of data source idxs to keep track of place for each
-            ds_idx = [0 for d in data_source_periods]
-            data_periods = []
-            end_time = np.min([d[-1][1] for d in data_source_periods])
-            while p_start < end_time:
-                ds_p_start = []
-                ds_p_end = []
+        _full_data_periods = list(
+            zip(
+                pd.to_datetime(
+                    full_data[self.hvac.spec.datetime_column][
+                        missing_start_idx
+                    ].values,
+                    utc=True,
+                ),
+                pd.to_datetime(
+                    full_data[self.hvac.pec.datetime_column][
+                        missing_end_idx
+                    ].values,
+                    utc=True,
+                ),
+            )
+        )
 
-                for i, d in enumerate(data_source_periods):
-                    if ds_idx[i] < len(d) - 1 and p_start >= d[ds_idx[i]][1]:
-                        # increment ds idx if period start is past end of ds period
-                        ds_idx[i] += 1
-
-                    ds_p_start.append(d[ds_idx[i]][0])
-                    ds_p_end.append(d[ds_idx[i]][1])
-
-                p_start = np.max(ds_p_start)
-                p_end = np.min(ds_p_end)
-                self.full_data_periods.append((p_start, p_end))
-                # advance time period
-                p_start = p_end
-
-        else:
-            logger.info("No valid simulation periods.")
+        breakpoint()
