@@ -86,6 +86,11 @@ class DataClient:
             min_sim_period=self.sim_config["min_sim_period"],
         )
 
+        # remove nulls before first and after last full_data_period
+        _data = _data[
+            (_data[Internal.datetime_column] >= self.full_data_periods[0][0])
+        ]
+
         # bfill remaining missing data
         _data = _data.fillna(method="bfill", limit=None)
 
@@ -157,6 +162,7 @@ class DataClient:
             axis="rows", subset=Internal.full.null_check_columns
         )[Internal.datetime_column].diff()
 
+        # seperate periods by missing data
         periods_df = diffs[
             diffs > pd.to_timedelta(expected_period)
         ].reset_index()
@@ -194,19 +200,10 @@ class DataClient:
     def fill_missing_data(
         full_data, expected_period, limit=3, method="ffill",
     ):
+        """Fill periods of missing data within limit using method.
+        Periods larger than limit will not be partially filled."""
         if full_data.empty:
             return full_data
-
-        # need to convert all categorical dtypes to objects for fillna limits
-        # see: https://github.com/pandas-dev/pandas/issues/29987
-        _categorical_cols = [
-            k
-            for k, v in full_data.dtypes.items()
-            if isinstance(v, pd.CategoricalDtype)
-        ]
-        full_data = full_data.astype(
-            {_col: "object" for _col in _categorical_cols}
-        )
 
         # frequency rules have different str format
         _str_format_dict = {
@@ -216,19 +213,38 @@ class DataClient:
         resample_freq = (
             expected_period[0:-1] + _str_format_dict[expected_period[-1]]
         )
-
-        # need a datetime index to resample
+        # resample to add any timesteps that are fully missing
         full_data = full_data.set_index(Internal.datetime_column)
-        # note that resampler must use .asfreq() to add missing null values
-        # before calling .fillna()
-        full_data = (
-            full_data.resample(resample_freq)
-            .asfreq()
-            .fillna(method=method, limit=limit)
-        )
-        full_data = full_data.astype(
-            {_col: "category" for _col in _categorical_cols}
-        )
+        full_data = full_data.resample(resample_freq).asfreq()
         full_data = full_data.reset_index()
+
+        # compute timesteps between steps of data
+        diffs = full_data.dropna(
+            axis="rows", subset=Internal.full.null_check_columns
+        )[Internal.datetime_column].diff()
+
+        fill_start_df = (
+            (
+                diffs[
+                    (diffs > pd.to_timedelta(expected_period))
+                    & (diffs <= pd.to_timedelta(expected_period) * limit)
+                ]
+                / pd.Timedelta(expected_period)
+            )
+            .astype("Int64")
+            .reset_index()
+        )
+        # take idxs with missing data and one record on either side to allow
+        # for ffill and bfill methods to work generally
+        fill_idxs = []
+        for idx, num_missing in fill_start_df.to_numpy():
+            fill_idxs = fill_idxs + [
+                i for i in range(idx - (num_missing), idx + 1)
+            ]
+
+        # fill exact idxs that are missing using method
+        full_data.iloc[fill_idxs] = full_data.iloc[fill_idxs].fillna(
+            method=method
+        )
 
         return full_data
