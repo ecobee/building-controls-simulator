@@ -76,13 +76,14 @@ class Deadband(ControlModel):
                     )
                 )
             else:
-                _default_value = Conversions.default_value_by_type(
+                (
+                    np_default_value,
+                    np_dtype,
+                ) = Conversions.numpy_down_cast_default_value_dtype(
                     Internal.full.spec[state]["dtype"]
                 )
                 self.output[state] = np.full(
-                    n_s,
-                    _default_value,
-                    dtype=Internal.full.spec[state]["dtype"],
+                    n_s, np_default_value, dtype=np_dtype,
                 )
 
         self.output[STATES.STEP_STATUS] = np.full(n_s, 0, dtype="int8")

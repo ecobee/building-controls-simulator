@@ -45,18 +45,6 @@ class Simulation:
         """validate input/output specs
         next input must be minimally satisfied by previous output
         """
-        # init with sim config
-        # this will get overriden with full_data_periods if data is missing
-        self.start_utc = self.config.start_utc
-        if isinstance(self.building_model, EnergyPlusBuildingModel):
-            # end_utc must be trimmed to full day periods for EPlus
-            self.end_utc = self.config.start_utc + pd.Timedelta(
-                days=(self.config.start_utc - self.config.end_utc).days
-            )
-            # TODO: modify data_period
-            # data_period = (data_period[0], _end)
-        else:
-            self.end_utc = self.config.end_utc
 
         # get all data states that can be input to each model
         available_data_states = [
@@ -107,14 +95,14 @@ class Simulation:
     @property
     def start_time_seconds(self):
         t_offset = self.start_utc - pd.Timestamp(
-            year=self.start_utc.year, month=1, day=1, tz="UTC"
+            year=self.start_utc.year, month=1, day=1, tz="UTC",
         )
         return int(t_offset.total_seconds())
 
     @property
     def final_time_seconds(self):
         t_offset = self.end_utc - pd.Timestamp(
-            year=self.start_utc.year, month=1, day=1, tz="UTC"
+            year=self.end_utc.year, month=1, day=1, tz="UTC",
         )
         return int(t_offset.total_seconds())
 
@@ -136,11 +124,20 @@ class Simulation:
             preprocess_check=preprocess_check,
         )
 
-    def initialize(self, data_period):
+    def initialize(self):
         """initialize sub-system models
         """
-        self.start_utc = data_period[0]
-        self.end_utc = data_period[1]
+        # set start and end times from full_data_periods
+        self.start_utc = self.data_client.full_data_periods[0][0]
+        self.end_utc = self.data_client.full_data_periods[-1][1]
+
+        # end_utc must be trimmed to full day periods for EPlus
+        if isinstance(self.building_model, EnergyPlusBuildingModel):
+            self.end_utc = self.start_utc + pd.Timedelta(
+                days=(self.end_utc - self.start_utc).days
+            )
+            self.data_client.full_data_periods[-1][1] = self.end_utc
+
         self.building_model.initialize(
             t_start=self.start_time_seconds,
             t_end=self.final_time_seconds,
@@ -159,16 +156,12 @@ class Simulation:
         self.building_model.tear_down()
         self.controller_model.tear_down()
 
-    def run(self, data_period, local=True):
+    def run(self, local=True):
         """Main co-simulation loop"""
         logger.info("Initializing co-simulation models")
-        self.initialize(data_period=data_period)
+        self.initialize()
 
-        sim_data_channel_idx_offset = self.data_client.hvac.data[
-            self.data_client.hvac.data[STATES.DATE_TIME] == data_period[0]
-        ].index.values[0]
-
-        # pre-allocate output arrays
+        # pre-allocate time array
         sim_time = np.arange(
             self.start_time_seconds,
             self.final_time_seconds,
@@ -177,7 +170,7 @@ class Simulation:
         )
 
         logger.info(
-            f"Running co-simulation from {data_period[0]} to {data_period[1]}"
+            f"Running co-simulation from {self.start_utc} to {self.end_utc}"
         )
         _sim_start_wall_time = time.perf_counter()
         _sim_start_proc_time = time.process_time()
@@ -185,24 +178,16 @@ class Simulation:
             self.controller_model.do_step(
                 t_start=sim_time[i],
                 t_step=self.step_size_seconds,
-                step_hvac_input=self.data_client.hvac.data.iloc[
-                    sim_data_channel_idx_offset + i
-                ],
+                step_hvac_input=self.data_client.hvac.data.iloc[i],
                 step_sensor_input=self.building_model.step_output,
-                step_weather_input=self.data_client.weather.data.iloc[
-                    sim_data_channel_idx_offset + i
-                ],
+                step_weather_input=self.data_client.weather.data.iloc[i],
             )
             self.building_model.do_step(
                 t_start=sim_time[i],
                 t_step=self.step_size_seconds,
                 step_control_input=self.controller_model.step_output,
-                step_sensor_input=self.data_client.sensors.data.iloc[
-                    sim_data_channel_idx_offset + i
-                ],
-                step_weather_input=self.data_client.weather.data.iloc[
-                    sim_data_channel_idx_offset + i
-                ],
+                step_sensor_input=self.data_client.sensors.data.iloc[i],
+                step_weather_input=self.data_client.weather.data.iloc[i],
             )
 
         logger.info(

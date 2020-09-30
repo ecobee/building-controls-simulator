@@ -61,7 +61,7 @@ class Simulator:
             # the data client is copied once per sim_config so that permutations
             # of building and controller models can reuse data where possible
             dc = copy.deepcopy(self.data_client)
-            dc.sim_config = _sim_config
+            dc.sim_config = _sim_config.to_dict()
             for b in self.building_models:
                 for c in self.controller_models:
 

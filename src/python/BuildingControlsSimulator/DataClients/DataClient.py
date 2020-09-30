@@ -179,8 +179,9 @@ class DataClient:
         periods_df.loc[0, "start"] = full_data.loc[0, Internal.datetime_column]
 
         # only include full_data_periods that are geq min_sim_period
+        # convert all np.arrays to lists for ease of use
         _full_data_periods = [
-            tuple(rec)
+            list(rec)
             for rec in periods_df[
                 periods_df["end"] - periods_df["start"]
                 >= pd.Timedelta(min_sim_period)
