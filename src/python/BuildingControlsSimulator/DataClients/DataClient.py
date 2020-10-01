@@ -1,7 +1,6 @@
 # created by Tom Stesco tom.s@ecobee.com
 import os
 import logging
-from collections.abc import Iterable
 
 import attr
 import pandas as pd
@@ -38,9 +37,13 @@ class DataClient:
     simulation_epw_dir = attr.ib(default=os.environ.get("SIMULATION_EPW_DIR"))
     weather_dir = attr.ib(default=os.environ.get("WEATHER_DIR"))
 
-    # state variabels
+    # state variables
     sim_config = attr.ib(default=None)
     meta_gs_uri = attr.ib(default=None)
+    start_utc = attr.ib(default=None)
+    end_utc = attr.ib(default=None)
+    eplus_fill_to_day_seconds = attr.ib(default=None)
+    eplus_warmup_seconds = attr.ib(default=None)
 
     def __attrs_post_init__(self):
         # first, post init class specification
@@ -73,29 +76,49 @@ class DataClient:
         _data = _data.drop_duplicates(ignore_index=True).reset_index(drop=True)
         _data = _data.sort_values(Internal.datetime_column, ascending=True)
 
-        # ffill first 15 minutes of missing data
+        # truncate the data to desired simulation start and end time
+        _data = _data[
+            (_data[Internal.datetime_column] >= self.sim_config["start_utc"])
+            & (_data[Internal.datetime_column] < self.sim_config["end_utc"])
+        ].reset_index(drop=True)
+
+        _expected_period = f"{self.sim_config['step_size_minutes']}M"
+        # ffill first 15 minutes of missing data periods
         _data = DataClient.fill_missing_data(
-            full_data=_data,
-            expected_period=f"{self.sim_config['step_size_minutes']}M",
+            full_data=_data, expected_period=_expected_period,
         )
 
         # compute full_data_periods with only first 15 minutes ffilled
         self.full_data_periods = DataClient.get_full_data_periods(
             full_data=_data,
-            expected_period=f"{self.sim_config['step_size_minutes']}M",
+            expected_period=_expected_period,
             min_sim_period=self.sim_config["min_sim_period"],
         )
 
-        # remove nulls before first and after last full_data_period
-        _data = _data[
-            (_data[Internal.datetime_column] >= self.full_data_periods[0][0])
-        ]
+        _start_utc, _end_utc = self.get_simulation_period(
+            expected_period=_expected_period
+        )
 
-        # bfill remaining missing data
+        # add records for warmup period if needed
+        _data = DataClient.add_null_records(
+            df=_data,
+            start_utc=_start_utc,
+            end_utc=_end_utc,
+            expected_period=_expected_period,
+        )
+
+        # drop records before and after full simulation time
+        # end is less than
+        _data = _data[
+            (_data[Internal.datetime_column] >= _start_utc)
+            & (_data[Internal.datetime_column] < _end_utc)
+        ].reset_index(drop=True)
+
+        # bfill to interpolate missing data
+        # first and last records must be full because we used full data periods
         _data = _data.fillna(method="bfill", limit=None)
 
         # finally create the data channel objs for usage during simulation
-
         self.hvac = HVACChannel(
             data=_data[
                 [Internal.datetime_column]
@@ -136,6 +159,155 @@ class DataClient:
         return pd.read_csv(self.meta_gs_uri).drop_duplicates(
             subset=["Identifier"]
         )
+
+    def get_simulation_period(self, expected_period):
+        # set start and end times from full_data_periods and simulation config
+        # take limiting period as start_utc and end_utc
+        if self.sim_config["start_utc"] > self.full_data_periods[0][0]:
+            self.start_utc = self.sim_config["start_utc"]
+        else:
+            logger.info(
+                f"config start_utc={self.sim_config['start_utc']} is before "
+                + f"first full data period={self.full_data_periods[0][0]}. "
+                + "Simulation start_utc set to first full data period."
+            )
+            self.start_utc = self.full_data_periods[0][0]
+
+        if self.sim_config["end_utc"] < self.full_data_periods[-1][-1]:
+            self.end_utc = self.sim_config["end_utc"]
+        else:
+            logger.info(
+                f"config end_utc={self.sim_config['end_utc']} is after "
+                + f"last full data period={self.full_data_periods[-1][-1]}. "
+                + "Simulation end_utc set to last full data period."
+            )
+            self.end_utc = self.full_data_periods[-1][-1]
+
+        if self.end_utc < self.start_utc:
+            raise ValueError(
+                f"end_utc={self.end_utc} before start_utc={self.start_utc}.\n"
+                + f"Set sim_config start_utc and end_utc within "
+                + f"full_data_period: {self.full_data_periods[0][0]} to "
+                + f"{self.full_data_periods[-1][-1]}"
+            )
+
+        _start_utc, _end_utc = DataClient.eplus_day_fill_simulation_time(
+            start_utc=self.start_utc,
+            end_utc=self.end_utc,
+            expected_period=expected_period,
+        )
+        _minimum_warmup_seconds = 2 * 3600
+        if (
+            self.start_utc - _start_utc
+        ).total_seconds() < _minimum_warmup_seconds:
+            # attempt to enforce a minimum warmup time in EnergyPlus
+            (
+                _retry_start_utc,
+                _retry_end_utc,
+            ) = DataClient.eplus_day_fill_simulation_time(
+                start_utc=self.start_utc
+                - pd.Timedelta(seconds=_minimum_warmup_seconds),
+                end_utc=self.end_utc,
+                expected_period=expected_period,
+            )
+            if _retry_start_utc.year == _start_utc.year:
+                _start_utc = _retry_start_utc
+                _end_utc = _retry_end_utc
+
+        self.start_utc = _start_utc
+        self.end_utc = _end_utc
+
+        return self.start_utc, self.end_utc
+
+    @staticmethod
+    def add_null_records(df, start_utc, end_utc, expected_period):
+        rec = pd.Series(pd.NA, index=df.columns)
+
+        should_resample = False
+        if df[(df[Internal.datetime_column] == start_utc)].empty:
+            # append record with start_utc time
+            rec[Internal.datetime_column] = start_utc
+            df = df.append(rec, ignore_index=True).sort_values(
+                Internal.datetime_column
+            )
+            should_resample = True
+
+        if df[(df[Internal.datetime_column] == end_utc)].empty:
+            # append record with end_utc time
+            rec[Internal.datetime_column] = end_utc
+            df = df.append(rec, ignore_index=True).sort_values(
+                Internal.datetime_column
+            )
+            should_resample = True
+
+        if should_resample:
+            # frequency rules have different str format
+            _str_format_dict = {
+                "M": "T",  # covert minutes formats
+            }
+            # replace last char using format conversion dict
+            resample_freq = (
+                expected_period[0:-1] + _str_format_dict[expected_period[-1]]
+            )
+
+            # resampling
+            df = df.set_index(Internal.datetime_column)
+            df = df.resample(resample_freq).asfreq()
+            df = df.reset_index()
+
+        return df
+
+    @staticmethod
+    def eplus_day_fill_simulation_time(start_utc, end_utc, expected_period):
+        # EPlus requires that total simulation time be divisible by 86400 seconds
+        # or whole days. EPlus also has some transient behaviour at t_init
+        # adding time to beginning of simulation input data that will be
+        # backfilled is more desirable than adding time to end of simulation
+        # this time will not be included in the full_data_periods and thus
+        # will not be considered during analysis
+        add_timedelta = pd.Timedelta(days=(end_utc - start_utc).days + 1) - (
+            end_utc - start_utc
+        )
+
+        # check if need to add time
+        if add_timedelta >= pd.Timedelta(expected_period):
+            # check if time available at start of year or end of year
+            # EPlus requires single year simulations
+
+            # fill beginning of simulation first because that helps with
+            # transient behaviour
+            beginning_timedelta = start_utc - pd.Timestamp(
+                year=start_utc.year, month=1, day=1, tz="UTC"
+            )
+            if beginning_timedelta >= add_timedelta:
+                # fill entirely in warmup of simulation
+                start_utc = start_utc - add_timedelta
+            else:
+                # fill partially in beginning of simulation
+                start_utc = start_utc - beginning_timedelta
+                add_timedelta = add_timedelta - beginning_timedelta
+
+                # fill in end of simulation
+                # this actually does not need to be simulated, the simulation
+                # can be stopped once the data periods are complete
+                # only the seconds additionally for EPlus initialization are
+                # needed
+                ending_timedelta = (
+                    pd.Timestamp(year=end_utc.year, month=1, day=1, tz="UTC")
+                    - pd.Timedelta(expected_period)
+                    - end_utc
+                )
+                if ending_timedelta >= add_timedelta:
+                    # fill remainder entirely in ending of simulation
+                    end_utc = end_utc + add_timedelta
+                else:
+                    # This shouldn't occur, should always be able to divide fully
+                    raise ValueError(
+                        f"start_utc={start_utc} to end_utc={end_utc} "
+                        + " cannot be shaped to divisible by whole days required"
+                        + " by EnergyPlus."
+                    )
+        return start_utc, end_utc
 
     @staticmethod
     def get_full_data_periods(
@@ -234,17 +406,19 @@ class DataClient:
             .astype("Int64")
             .reset_index()
         )
-        # take idxs with missing data and one record on either side to allow
-        # for ffill and bfill methods to work generally
-        fill_idxs = []
-        for idx, num_missing in fill_start_df.to_numpy():
-            fill_idxs = fill_idxs + [
-                i for i in range(idx - (num_missing), idx + 1)
-            ]
 
-        # fill exact idxs that are missing using method
-        full_data.iloc[fill_idxs] = full_data.iloc[fill_idxs].fillna(
-            method=method
-        )
+        if not fill_start_df.empty:
+            # take idxs with missing data and one record on either side to allow
+            # for ffill and bfill methods to work generally
+            fill_idxs = []
+            for idx, num_missing in fill_start_df.to_numpy():
+                fill_idxs = fill_idxs + [
+                    i for i in range(idx - (num_missing), idx + 1)
+                ]
+
+            # fill exact idxs that are missing using method
+            full_data.iloc[fill_idxs] = full_data.iloc[fill_idxs].fillna(
+                method=method
+            )
 
         return full_data

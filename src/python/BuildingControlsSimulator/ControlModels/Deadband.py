@@ -60,11 +60,12 @@ class Deadband(ControlModel):
 
     def allocate_output_memory(self, t_start, t_end, t_step, categories_dict):
         """preallocate output memory to speed up simulation"""
-        self.output[STATES.SIMULATION_TIME] = np.arange(
-            t_start, t_end, t_step, dtype="int64"
-        )
+        self.output = {
+            STATES.SIMULATION_TIME: np.arange(
+                t_start, t_end, t_step, dtype="int64"
+            )
+        }
         n_s = len(self.output[STATES.SIMULATION_TIME])
-        self.output = {}
 
         # add state variables
         for state in self.output_states:

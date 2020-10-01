@@ -40,6 +40,8 @@ class Simulation:
     )
     start_utc = attr.ib(default=None)
     end_utc = attr.ib(default=None)
+    output = attr.ib(default=None)
+    full_output = attr.ib(default=None)
 
     def __attrs_post_init__(self):
         """validate input/output specs
@@ -125,18 +127,10 @@ class Simulation:
         )
 
     def initialize(self):
-        """initialize sub-system models
-        """
-        # set start and end times from full_data_periods
-        self.start_utc = self.data_client.full_data_periods[0][0]
-        self.end_utc = self.data_client.full_data_periods[-1][1]
-
-        # end_utc must be trimmed to full day periods for EPlus
-        if isinstance(self.building_model, EnergyPlusBuildingModel):
-            self.end_utc = self.start_utc + pd.Timedelta(
-                days=(self.end_utc - self.start_utc).days
-            )
-            self.data_client.full_data_periods[-1][1] = self.end_utc
+        """initialize sub-system models and memory for simulation"""
+        # get simulation time from data client
+        self.start_utc = self.data_client.start_utc
+        self.end_utc = self.data_client.end_utc
 
         self.building_model.initialize(
             t_start=self.start_time_seconds,
@@ -151,6 +145,12 @@ class Simulation:
             categories_dict=self.data_client.hvac.get_categories_dict(),
         )
 
+        self.allocate_memory()
+
+    def allocate_memory(self):
+        """Allocate memory for simulation output"""
+        self.output = {}
+
     def tear_down(self):
         logger.info("Tearing down co-simulation models")
         self.building_model.tear_down()
@@ -161,29 +161,27 @@ class Simulation:
         logger.info("Initializing co-simulation models")
         self.initialize()
 
-        # pre-allocate time array
-        sim_time = np.arange(
-            self.start_time_seconds,
-            self.final_time_seconds,
-            self.step_size_seconds,
-            dtype="int64",
-        )
-
         logger.info(
             f"Running co-simulation from {self.start_utc} to {self.end_utc}"
         )
         _sim_start_wall_time = time.perf_counter()
         _sim_start_proc_time = time.process_time()
-        for i in range(0, len(sim_time)):
+        _sim_time = np.arange(
+            self.start_time_seconds,
+            self.final_time_seconds,
+            self.step_size_seconds,
+            dtype="int64",
+        )
+        for i in range(0, len(_sim_time)):
             self.controller_model.do_step(
-                t_start=sim_time[i],
+                t_start=_sim_time[i],
                 t_step=self.step_size_seconds,
                 step_hvac_input=self.data_client.hvac.data.iloc[i],
                 step_sensor_input=self.building_model.step_output,
                 step_weather_input=self.data_client.weather.data.iloc[i],
             )
             self.building_model.do_step(
-                t_start=sim_time[i],
+                t_start=_sim_time[i],
                 t_step=self.step_size_seconds,
                 step_control_input=self.controller_model.step_output,
                 step_sensor_input=self.data_client.sensors.data.iloc[i],
@@ -197,6 +195,41 @@ class Simulation:
         )
 
         self.tear_down()
+
+        # convert output to dataframe
+        self.output = pd.DataFrame.from_dict(
+            {
+                STATES.DATE_TIME: self.data_client.hvac.data[
+                    STATES.DATE_TIME
+                ].to_numpy(),
+                **self.controller_model.output,
+                **self.building_model.output,
+            }
+        )
+
+        # only consider data within data periods as output
+        _mask = self.output[STATES.DATE_TIME].isnull()
+        for dp_start, dp_end in self.data_client.full_data_periods:
+            _mask = _mask | (self.output[STATES.DATE_TIME] >= dp_start) & (
+                self.output[STATES.DATE_TIME] < dp_end
+            )
+
+        self.output = self.output[_mask]
+
+        self.full_output = self.get_full_input()[_mask]
+
+    def get_full_input(self):
+        full_input = pd.concat(
+            [
+                self.data_client.hvac.data,
+                self.data_client.sensors.data,
+                self.data_client.weather.data,
+            ],
+            axis="columns",
+        )
+        # drop duplicated datetime columns
+        full_input = full_input.loc[:, ~full_input.columns.duplicated()]
+        return full_input
 
     def show_plots(self):
         output_analysis = OutputAnalysis(df=self.output_df)

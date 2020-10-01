@@ -355,7 +355,7 @@ class EnergyPlusBuildingModel(BuildingModel):
         T_heat_off = -60.0
         T_heat_on = 99.0
         T_cool_off = 99.0
-        T_cool_on = 60.0
+        T_cool_on = -60.0
 
         # map input states to specific actuation within EPlus model
         run_heat = bool(
