@@ -97,7 +97,7 @@ RUN curl -sL https://deb.nodesource.com/setup_12.x | sudo bash - \
     && mkdir fmu \
     && cd "${EXT_DIR}" \
     && wget "https://github.com/lbl-srg/EnergyPlusToFMU/archive/v3.0.0.zip" \
-    && unzip v3.0.0.zip && rm v3.0.0.zip
+    && unzip v3.0.0.zip && rm v3.0.0.zip \
     && cd "${EXT_DIR}" \
     && wget "https://github.com/modelon-community/PyFMI/archive/PyFMI-2.7.4.tar.gz" \
     && tar -xzf "PyFMI-2.7.4.tar.gz" \

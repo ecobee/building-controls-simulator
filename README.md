@@ -21,10 +21,18 @@ You're going to need Docker Desktop installed, if not see https://www.docker.com
 
 ### Using Docker-Compose
 
-`docker-compose.yml` defines the Dockerfile and image to use, ports to map, and volumes to mount. It also defins the env file `.env` to inject environment variables that are needed both to build the container and to be used inside the container. As a user all you need to know is that any API keys or GCP variables are stored here (safely) the default EnergyPlus version is 8-9-0, and this can be changed later very easily. 
+`docker-compose.yml` defines the Dockerfile and image to use, ports to map, and volumes to mount. It also specifies the env file `.env` to inject environment variables that are needed both to build the container and to be used inside the container. As a user all you need to know is that any API keys or GCP variables are stored here (safely) the default EnergyPlus version is 8-9-0, and this can be changed later very easily. 
 
-Edit `.env` for the following if you want to use these external services:
+
+Copy the template and fill in the variables mentioned below:
 ```bash
+cp .env.template .env
+```
+
+Edit in `.env.template`:
+```bash
+...
+LOCAL_PACKAGE_DIR=<where you cloned repo>
 ...
 DYD_GCS_URI_BASE=<Donate your data Google Cloud Service bucket>
 DYD_METADATA_URI=<Donate your data meta_data file Google Cloud Service URI>
@@ -32,6 +40,8 @@ NREL_DEV_API_KEY=<your key>
 NREL_DEV_EMAIL=<your email>
 ...
 ```
+
+Now you're ready to build and launch the container!
 
 #### Run with bash (recommended first time setup)
 
@@ -53,7 +63,7 @@ docker-compose run --service-ports building-controls-simulator bash
 # (optional) download IECC 2018 IDF files to start with
 . scripts/setup/download_IECC_idfs.sh
 
-# you're done with setup! now exit container shell or just stop the docker container
+# you're done with container setup! now exit container shell or just stop the docker container
 # the docker container can now be reattached to, stopped, and restarted when you need it again (see below for usage)
 # unless you specifically delete this docker container it can be restarted with the setup already done
 exit    # first exit to get out of pipenv shell
@@ -104,6 +114,26 @@ pipenv shell
 . scripts/setup/jupyter_lab_bkgrnd.sh
 ```
 
+## Usage
+
+### Example Notebook (Hello World)
+
+This requires that you downloaded the IECC .idf files or have some preexisting building model to work with.
+First move the .idf file to the IDR_DIR.
+
+```bash
+cp "idf/IECC_2018/cz_2B/SF+CZ2B+USA_AZ_Phoenix-Sky.Harbor.Intl.AP.722780+gasfurnace+crawlspace+IECC_2018.idf" "${IDF_DIR}"
+```
+
+Next, download the weather file for that geography using https://energyplus.net/weather.
+Other weather data can be used as long as it is put into the .epw format.
+
+```bash
+EPLUS_WEATHER_URL_USA="https://energyplus.net/weather-download/north_and_central_america_wmo_region_4/USA"
+WEATHER_FILE="AZ/USA_AZ_Phoenix-Sky.Harbor.Intl.AP.722780_TMY3/USA_AZ_Phoenix-Sky.Harbor.Intl.AP.722780_TMY3.epw"
+wget "${EPLUS_WEATHER_URL_USA}/${WEATHER_FILE}" -P "${WEATHER_DIR}"
+```
+
 ### Development setup - Using VS Code Remote Containers
 
 Highly recommend VS Code IDE for development: https://code.visualstudio.com/download
@@ -134,6 +164,46 @@ docker images
 
 # remove docker image
 docker rmi <image ID>
+```
+
+### Run the tests
+
+Test files are found in src/python directory alongside source code, they are identified by the naming convention `test_*.py`.
+The `pytest` framework used for testing, see https://docs.pytest.org/en/stable/ for details.
+
+Similarly to the `.env` file, you can set up `.test.env` from `.test.env.template`.
+Then simply run the `test_env_setup.sh` script to set up the test environment.
+
+```bash
+. scripts/setup/test_env_setup.sh
+```
+
+This just runs the following commands in your terminal to test up the test env vars:
+```bash
+set -a && source .test.env && set +a
+. scripts/epvm.sh 8-9-0
+```
+
+Finally, run all the tests:
+```bash
+python -m pytest src/python
+```
+
+## Authentication with GCP
+
+First authenticate normally to GCP, e.g. using ` gcloud auth`. Then copy `${GOOGLE_APPLICATION_CREDENTIALS}` into the container to access GCP resources with 
+the same permissions.
+
+On host machine:
+```bash
+# on local machine source .env and copy credentials to container
+docker cp ${GOOGLE_APPLICATION_CREDENTIALS} <container ID>:/home/bcs/.config/application_default_credentials.json
+```
+
+Within container:
+```bash
+# in container make sure bcs user can read credentials
+sudo chown -R "bcs":"bcs" ~/.config/application_default_credentials.json
 ```
 
 ## Weather Data
@@ -204,62 +274,6 @@ NSRDB PSM3 TMY: https://developer.nrel.gov/docs/solar/nsrdb/psm3-tmy-download/
 ### CDO: https://www.ncdc.noaa.gov/cdo-web/
 
 For potential future integration.
-
-## Usage
-
-### Example Notebook (Hello World)
-
-This requires that you downloaded the IECC .idf files or have some preexisting building model to work with.
-First move the .idf file to the IDR_DIR.
-
-```bash
-cp "idf/IECC_2018/cz_2B/SF+CZ2B+USA_AZ_Phoenix-Sky.Harbor.Intl.AP.722780+gasfurnace+crawlspace+IECC_2018.idf" "${IDF_DIR}"
-```
-
-Next, download the weather file for that geography using https://energyplus.net/weather.
-Other weather data can be used as long as it is put into the .epw format.
-
-```bash
-EPLUS_WEATHER_URL_USA="https://energyplus.net/weather-download/north_and_central_america_wmo_region_4/USA"
-WEATHER_FILE="AZ/USA_AZ_Phoenix-Sky.Harbor.Intl.AP.722780_TMY3/USA_AZ_Phoenix-Sky.Harbor.Intl.AP.722780_TMY3.epw"
-wget "${EPLUS_WEATHER_URL_USA}/${WEATHER_FILE}" -P "${WEATHER_DIR}"
-```
-
-### .env configuration within container
-
-The environment variables used by this platform can be configured as mentioned above from a `.env` file and `.test.env`
-
-These files can be sourced dynamically using bash:
-```bash
-set -a && source .env && set +a
-```
-
-## Run tests
-
-Test files are found in src/python directory alongside source code, they are identified by the naming convention `test_*.py`.
-The `pytest` framework used for testing, see https://docs.pytest.org/en/stable/ for details.
-
-```bash
-set -a && source .test.env && set +a && python -m pytest src/python
-```
-
-## Authentication with GCP
-
-First authenticate normally to GCP, e.g. using ` gcloud auth`. Then copy `${GOOGLE_APPLICATION_CREDENTIALS}` into the container to access GCP resources with 
-the same permissions.
-
-On host machine:
-```bash
-# on local machine source .env and copy credentials to container
-docker cp ${GOOGLE_APPLICATION_CREDENTIALS} <container ID>:/home/bcs/.config/application_default_credentials.json
-```
-
-Within container:
-```bash
-# in container make sure bcs user can read credentials
-sudo chown -R "bcs":"bcs" ~/.config/application_default_credentials.json
-```
-
 
 
 ### Configuration
