@@ -93,29 +93,29 @@ class DataClient:
             expected_period=_expected_period,
             min_sim_period=self.sim_config["min_sim_period"],
         )
+        if self.full_data_periods:
+            _start_utc, _end_utc = self.get_simulation_period(
+                expected_period=_expected_period
+            )
 
-        _start_utc, _end_utc = self.get_simulation_period(
-            expected_period=_expected_period
-        )
+            # add records for warmup period if needed
+            _data = DataClient.add_null_records(
+                df=_data,
+                start_utc=_start_utc,
+                end_utc=_end_utc,
+                expected_period=_expected_period,
+            )
 
-        # add records for warmup period if needed
-        _data = DataClient.add_null_records(
-            df=_data,
-            start_utc=_start_utc,
-            end_utc=_end_utc,
-            expected_period=_expected_period,
-        )
+            # drop records before and after full simulation time
+            # end is less than
+            _data = _data[
+                (_data[Internal.datetime_column] >= _start_utc)
+                & (_data[Internal.datetime_column] <= _end_utc)
+            ].reset_index(drop=True)
 
-        # drop records before and after full simulation time
-        # end is less than
-        _data = _data[
-            (_data[Internal.datetime_column] >= _start_utc)
-            & (_data[Internal.datetime_column] <= _end_utc)
-        ].reset_index(drop=True)
-
-        # bfill to interpolate missing data
-        # first and last records must be full because we used full data periods
-        _data = _data.fillna(method="bfill", limit=None)
+            # bfill to interpolate missing data
+            # first and last records must be full because we used full data periods
+            _data = _data.fillna(method="bfill", limit=None)
 
         # finally create the data channel objs for usage during simulation
         self.hvac = HVACChannel(
@@ -165,7 +165,10 @@ class DataClient:
     def get_simulation_period(self, expected_period):
         # set start and end times from full_data_periods and simulation config
         # take limiting period as start_utc and end_utc
-        if self.full_data_periods:
+        if not self.full_data_periods:
+            _start_utc = None
+            _end_utc = None
+        else:
             if self.sim_config["start_utc"] >= self.full_data_periods[0][0]:
                 self.start_utc = self.sim_config["start_utc"]
             else:
@@ -217,8 +220,8 @@ class DataClient:
                     _start_utc = _retry_start_utc
                     _end_utc = _retry_end_utc
 
-            self.start_utc = _start_utc
-            self.end_utc = _end_utc
+        self.start_utc = _start_utc
+        self.end_utc = _end_utc
 
         return self.start_utc, self.end_utc
 
