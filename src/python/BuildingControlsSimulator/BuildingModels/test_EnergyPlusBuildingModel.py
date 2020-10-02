@@ -16,6 +16,7 @@ from BuildingControlsSimulator.BuildingModels.IDFPreprocessor import (
 from BuildingControlsSimulator.BuildingModels.EnergyPlusBuildingModel import (
     EnergyPlusBuildingModel,
 )
+from BuildingControlsSimulator.DataClients.DataStates import STATES
 
 
 logger = logging.getLogger(__name__)
@@ -48,6 +49,16 @@ class TestEnergyPlusBuildingModel:
                 os.environ.get("EPLUS_DIR"), "ExampleFiles", cls.dummy_idf_name
             )
             shutil.copyfile(_fpath, cls.dummy_idf_path)
+
+        # idf = IDFPreprocessor(
+        #     idf_file=cls.dummy_idf_path, init_temperature=20.0
+        # )
+        # idf.preprocess()
+
+        # idf_dupe = IDFPreprocessor(
+        #     idf_file=cls.dummy_idf_path, init_temperature=20.0
+        # )
+        # breakpoint()
 
         # make test/ dirs
         EnergyPlusBuildingModel.make_directories()
@@ -172,37 +183,40 @@ class TestEnergyPlusBuildingModel:
         Note: if this test fails check ./Output_EPExport_Slave/Furnace_prep.err
         """
         t_start = 0
+        t_step = 300
         t_end = 86400.0
-        t_step = 300.0
         ns = int(t_end / t_step)
 
         self.building_model.create_model_fmu(
             epw_path=self.building_model.epw_path, preprocess_check=False
         )
-
+        # need to recude t_end because of non-inclusion of last time step
         self.building_model.initialize(
-            t_start=t_start, t_end=t_end, t_step=t_step
+            t_start=t_start, t_end=t_end - t_step, t_step=t_step
         )
 
         step_control_input = {
-            "heat_stage_one": True,
-            "heat_stage_two": False,
-            "heat_stage_three": False,
-            "compressor_cool_stage_one": False,
-            "compressor_cool_stage_two": False,
-            "compressore_cool_stage_one": False,
-            "compressor_cool_stage_three": False,
-            "fan_stage_one": False,
-            "fan_stage_two": False,
-            "fan_stage_three": False,
+            STATES.AUXHEAT1: t_step,
+            STATES.AUXHEAT2: 0,
+            STATES.AUXHEAT3: 0,
+            STATES.COMPCOOL1: 0,
+            STATES.COMPCOOL2: 0,
+            STATES.COMPHEAT1: 0,
+            STATES.COMPHEAT2: 0,
+            STATES.FAN_STAGE_ONE: t_step,
+            STATES.FAN_STAGE_TWO: 0,
+            STATES.FAN_STAGE_THREE: 0,
         }
+
+        step_sensor_input = {STATES.THERMOSTAT_MOTION: False}
+
         for i in range(ns):
             self.building_model.do_step(
                 t_start=self.building_model.output[STATES.SIMULATION_TIME][i],
-                t_step=300,
+                t_step=t_step,
                 step_control_input=step_control_input,
+                step_sensor_input=step_sensor_input,
                 step_weather_input={},
-                step_occupancy_input={},
             )
         assert (
             pytest.approx(33.394825, 0.01)

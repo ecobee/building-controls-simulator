@@ -20,6 +20,7 @@ from BuildingControlsSimulator.BuildingModels.EnergyPlusBuildingModel import (
 
 from BuildingControlsSimulator.ControlModels.FMIController import FMIController
 from BuildingControlsSimulator.ControlModels.Deadband import Deadband
+from BuildingControlsSimulator.DataClients.DataStates import STATES
 
 logger = logging.getLogger(__name__)
 
@@ -31,6 +32,8 @@ class TestSimulator:
 
         EnergyPlusBuildingModel.make_directories()
 
+        # the weather file here does not need to be correct for IDF file
+        # this is closest file found in standard EPlus installation
         weather_name = "USA_FL_Tampa.Intl.AP.722110_TMY3.epw"
         cls.test_weather_path = os.path.join(
             os.environ.get("WEATHER_DIR"), weather_name
@@ -47,8 +50,6 @@ class TestSimulator:
             f"{os.environ.get('FMU_DIR')}/../fmu-models/deadband/deadband.fmu"
         )
 
-        cls.idtm_fmu_path = f"{os.environ.get('FMU_DIR')}/../fmu-models/idtm.0f94bb5d90d898380ff165b5caf1a70171c3bacc.fmu"
-
         cls.dc = DataClient(
             source=GCSDYDSource(
                 gcp_project=os.environ.get("GOOGLE_CLOUD_PROJECT"),
@@ -64,14 +65,12 @@ class TestSimulator:
 
         cls.sim_config = Config.make_sim_config(
             identifier=[
-                # "f2254479e14daf04089082d1cd9df53948f98f1e",  # missing thermostat_temperature data
                 "2df6959cdf502c23f04f3155758d7b678af0c631",  # has full data periods
-                # "6e63291da5427ae87d34bb75022ee54ee3b1fc1a",  # file not found
             ],
             latitude=33.481136,
             longitude=-112.078232,
-            start_utc="2019-01-01",
-            end_utc="2019-12-31",
+            start_utc="2018-05-16",
+            end_utc="2018-06-01",
             min_sim_period="14D",
             min_chunk_period="30D",
             step_size_minutes=5,
@@ -84,7 +83,7 @@ class TestSimulator:
         """
         pass
 
-    def test_deadband_fmu_simulation_equivalence(self):
+    def test_deadband(self):
         # test HVAC data returns dict of non-empty pd.DataFrame
         master = Simulator(
             data_client=self.dc,
@@ -94,6 +93,16 @@ class TestSimulator:
                     idf=IDFPreprocessor(idf_file=self.idf_name,),
                 )
             ],
-            controller_models=[Deadband(),],
+            controller_models=[Deadband(deadband=1.0),],
         )
         master.simulate(local=True, preprocess_check=True)
+        assert (
+            pytest.approx(27.380976, 0.1)
+            == master.simulations[0]
+            .output[STATES.THERMOSTAT_TEMPERATURE]
+            .mean()
+        )
+        assert (
+            pytest.approx(0.18192752, 0.1)
+            == master.simulations[0].output[STATES.THERMOSTAT_HUMIDITY].mean()
+        )

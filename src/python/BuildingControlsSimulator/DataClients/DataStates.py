@@ -20,9 +20,11 @@ class CHANNELS(enum.IntEnum):
     internal formats."""
 
     HVAC = enum.auto()
-    TEMPERATURE_SENSOR = enum.auto()
-    HUMIDITY_SENSOR = enum.auto()
-    OCCUPANCY_SENSOR = enum.auto()
+    # TEMPERATURE_SENSOR = enum.auto()
+    THERMOSTAT_SENSOR = enum.auto()
+    REMOTE_SENSOR = enum.auto()
+    # HUMIDITY_SENSOR = enum.auto()
+    # OCCUPANCY_SENSOR = enum.auto()
     WEATHER = enum.auto()
     DATETIME = enum.auto()
     ENERGY_COST = enum.auto()

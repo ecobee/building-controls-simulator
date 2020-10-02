@@ -50,7 +50,7 @@ class Conversions:
         return (c * gamma) / (b - gamma)
 
     @staticmethod
-    def default_value_by_type(dtype):
+    def numpy_down_cast_default_value_dtype(dtype):
         """Default values for numpy/pandas dtypes. These are used when setting 
         initial values for input and output data. This mostly chooses sane defaults
         that allows for not using nullable dtypes that consume much more memory.
@@ -58,18 +58,19 @@ class Conversions:
         output data.
         """
         if dtype in ["bool", "boolean"]:
-            return False
+            return (False, "bool")
         elif dtype in ["float32", "Float32"]:
-            return -9999.0
+            return (-9999.0, "float32")
         elif dtype in ["int64", "Int64"]:
-            return -99999
+            return (-99999, "int64")
         elif dtype in ["int32", "Int32"]:
-            return -9999
+            return (-9999, "int32")
         elif dtype in ["int16", "Int16"]:
-            return -999
+            return (-999, "int16")
         elif dtype in ["int8", "Int8"]:
-            return -99
+            return (-99, "int8")
         elif dtype in ["category", "Category"]:
-            return ""
+            # 32 byte unicode str
+            return ("", "<U32")
         else:
             raise ValueError(f"Unsupported dtype={dtype}")

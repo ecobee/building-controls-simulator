@@ -15,7 +15,7 @@ from eppy.modeleditor import IDF
 logger = logging.getLogger(__name__)
 
 
-@attr.s(kw_only=True)
+@attr.s(kw_only=True, init=True)
 class IDFPreprocessor:
     """Converts IDFs (Input Data Files) for EnergyPlus into working IDFs.
     """
@@ -28,12 +28,14 @@ class IDFPreprocessor:
     init_control_type = attr.ib(type=int, default=1)
     debug = attr.ib(type=bool, default=False)
     timesteps_per_hour = attr.ib(type=int, default=12)
-    conditioned_zones = attr.ib(default=[])
-    occupied_zones = attr.ib(default=[])
-    thermostat_zones = attr.ib(default=[])
-    zone_lists = attr.ib(default={})
-    zone_outputs = attr.ib(default=[])
-    building_outputs = attr.ib(default=[])
+    conditioned_zones = attr.ib(factory=list)
+    occupied_zones = attr.ib(factory=list)
+    thermostat_zones = attr.ib(factory=list)
+    zone_lists = attr.ib(factory=dict)
+    zone_outputs = attr.ib(factory=list)
+    building_outputs = attr.ib(factory=list)
+    # the output spec is created during preprocessing of IDF file
+    output_spec = attr.ib(factory=dict)
 
     # first, terminate env vars, these will raise exceptions if undefined
     ep_version = attr.ib(default=os.environ.get("ENERGYPLUS_INSTALL_VERSION"))
@@ -42,8 +44,14 @@ class IDFPreprocessor:
 
     # output variable spec
     # .rdd file for all output variables
-    zone_output_spec = attr.ib(
-        default={
+    zone_output_spec = attr.ib()
+    building_output_spec = attr.ib()
+
+    # for reference on how attr defaults wor for mutable types (e.g. dict) see:
+    # https://www.attrs.org/en/stable/init.html#defaults
+    @zone_output_spec.default
+    def get_zone_output_spec(self):
+        return {
             "zone_air_temperature": {
                 "dtype": "float32",
                 "eplus_name": "Zone Air Temperature",
@@ -77,23 +85,22 @@ class IDFPreprocessor:
                 "eplus_name": "Zone Mean Air Humidity Ratio",
             },
         }
-    )
 
-    building_output_spec = {
-        "environment": {
-            "site_outdoor_air_relative_humidity": {
-                "dtype": "float32",
-                "eplus_name": "Site Outdoor Air Relative Humidity",
+    @building_output_spec.default
+    def get_building_output_spec(self):
+        return {
+            "environment": {
+                "site_outdoor_air_relative_humidity": {
+                    "dtype": "float32",
+                    "eplus_name": "Site Outdoor Air Relative Humidity",
+                },
+                "site_outdoor_air_drybulb_temperature": {
+                    "dtype": "float32",
+                    "eplus_name": "Site Outdoor Air Drybulb Temperature",
+                },
+                "eplus_name": "Environment",
             },
-            "site_outdoor_air_drybulb_temperature": {
-                "dtype": "float32",
-                "eplus_name": "Site Outdoor Air Drybulb Temperature",
-            },
-            "eplus_name": "Environment",
-        },
-    }
-    # the output spec is created during preprocessing of IDF file
-    output_spec = attr.ib(default={})
+        }
 
     def __attrs_post_init__(self):
         """Initialize `IDFPreprocessor` with an IDF file and desired actions"""
@@ -115,9 +122,9 @@ class IDFPreprocessor:
         if not self.check_valid_idf(self.idf_file):
             raise ValueError(f"""{self.idf_file} is not a valid IDF file.""")
 
-        logger.info(
-            "IDFPreprocessor loading .idf file: {}".format(self.idf_file)
-        )
+        # logger.info(
+        #     "IDFPreprocessor loading .idf file: {}".format(self.idf_file)
+        # )
         self.ep_idf = IDF(self.idf_file)
         # select .idf output type
         self.ep_idf.outputtype = "standard"
@@ -223,7 +230,9 @@ class IDFPreprocessor:
                 f"Multiple thermostats in IDF file: {self.idf_file}"
             )
 
-        self.thermostat_zone = tstats[0].Zone_or_ZoneList_Name
+        self.thermostat_zone = fmu_variable_name_conversion(
+            tstats[0].Zone_or_ZoneList_Name
+        )
 
     def get_condtioned_zones(self):
         """ get list of all zones that are condtioned
@@ -584,8 +593,8 @@ class IDFPreprocessor:
                 if ok != "eplus_name":
                     # set name of variable in FMU and internally
                     var_k = "FMU_{}_{}".format(
-                        ev["eplus_name"].replace(" ", "_").replace("-", "_"),
-                        ov["eplus_name"].replace(" ", "_").replace("-", "_"),
+                        fmu_variable_name_conversion(ev["eplus_name"]),
+                        fmu_variable_name_conversion(ov["eplus_name"]),
                     )
 
                     # add fmi name as key to output spec
@@ -610,7 +619,7 @@ class IDFPreprocessor:
         for z in self.conditioned_zones:
             for ok, ov in self.zone_output_spec.items():
 
-                zk = z.replace(" ", "_").replace("-", "_")
+                zk = fmu_variable_name_conversion(z)
                 var_k = zk + "_" + ok
 
                 # add fmi name as key to output spec
@@ -685,6 +694,11 @@ class IDFPreprocessor:
         return is_valid
 
 
+# Private-ish methods
+def fmu_variable_name_conversion(eplus_name):
+    return eplus_name.replace(" ", "_").replace("-", "_")
+
+
 def fix_idf_version_line(idf_path, ep_version):
     """
     Fix format of Version Identifier line in IDF file for EnergyPlusToFMU
@@ -705,3 +719,4 @@ def fix_idf_version_line(idf_path, ep_version):
                     output.write(line)
 
     shutil.move(idf_path + ".patch", idf_path)
+

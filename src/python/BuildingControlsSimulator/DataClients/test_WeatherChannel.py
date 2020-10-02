@@ -21,6 +21,7 @@ class TestWeatherChannel:
             spec=[],
             nrel_dev_api_key=os.environ.get("NREL_DEV_API_KEY"),
             nrel_dev_email=os.environ.get("NREL_DEV_EMAIL"),
+            archive_tmy3_dir=os.environ.get("ARCHIVE_TMY3_DIR"),
             archive_tmy3_meta=os.environ.get("ARCHIVE_TMY3_META"),
             archive_tmy3_data_dir=os.environ.get("ARCHIVE_TMY3_DATA_DIR"),
             ep_tmy3_cache_dir=os.environ.get("EP_TMY3_CACHE_DIR"),

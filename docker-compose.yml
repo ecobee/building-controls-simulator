@@ -11,7 +11,6 @@ services:
     user: "bcs"
     volumes:
     - ${LOCAL_PACKAGE_DIR}:${DOCKER_PACKAGE_DIR}:consistent
-    - ${LOCAL_CONTROLLER_DIR}:${DOCKER_CONTROLLER_DIR}:consistent
     # for running with docker-compose up use jupyter lab setup script
     # docker-compose run will override this
     command: bash ${PACKAGE_DIR}/scripts/setup/jupyter_lab.sh

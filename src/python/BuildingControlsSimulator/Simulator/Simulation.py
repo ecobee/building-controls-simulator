@@ -40,15 +40,13 @@ class Simulation:
     )
     start_utc = attr.ib(default=None)
     end_utc = attr.ib(default=None)
+    output = attr.ib(default=None)
+    full_output = attr.ib(default=None)
 
     def __attrs_post_init__(self):
         """validate input/output specs
         next input must be minimally satisfied by previous output
         """
-        # init with sim config
-        # this will get overriden with full_data_periods if data is missing
-        self.start_utc = self.config.start_utc
-        self.end_utc = self.config.end_utc
 
         # get all data states that can be input to each model
         available_data_states = [
@@ -99,14 +97,14 @@ class Simulation:
     @property
     def start_time_seconds(self):
         t_offset = self.start_utc - pd.Timestamp(
-            year=self.start_utc.year, month=1, day=1, tz="UTC"
+            year=self.start_utc.year, month=1, day=1, tz="UTC",
         )
         return int(t_offset.total_seconds())
 
     @property
     def final_time_seconds(self):
         t_offset = self.end_utc - pd.Timestamp(
-            year=self.start_utc.year, month=1, day=1, tz="UTC"
+            year=self.end_utc.year, month=1, day=1, tz="UTC",
         )
         return int(t_offset.total_seconds())
 
@@ -128,11 +126,12 @@ class Simulation:
             preprocess_check=preprocess_check,
         )
 
-    def initialize(self, data_period):
-        """initialize sub-system models
-        """
-        self.start_utc = data_period[0]
-        self.end_utc = data_period[1]
+    def initialize(self):
+        """initialize sub-system models and memory for simulation"""
+        # get simulation time from data client
+        self.start_utc = self.data_client.start_utc
+        self.end_utc = self.data_client.end_utc
+
         self.building_model.initialize(
             t_start=self.start_time_seconds,
             t_end=self.final_time_seconds,
@@ -146,55 +145,47 @@ class Simulation:
             categories_dict=self.data_client.hvac.get_categories_dict(),
         )
 
+        self.allocate_memory()
+
+    def allocate_memory(self):
+        """Allocate memory for simulation output"""
+        self.output = {}
+
     def tear_down(self):
         logger.info("Tearing down co-simulation models")
         self.building_model.tear_down()
         self.controller_model.tear_down()
 
-    def run(self, data_period, local=True):
+    def run(self, local=True):
         """Main co-simulation loop"""
         logger.info("Initializing co-simulation models")
-        self.initialize(data_period=data_period)
-
-        sim_data_channel_idx_offset = self.data_client.hvac.data[
-            self.data_client.hvac.data[STATES.DATE_TIME] == data_period[0]
-        ].index.values[0]
-
-        # pre-allocate output arrays
-        sim_time = np.arange(
-            self.start_time_seconds,
-            self.final_time_seconds,
-            self.step_size_seconds,
-            dtype="int64",
-        )
+        self.initialize()
 
         logger.info(
-            f"Running co-simulation from {data_period[0]} to {data_period[1]}"
+            f"Running co-simulation from {self.start_utc} to {self.end_utc}"
         )
         _sim_start_wall_time = time.perf_counter()
         _sim_start_proc_time = time.process_time()
-        for i in range(0, len(sim_time)):
+        _sim_time = np.arange(
+            self.start_time_seconds,
+            self.final_time_seconds + self.step_size_seconds,
+            self.step_size_seconds,
+            dtype="int64",
+        )
+        for i in range(0, len(_sim_time)):
             self.controller_model.do_step(
-                t_start=sim_time[i],
+                t_start=_sim_time[i],
                 t_step=self.step_size_seconds,
-                step_hvac_input=self.data_client.hvac.data.iloc[
-                    sim_data_channel_idx_offset + i
-                ],
+                step_hvac_input=self.data_client.hvac.data.iloc[i],
                 step_sensor_input=self.building_model.step_output,
-                step_weather_input=self.data_client.weather.data.iloc[
-                    sim_data_channel_idx_offset + i
-                ],
+                step_weather_input=self.data_client.weather.data.iloc[i],
             )
             self.building_model.do_step(
-                t_start=sim_time[i],
+                t_start=_sim_time[i],
                 t_step=self.step_size_seconds,
                 step_control_input=self.controller_model.step_output,
-                step_sensor_input=self.data_client.sensors.data.iloc[
-                    sim_data_channel_idx_offset + i
-                ],
-                step_weather_input=self.data_client.weather.data.iloc[
-                    sim_data_channel_idx_offset + i
-                ],
+                step_sensor_input=self.data_client.sensors.data.iloc[i],
+                step_weather_input=self.data_client.weather.data.iloc[i],
             )
 
         logger.info(
@@ -204,6 +195,41 @@ class Simulation:
         )
 
         self.tear_down()
+
+        # convert output to dataframe
+        self.output = pd.DataFrame.from_dict(
+            {
+                STATES.DATE_TIME: self.data_client.hvac.data[
+                    STATES.DATE_TIME
+                ].to_numpy(),
+                **self.controller_model.output,
+                **self.building_model.output,
+            }
+        )
+
+        # only consider data within data periods as output
+        _mask = self.output[STATES.DATE_TIME].isnull()
+        for dp_start, dp_end in self.data_client.full_data_periods:
+            _mask = _mask | (self.output[STATES.DATE_TIME] >= dp_start) & (
+                self.output[STATES.DATE_TIME] < dp_end
+            )
+
+        self.output = self.output[_mask]
+
+        self.full_output = self.get_full_input()[_mask]
+
+    def get_full_input(self):
+        full_input = pd.concat(
+            [
+                self.data_client.hvac.data,
+                self.data_client.sensors.data,
+                self.data_client.weather.data,
+            ],
+            axis="columns",
+        )
+        # drop duplicated datetime columns
+        full_input = full_input.loc[:, ~full_input.columns.duplicated()]
+        return full_input
 
     def show_plots(self):
         output_analysis = OutputAnalysis(df=self.output_df)
