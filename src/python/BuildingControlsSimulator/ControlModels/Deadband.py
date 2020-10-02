@@ -15,16 +15,28 @@ class Deadband(ControlModel):
     """Deadband controller"""
 
     deadband = attr.ib(default=1.0)
-    input_states = attr.ib(
-        default=[
+    step_output = attr.ib(factory=dict)
+    step_size_seconds = attr.ib(default=None)
+    current_t_idx = attr.ib(default=None)
+
+    output = attr.ib(factory=dict)
+
+    # for reference on how attr defaults wor for mutable types (e.g. list) see:
+    # https://www.attrs.org/en/stable/init.html#defaults
+    input_states = attr.ib()
+    output_states = attr.ib()
+
+    @input_states.default
+    def get_input_states(self):
+        return [
             STATES.THERMOSTAT_TEMPERATURE,
             STATES.TEMPERATURE_STP_COOL,
             STATES.TEMPERATURE_STP_HEAT,
         ]
-    )
 
-    output_states = attr.ib(
-        default=[
+    @output_states.default
+    def get_output_states(self):
+        return [
             STATES.TEMPERATURE_CTRL,
             STATES.AUXHEAT1,
             STATES.AUXHEAT2,
@@ -37,13 +49,6 @@ class Deadband(ControlModel):
             STATES.FAN_STAGE_TWO,
             STATES.FAN_STAGE_THREE,
         ]
-    )
-
-    step_output = attr.ib(default={})
-    step_size_seconds = attr.ib(default=None)
-
-    output = attr.ib(default={})
-    current_t_idx = attr.ib(default=None)
 
     def initialize(self, t_start, t_end, t_step, categories_dict):
         """
@@ -60,11 +65,15 @@ class Deadband(ControlModel):
 
     def allocate_output_memory(self, t_start, t_end, t_step, categories_dict):
         """preallocate output memory to speed up simulation"""
-        self.output[STATES.SIMULATION_TIME] = np.arange(
-            t_start, t_end, t_step, dtype="int64"
-        )
-        n_s = len(self.output[STATES.SIMULATION_TIME])
+        # reset output
         self.output = {}
+
+        self.output = {
+            STATES.SIMULATION_TIME: np.arange(
+                t_start, t_end + t_step, t_step, dtype="int64"
+            )
+        }
+        n_s = len(self.output[STATES.SIMULATION_TIME])
 
         # add state variables
         for state in self.output_states:
@@ -76,13 +85,14 @@ class Deadband(ControlModel):
                     )
                 )
             else:
-                _default_value = Conversions.default_value_by_type(
+                (
+                    np_default_value,
+                    np_dtype,
+                ) = Conversions.numpy_down_cast_default_value_dtype(
                     Internal.full.spec[state]["dtype"]
                 )
                 self.output[state] = np.full(
-                    n_s,
-                    _default_value,
-                    dtype=Internal.full.spec[state]["dtype"],
+                    n_s, np_default_value, dtype=np_dtype,
                 )
 
         self.output[STATES.STEP_STATUS] = np.full(n_s, 0, dtype="int8")

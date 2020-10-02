@@ -24,6 +24,7 @@ class Spec:
     def dtypes_are_pandas(self, attribute, value):
         supported_dtypes = [
             "bool",
+            "boolean",
             "string",
             "Float32",
             "float32",
@@ -59,7 +60,7 @@ class Spec:
         return {k: v["internal_state"] for k, v in self.spec.items()}
 
 
-@attr.s(frozen=True)
+@attr.s()
 class Internal:
     """Definition of internal data fields and types.
     For details of string dtype aliases see: 
@@ -248,26 +249,26 @@ class Internal:
             STATES.THERMOSTAT_TEMPERATURE: {
                 "name": "thermostat_temperature",
                 "dtype": "Float32",
-                "channel": CHANNELS.TEMPERATURE_SENSOR,
+                "channel": CHANNELS.THERMOSTAT_SENSOR,
                 "unit": UNITS.CELSIUS,
             },
             STATES.THERMOSTAT_HUMIDITY: {
                 "name": "thermostat_humidity",
                 "dtype": "Float32",
-                "channel": CHANNELS.HUMIDITY_SENSOR,
+                "channel": CHANNELS.THERMOSTAT_SENSOR,
                 "unit": UNITS.RELATIVE_HUMIDITY,
             },
             STATES.THERMOSTAT_MOTION: {
                 "name": "thermostat_motion",
-                "dtype": "bool",
-                "channel": CHANNELS.OCCUPANCY_SENSOR,
+                "dtype": "boolean",
+                "channel": CHANNELS.THERMOSTAT_SENSOR,
                 "unit": UNITS.OTHER,
             },
             **{
                 STATES["RS{}_TEMPERATURE".format(i)]: {
                     "name": "rs{}_temperature".format(i),
                     "dtype": "Float32",
-                    "channel": CHANNELS.TEMPERATURE_SENSOR,
+                    "channel": CHANNELS.REMOTE_SENSOR,
                     "unit": UNITS.CELSIUS,
                 }
                 for i in range(1, N_ROOM_SENSORS)
@@ -275,8 +276,8 @@ class Internal:
             **{
                 STATES["RS{}_OCCUPANCY".format(i)]: {
                     "name": "rs{}_occupancy".format(i),
-                    "dtype": "bool",
-                    "channel": CHANNELS.OCCUPANCY_SENSOR,
+                    "dtype": "boolean",
+                    "channel": CHANNELS.REMOTE_SENSOR,
                     "unit": UNITS.OTHER,
                 }
                 for i in range(1, N_ROOM_SENSORS)
@@ -324,12 +325,10 @@ class Internal:
 
     full = Spec(
         datetime_column=datetime_column,
-        null_check_columns=[
-            datetime.null_check_columns
-            + hvac.null_check_columns
-            + sensors.null_check_columns
-            + weather.null_check_columns
-        ],
+        null_check_columns=datetime.null_check_columns
+        + hvac.null_check_columns
+        + sensors.null_check_columns
+        + weather.null_check_columns,
         spec={
             **datetime.spec,
             **hvac.spec,
@@ -348,24 +347,30 @@ class Internal:
         """This method must be able to evaluate multiple sources should
         a channel be composed from multiple sources."""
         for k, v in _spec.items():
-            if v["unit"] != Internal.full.spec[v["internal_state"]]["unit"]:
-                if (v["unit"] == UNITS.FARHENHEIT) and (
-                    Internal.full.spec[v["internal_state"]]["unit"]
-                    == UNITS.CELSIUS
+            if k in df.columns:
+                if (
+                    v["unit"]
+                    != Internal.full.spec[v["internal_state"]]["unit"]
                 ):
-                    df[k] = Conversions.F2C(df[k])
-                elif (v["unit"] == UNITS.FARHENHEITx10) and (
-                    Internal.full.spec[v["internal_state"]]["unit"]
-                    == UNITS.CELSIUS
-                ):
-                    df[k] = Conversions.F2C(df[k] / 10.0)
-                else:
-                    logger.error(
-                        "Unsupported conversion: {} to {}".format(
-                            v["unit"],
-                            Internal.full.spec[v["internal_state"]]["unit"],
+                    if (v["unit"] == UNITS.FARHENHEIT) and (
+                        Internal.full.spec[v["internal_state"]]["unit"]
+                        == UNITS.CELSIUS
+                    ):
+                        df[k] = Conversions.F2C(df[k])
+                    elif (v["unit"] == UNITS.FARHENHEITx10) and (
+                        Internal.full.spec[v["internal_state"]]["unit"]
+                        == UNITS.CELSIUS
+                    ):
+                        df[k] = Conversions.F2C(df[k] / 10.0)
+                    else:
+                        logger.error(
+                            "Unsupported conversion: {} to {}".format(
+                                v["unit"],
+                                Internal.full.spec[v["internal_state"]][
+                                    "unit"
+                                ],
+                            )
                         )
-                    )
         return df
 
     @staticmethod
@@ -544,26 +549,26 @@ class FlatFilesSpec:
             "SensorTemp000": {
                 "internal_state": STATES.THERMOSTAT_TEMPERATURE,
                 "dtype": "Int16",
-                "channel": CHANNELS.TEMPERATURE_SENSOR,
+                "channel": CHANNELS.THERMOSTAT_SENSOR,
                 "unit": UNITS.FARHENHEITx10,
             },
             "SensorHum000": {
                 "internal_state": STATES.THERMOSTAT_HUMIDITY,
                 "dtype": "Int16",
-                "channel": CHANNELS.HUMIDITY_SENSOR,
+                "channel": CHANNELS.THERMOSTAT_SENSOR,
                 "unit": UNITS.RELATIVE_HUMIDITY,
             },
             "SensorOcc000": {
                 "internal_state": STATES.THERMOSTAT_MOTION,
-                "dtype": "bool",
-                "channel": CHANNELS.OCCUPANCY_SENSOR,
+                "dtype": "boolean",
+                "channel": CHANNELS.THERMOSTAT_SENSOR,
                 "unit": UNITS.OTHER,
             },
             **{
                 "SensorTemp1{}".format(str(i).zfill(2)): {
                     "internal_state": STATES["RS{}_TEMPERATURE".format(i)],
                     "dtype": "Int16",
-                    "channel": CHANNELS.TEMPERATURE_SENSOR,
+                    "channel": CHANNELS.REMOTE_SENSOR,
                     "unit": UNITS.FARHENHEITx10,
                 }
                 for i in range(1, N_ROOM_SENSORS)
@@ -571,8 +576,8 @@ class FlatFilesSpec:
             **{
                 "SensorOcc1{}".format(str(i).zfill(2)): {
                     "internal_state": STATES["RS{}_OCCUPANCY".format(i)],
-                    "dtype": "bool",
-                    "channel": CHANNELS.OCCUPANCY_SENSOR,
+                    "dtype": "boolean",
+                    "channel": CHANNELS.REMOTE_SENSOR,
                     "unit": UNITS.OTHER,
                 }
                 for i in range(1, N_ROOM_SENSORS)
@@ -668,12 +673,6 @@ class DonateYourDataSpec:
                 "channel": CHANNELS.HVAC,
                 "unit": UNITS.FARHENHEIT,
             },
-            "Humidity": {
-                "internal_state": STATES.HUMIDITY,
-                "dtype": "Float32",
-                "channel": CHANNELS.HVAC,
-                "unit": UNITS.RELATIVE_HUMIDITY,
-            },
             "HumidityExpectedLow": {
                 "internal_state": STATES.HUMIDITY_EXPECTED_LOW,
                 "dtype": "Float32",
@@ -744,26 +743,26 @@ class DonateYourDataSpec:
             "Thermostat_Temperature": {
                 "internal_state": STATES.THERMOSTAT_TEMPERATURE,
                 "dtype": "Int16",
-                "channel": CHANNELS.TEMPERATURE_SENSOR,
+                "channel": CHANNELS.THERMOSTAT_SENSOR,
                 "unit": UNITS.FARHENHEIT,
             },
             "Humidity": {
                 "internal_state": STATES.THERMOSTAT_HUMIDITY,
                 "dtype": "Int16",
-                "channel": CHANNELS.HUMIDITY_SENSOR,
+                "channel": CHANNELS.THERMOSTAT_SENSOR,
                 "unit": UNITS.RELATIVE_HUMIDITY,
             },
             "Thermostat_Motion": {
                 "internal_state": STATES.THERMOSTAT_MOTION,
-                "dtype": "bool",
-                "channel": CHANNELS.OCCUPANCY_SENSOR,
+                "dtype": "boolean",
+                "channel": CHANNELS.THERMOSTAT_SENSOR,
                 "unit": UNITS.OTHER,
             },
             **{
                 "Remote_Sensor_{}_Temperature".format(i): {
                     "internal_state": STATES[f"RS{i}_TEMPERATURE"],
                     "dtype": "Int16",
-                    "channel": CHANNELS.TEMPERATURE_SENSOR,
+                    "channel": CHANNELS.REMOTE_SENSOR,
                     "unit": UNITS.CELSIUS,
                 }
                 for i in range(1, N_ROOM_SENSORS)
@@ -771,8 +770,8 @@ class DonateYourDataSpec:
             **{
                 "Remote_Sensor_{}_Motion".format(i): {
                     "internal_state": STATES[f"RS{i}_OCCUPANCY"],
-                    "dtype": "bool",
-                    "channel": CHANNELS.OCCUPANCY_SENSOR,
+                    "dtype": "boolean",
+                    "channel": CHANNELS.REMOTE_SENSOR,
                     "unit": UNITS.OTHER,
                 }
                 for i in range(1, N_ROOM_SENSORS)
