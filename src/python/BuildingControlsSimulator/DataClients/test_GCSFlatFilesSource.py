@@ -19,7 +19,7 @@ from BuildingControlsSimulator.DataClients.DataStates import STATES
 logger = logging.getLogger(__name__)
 
 
-class TestFlatFilesClient:
+class TestGCSFlatFilesSource:
     @classmethod
     def setup_class(cls):
         # initialize with data to avoid pulling multiple times
@@ -41,8 +41,8 @@ class TestFlatFilesClient:
         cls.data_clients = []
         cls.data_client = DataClient(
             source=GCSFlatFilesSource(
-                gcp_project=os.environ.get("GOOGLE_CLOUD_PROJECT"),
-                gcs_uri_base=os.environ.get("ISM_GCS_URI_BASE"),
+                gcp_project=os.environ.get("FLATFILE_GOOGLE_CLOUD_PROJECT"),
+                gcs_uri_base=os.environ.get("FLATFILES_GCS_URI_BASE"),
             ),
             nrel_dev_api_key=os.environ.get("NREL_DEV_API_KEY"),
             nrel_dev_email=os.environ.get("NREL_DEV_EMAIL"),
@@ -62,7 +62,7 @@ class TestFlatFilesClient:
 
     @classmethod
     def teardown_class(cls):
-        """ teardown any state that was previously setup with a call to
+        """teardown any state that was previously setup with a call to
         setup_class.
         """
         pass

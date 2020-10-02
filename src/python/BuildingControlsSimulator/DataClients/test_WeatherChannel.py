@@ -30,7 +30,7 @@ class TestWeatherChannel:
 
     @classmethod
     def teardown_class(cls):
-        """ teardown any state that was previously setup with a call to
+        """teardown any state that was previously setup with a call to
         setup_class.
         """
         pass
@@ -48,6 +48,7 @@ class TestWeatherChannel:
         if os.path.exists(test_fpath):
             os.remove(test_fpath)
         fpath, fname = self.weather.get_tmy_epw(lat, lon)
+        breakpoint()
         assert os.path.exists(fpath)
 
         # epw file can be read and has correct columns

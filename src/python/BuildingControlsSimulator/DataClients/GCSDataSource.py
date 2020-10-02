@@ -22,17 +22,14 @@ class GCSDataSource(DataSource, ABC):
     gcs_cache = attr.ib(default=None)
     gcp_project = attr.ib(default=None)
     gcs_uri_base = attr.ib(default=None)
-    gcs_uri = attr.ib(default=None)
 
     def get_data(self, sim_config):
 
         # first check if file in local cache
         local_cache_path = self.get_local_cache_path(sim_config["identifier"])
         cache_df = self.get_local_cache(local_cache_path)
-
         if cache_df.empty:
-            self.gcs_uri = self.get_gcs_uri(sim_config)
-            cache_df = self.get_gcs_cache(self.gcs_uri)
+            cache_df = self.get_gcs_cache(sim_config)
             if not cache_df.empty:
                 # if downloaded the data file put it in local cache
                 self.put_cache(cache_df, local_cache_path)
@@ -76,9 +73,22 @@ class GCSDataSource(DataSource, ABC):
 
     @abstractmethod
     def get_gcs_uri(self, sim_config):
+        """This is implemented in the specialized source class"""
         pass
 
-    def get_gcs_cache(self, gcs_uri):
+    def get_gcs_cache(self, sim_config):
+        if not self.gcs_uri_base:
+            raise ValueError(
+                f"gcs_uri_base={self.gcs_uri_base} is unset. "
+                + "Set env variable for specific source, e.g. DYD_GCS_URI_BASE"
+            )
+
+        if not self.gcs_uri_base:
+            raise ValueError(
+                f"gcs_uri_base={self.gcs_uri_base} is unset. "
+                + "Set env variable: GOOGLE_CLOUD_PROJECT"
+            )
+        gcs_uri = self.get_gcs_uri(sim_config)
         try:
             _df = pd.read_csv(
                 gcs_uri,
