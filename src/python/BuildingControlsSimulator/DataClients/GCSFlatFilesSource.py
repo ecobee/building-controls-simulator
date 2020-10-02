@@ -14,7 +14,7 @@ from BuildingControlsSimulator.DataClients.DataSpec import FlatFilesSpec
 @attr.s(kw_only=True)
 class GCSFlatFilesSource(GCSDataSource):
 
-    data_spec = attr.ib(default=FlatFilesSpec)
+    data_spec = attr.ib(factory=FlatFilesSpec)
     file_extension = attr.ib(default="csv.gz")
     source_name = attr.ib(default="GCSFlatFiles")
 

@@ -1,15 +1,17 @@
 # created by Tom Stesco tom.s@ecobee.com
 import logging
 import os
+import copy
 
 import pytest
 import pandas as pd
 import pytz
 
+from BuildingControlsSimulator.Simulator.Config import Config
 from BuildingControlsSimulator.DataClients.DataClient import DataClient
 from BuildingControlsSimulator.DataClients.GCSDYDSource import GCSDYDSource
 from BuildingControlsSimulator.DataClients.DataSpec import EnergyPlusWeather
-
+from BuildingControlsSimulator.DataClients.DataStates import STATES
 
 logger = logging.getLogger(__name__)
 
@@ -18,22 +20,7 @@ class TestFlatFilesClient:
     @classmethod
     def setup_class(cls):
         # initialize with data to avoid pulling multiple times
-        cls.dc = DataClient(
-            sources=[
-                GCSDYDSource(
-                    gcp_project=os.environ.get("GOOGLE_CLOUD_PROJECT"),
-                    gcs_uri_base=os.environ.get("DYD_GCS_URI_BASE"),
-                )
-            ],
-            nrel_dev_api_key=os.environ.get("NREL_DEV_API_KEY"),
-            nrel_dev_email=os.environ.get("NREL_DEV_EMAIL"),
-            archive_tmy3_meta=os.environ.get("ARCHIVE_TMY3_META"),
-            archive_tmy3_data_dir=os.environ.get("ARCHIVE_TMY3_DATA_DIR"),
-            ep_tmy3_cache_dir=os.environ.get("EP_TMY3_CACHE_DIR"),
-            simulation_epw_dir=os.environ.get("SIMULATION_EPW_DIR"),
-        )
-
-        cls.tstat_sim_config = cls.dc.make_tstat_sim_config(
+        cls.sim_config = Config.make_sim_config(
             identifier=[
                 "f2254479e14daf04089082d1cd9df53948f98f1e",  # missing thermostat_temperature data
                 "2df6959cdf502c23f04f3155758d7b678af0c631",  # has full data periods
@@ -41,16 +28,35 @@ class TestFlatFilesClient:
             ],
             latitude=33.481136,
             longitude=-112.078232,
-            start_utc="2019-01-01",
-            end_utc="2019-12-31",
+            start_utc="2018-01-01 00:00:00",
+            end_utc="2018-12-31 23:55:00",
             min_sim_period="7D",
             min_chunk_period="30D",
+            step_size_minutes=5,
         )
 
-        cls.dc.get_data(tstat_sim_config=cls.tstat_sim_config)
-        cls.sim_hvac_data, cls.sim_weather_data = cls.dc.get_simulation_data(
-            cls.tstat_sim_config,
+        cls.data_clients = []
+        cls.data_client = DataClient(
+            source=GCSDYDSource(
+                gcp_project=os.environ.get("GOOGLE_CLOUD_PROJECT"),
+                gcs_uri_base=os.environ.get("DYD_GCS_URI_BASE"),
+            ),
+            nrel_dev_api_key=os.environ.get("NREL_DEV_API_KEY"),
+            nrel_dev_email=os.environ.get("NREL_DEV_EMAIL"),
+            archive_tmy3_dir=os.environ.get("ARCHIVE_TMY3_DIR"),
+            archive_tmy3_meta=os.environ.get("ARCHIVE_TMY3_META"),
+            archive_tmy3_data_dir=os.environ.get("ARCHIVE_TMY3_DATA_DIR"),
+            ep_tmy3_cache_dir=os.environ.get("EP_TMY3_CACHE_DIR"),
+            simulation_epw_dir=os.environ.get("SIMULATION_EPW_DIR"),
         )
+
+        for _idx, _sim_config in cls.sim_config.iterrows():
+            dc = copy.deepcopy(cls.data_client)
+            dc.sim_config = _sim_config
+
+            dc.get_data()
+
+            cls.data_clients.append(dc)
 
     @classmethod
     def teardown_class(cls):
@@ -59,52 +65,56 @@ class TestFlatFilesClient:
         """
         pass
 
-    def test_get_simulation_data(self):
+    def test_get_data(self):
         # test HVAC data returns dict of non-empty pd.DataFrame
-        for identifier, tstat in self.tstat_sim_config.iterrows():
-            assert all(
-                [
-                    isinstance(p, pd.DataFrame)
-                    for p in self.sim_hvac_data[identifier]
-                ]
-            )
-            assert all(
-                [
-                    isinstance(p, pd.DataFrame)
-                    for p in self.sim_weather_data[identifier]
-                ]
-            )
+        for dc in self.data_clients:
+            assert isinstance(dc.hvac.data, pd.DataFrame)
+            assert isinstance(dc.sensors.data, pd.DataFrame)
+            assert isinstance(dc.weather.data, pd.DataFrame)
 
     def test_read_epw(self):
         # read back cached filled epw files
-        for identifier, tstat in self.tstat_sim_config.iterrows():
-            if identifier in self.dc.weather.keys():
-                data, meta, meta_lines = self.dc.weather[identifier].read_epw(
-                    self.dc.weather[identifier].epw_fpath
+        for dc in self.data_clients:
+            if not dc.weather.data.empty:
+                data, meta, meta_lines = dc.weather.read_epw(
+                    dc.weather.epw_path
                 )
                 assert not data.empty
                 assert all(
                     data.columns
-                    == self.dc.weather[identifier].epw_columns
+                    == dc.weather.epw_columns
                     + [EnergyPlusWeather.datetime_column]
                 )
-            else:
-                assert self.dc.weather[identifier].data.empty
 
     def test_data_utc(self):
 
-        for identifier, tstat in self.tstat_sim_config.iterrows():
-            if not self.dc.hvac[identifier].data.empty:
+        for dc in self.data_clients:
+            if not dc.hvac.data.empty:
                 assert (
-                    self.dc.hvac[identifier]
-                    .data[self.dc.hvac[identifier].spec.datetime_column]
-                    .dt.tz
+                    dc.hvac.data[dc.hvac.spec.datetime_column].dt.tz
                     == pytz.utc
                 )
-            if not self.dc.weather[identifier].data.empty:
+            if not dc.weather.data.empty:
                 assert (
-                    self.dc.weather[identifier]
-                    .data[self.dc.weather[identifier].spec.datetime_column]
-                    .dt.tz
+                    dc.weather.data[dc.weather.spec.datetime_column].dt.tz
                     == pytz.utc
                 )
+
+    def test_fill_missing_data(self):
+        """Check that filled data exists and doesnt over fill"""
+        for dc in self.data_clients:
+            if (
+                dc.sim_config["identifier"]
+                == "2df6959cdf502c23f04f3155758d7b678af0c631"
+            ):
+                # verify that data bfill works with full_data_periods
+                assert (
+                    pytest.approx(30.0)
+                    == dc.hvac.data[20620:20627][
+                        STATES.TEMPERATURE_CTRL
+                    ].mean()
+                )
+                assert dc.full_data_periods[0] == [
+                    pd.Timestamp("2018-04-13 17:00:00", tz="utc"),
+                    pd.Timestamp("2018-04-26 15:55:00", tz="utc"),
+                ]

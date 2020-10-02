@@ -17,9 +17,8 @@ class DataSource(ABC):
     file_extension = attr.ib()
     data_spec = attr.ib()
     local_cache = attr.ib(default=os.environ.get("LOCAL_CACHE_DIR"))
-    data = attr.ib(default={})
+    data = attr.ib(factory=dict)
     source_name = attr.ib(default=None)
-    full_data_periods = attr.ib(default={})
 
     @abstractmethod
     def get_data(self, sim_config):
@@ -27,10 +26,12 @@ class DataSource(ABC):
 
     def put_cache(self, _df, local_cache_path):
         # only store cache if set local_cache dir
-        if self.local_cache_path:
+        if local_cache_path:
             os.makedirs(os.path.dirname(local_cache_path), exist_ok=True)
             # explictly infer compression from source file extension
             _df.to_csv(local_cache_path, compression="infer")
+        else:
+            logger.error("put_cache recieved no local_cache_path.")
 
     def get_local_cache_path(self, identifier):
         return os.path.join(
@@ -44,7 +45,6 @@ class DataSource(ABC):
             _df = pd.read_csv(
                 local_cache_path, usecols=self.data_spec.full.columns,
             )
-
         else:
             _df = self.get_empty_df()
 

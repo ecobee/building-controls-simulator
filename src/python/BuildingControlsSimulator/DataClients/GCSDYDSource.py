@@ -13,7 +13,7 @@ from BuildingControlsSimulator.DataClients.DataSpec import DonateYourDataSpec
 @attr.s(kw_only=True)
 class GCSDYDSource(GCSDataSource):
 
-    data_spec = attr.ib(default=DonateYourDataSpec)
+    data_spec = attr.ib(factory=DonateYourDataSpec)
     file_extension = attr.ib(default="csv.zip")
     source_name = attr.ib(default="GCSDYD")
 
