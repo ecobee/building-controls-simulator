@@ -291,7 +291,6 @@ class EnergyPlusBuildingModel(BuildingModel):
         self.fmu_output[STATES.STEP_STATUS][self.current_t_idx] = status
 
         # get fmi zone output
-        # breakpoint()
         for k, v in self.idf.output_spec.items():
             self.fmu_output[k][self.current_t_idx] = self.fmu.get(k)[0]
 

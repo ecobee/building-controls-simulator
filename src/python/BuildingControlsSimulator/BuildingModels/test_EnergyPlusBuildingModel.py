@@ -50,16 +50,6 @@ class TestEnergyPlusBuildingModel:
             )
             shutil.copyfile(_fpath, cls.dummy_idf_path)
 
-        # idf = IDFPreprocessor(
-        #     idf_file=cls.dummy_idf_path, init_temperature=20.0
-        # )
-        # idf.preprocess()
-
-        # idf_dupe = IDFPreprocessor(
-        #     idf_file=cls.dummy_idf_path, init_temperature=20.0
-        # )
-        # breakpoint()
-
         # make test/ dirs
         EnergyPlusBuildingModel.make_directories()
         cls.building_model = EnergyPlusBuildingModel(
