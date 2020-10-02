@@ -25,8 +25,7 @@ logger = logging.getLogger(__name__)
 
 @attr.s(kw_only=True)
 class Simulation:
-    """Converts IDFs (Input Data Files) for EnergyPlus into working IDFs.
-    """
+    """Converts IDFs (Input Data Files) for EnergyPlus into working IDFs."""
 
     building_model = attr.ib()
     controller_model = attr.ib()
@@ -41,7 +40,7 @@ class Simulation:
     start_utc = attr.ib(default=None)
     end_utc = attr.ib(default=None)
     output = attr.ib(default=None)
-    full_output = attr.ib(default=None)
+    full_input = attr.ib(default=None)
 
     def __attrs_post_init__(self):
         """validate input/output specs
@@ -97,14 +96,20 @@ class Simulation:
     @property
     def start_time_seconds(self):
         t_offset = self.start_utc - pd.Timestamp(
-            year=self.start_utc.year, month=1, day=1, tz="UTC",
+            year=self.start_utc.year,
+            month=1,
+            day=1,
+            tz="UTC",
         )
         return int(t_offset.total_seconds())
 
     @property
     def final_time_seconds(self):
         t_offset = self.end_utc - pd.Timestamp(
-            year=self.end_utc.year, month=1, day=1, tz="UTC",
+            year=self.end_utc.year,
+            month=1,
+            day=1,
+            tz="UTC",
         )
         return int(t_offset.total_seconds())
 
@@ -216,7 +221,7 @@ class Simulation:
 
         self.output = self.output[_mask]
 
-        self.full_output = self.get_full_input()[_mask]
+        self.full_input = self.get_full_input()[_mask]
 
     def get_full_input(self):
         full_input = pd.concat(
@@ -233,7 +238,7 @@ class Simulation:
 
     def show_plots(self):
         output_analysis = OutputAnalysis(df=self.output_df)
-        output_analysis.postprocess()
+        # output_analysis.postprocess()
         output_analysis.diagnostic_plot(show=True)
         # output_analysis.thermal_plot(show=True)
         # output_analysis.power_plot(show=True)

@@ -17,8 +17,7 @@ logger = logging.getLogger(__name__)
 
 @attr.s(kw_only=True, init=True)
 class IDFPreprocessor:
-    """Converts IDFs (Input Data Files) for EnergyPlus into working IDFs.
-    """
+    """Converts IDFs (Input Data Files) for EnergyPlus into working IDFs."""
 
     # user must supply an idf file as either 1) full path, or 2) a file in self.idf_dir
     idf_file = attr.ib()
@@ -148,7 +147,9 @@ class IDFPreprocessor:
         return os.path.join(self.idf_prep_dir, self.idf_prep_name)
 
     def preprocess(
-        self, init_temperature=21.0, preprocess_check=False,
+        self,
+        init_temperature=21.0,
+        preprocess_check=False,
     ):
         """add control signals to IDF before making FMU"""
 
@@ -235,7 +236,7 @@ class IDFPreprocessor:
         )
 
     def get_condtioned_zones(self):
-        """ get list of all zones that are condtioned
+        """get list of all zones that are condtioned
         conditioned zones are defined in IDF by:
         1. ZoneHVAC:EquipmentConnections
         2. ZoneVentilation:DesignFlowRate
@@ -261,7 +262,7 @@ class IDFPreprocessor:
         )
 
     def get_occupied_zones(self):
-        """ get list of all zones that are condtioned
+        """get list of all zones that are condtioned
         conditioned zones are defined in IDF by:
         1. people
         """
@@ -658,8 +659,7 @@ class IDFPreprocessor:
                 self.ep_idf.popidfobject(idf_obj_name, 0)
 
     def popifdobject_by_name(self, idf_objs, name):
-        """
-        """
+        """"""
         for i, s_obj in enumerate(
             self.ep_idf.idfobjects["ScheduleTypeLimits"]
         ):
@@ -675,8 +675,7 @@ class IDFPreprocessor:
         return version
 
     def check_valid_idf(self, idf_path, target_version=None):
-        """
-        """
+        """"""
         is_valid = False
         if os.path.isfile(idf_path):
             # any text file can be read by eppy and produce a garbage model
@@ -719,4 +718,3 @@ def fix_idf_version_line(idf_path, ep_version):
                     output.write(line)
 
     shutil.move(idf_path + ".patch", idf_path)
-

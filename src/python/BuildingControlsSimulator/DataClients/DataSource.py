@@ -34,16 +34,20 @@ class DataSource(ABC):
             logger.error("put_cache recieved no local_cache_path.")
 
     def get_local_cache_path(self, identifier):
-        return os.path.join(
-            self.local_cache,
-            self.source_name,
-            "{}.{}".format(identifier, self.file_extension),
-        )
+        if self.local_cache:
+            return os.path.join(
+                self.local_cache,
+                self.source_name,
+                "{}.{}".format(identifier, self.file_extension),
+            )
+        else:
+            logging.info("No local_cache provided. Set env LOCAL_CACHE_DIR.")
 
     def get_local_cache(self, local_cache_path):
         if os.path.exists(local_cache_path):
             _df = pd.read_csv(
-                local_cache_path, usecols=self.data_spec.full.columns,
+                local_cache_path,
+                usecols=self.data_spec.full.columns,
             )
         else:
             _df = self.get_empty_df()

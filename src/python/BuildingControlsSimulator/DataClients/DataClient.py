@@ -84,7 +84,8 @@ class DataClient:
         _expected_period = f"{self.sim_config['step_size_minutes']}M"
         # ffill first 15 minutes of missing data periods
         _data = DataClient.fill_missing_data(
-            full_data=_data, expected_period=_expected_period,
+            full_data=_data,
+            expected_period=_expected_period,
         )
         # compute full_data_periods with only first 15 minutes ffilled
         self.full_data_periods = DataClient.get_full_data_periods(
@@ -154,9 +155,12 @@ class DataClient:
         self.weather.make_epw_file(sim_config=self.sim_config)
 
     def get_metadata(self):
-        return pd.read_csv(self.meta_gs_uri).drop_duplicates(
-            subset=["Identifier"]
-        )
+        if self.meta_gs_uri:
+            return pd.read_csv(self.meta_gs_uri).drop_duplicates(
+                subset=["Identifier"]
+            )
+        else:
+            raise ValueError("Must supply `meta_gs_uri` to dataclient.")
 
     def get_simulation_period(self, expected_period):
         # set start and end times from full_data_periods and simulation config
@@ -322,16 +326,16 @@ class DataClient:
         full_data, expected_period="5M", min_sim_period="7D"
     ):
         """Get full data periods. These are the periods for which there is data
-        on all channels. Preliminary forward filling of the data is used to 
+        on all channels. Preliminary forward filling of the data is used to
         fill small periods of missing data where padding values is advantageous
         for examplem the majority of missing data periods are less than 15 minutes
         (3 message intervals).
 
         The remaining missing data is back filled after the full_data_periods are
         computed to allow the simulations to run continously. Back fill is used
-        because set point changes during the missing data period should be 
+        because set point changes during the missing data period should be
         assumed to be not in tracking mode and in regulation mode after greater
-        than 
+        than
         """
 
         if full_data.empty:
@@ -378,7 +382,10 @@ class DataClient:
 
     @staticmethod
     def fill_missing_data(
-        full_data, expected_period, limit=3, method="ffill",
+        full_data,
+        expected_period,
+        limit=3,
+        method="ffill",
     ):
         """Fill periods of missing data within limit using method.
         Periods larger than limit will not be partially filled."""
