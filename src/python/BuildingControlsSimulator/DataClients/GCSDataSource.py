@@ -18,6 +18,7 @@ logger = logging.getLogger(__name__)
 @attr.s(kw_only=True)
 class GCSDataSource(DataSource, ABC):
 
+    # TODO: add validators
     gcs_cache = attr.ib(default=None)
     gcp_project = attr.ib(default=None)
     gcs_uri_base = attr.ib(default=None)
@@ -79,11 +80,17 @@ class GCSDataSource(DataSource, ABC):
 
     def get_gcs_cache(self, gcs_uri):
         try:
-            _df = pd.read_csv(gcs_uri, usecols=self.data_spec.full.columns,)
+            _df = pd.read_csv(
+                gcs_uri,
+                usecols=self.data_spec.full.columns,
+            )
         except FileNotFoundError:
             # file not found in DYD
             logging.error(
-                (f"File: {gcs_uri}", " not found in gcs cache dataset.",)
+                (
+                    f"File: {gcs_uri}",
+                    " not found in gcs cache dataset.",
+                )
             )
             _df = self.get_empty_df()
 

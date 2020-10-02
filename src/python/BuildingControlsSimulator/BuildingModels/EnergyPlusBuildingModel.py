@@ -43,10 +43,7 @@ class EPLUS_THERMOSTAT_MODES(IntEnum):
 
 @attr.s(kw_only=True)
 class EnergyPlusBuildingModel(BuildingModel):
-    """Abstract Base Class for building models
-
-
-    """
+    """Abstract Base Class for building models"""
 
     idf = attr.ib()
     weather_dir = attr.ib(default=os.environ.get("WEATHER_DIR"))
@@ -180,14 +177,14 @@ class EnergyPlusBuildingModel(BuildingModel):
 
         # EnergyPlusToFMU puts fmu in cwd always, move out of cwd
         shutil.move(
-            os.path.join(os.getcwd(), self.init_fmu_name), self.fmu_path,
+            os.path.join(os.getcwd(), self.init_fmu_name),
+            self.fmu_path,
         )
 
         return self.fmu_path
 
     def initialize(self, t_start, t_end, t_step, categories_dict={}):
-        """
-        """
+        """"""
         logger.info(f"Initializing EnergyPlusBuildingModel: {self.fmu_path}")
         self.allocate_output_memory(t_start, t_end, t_step, categories_dict)
         self.init_step_output()
@@ -209,8 +206,7 @@ class EnergyPlusBuildingModel(BuildingModel):
         self.step_output[STATES.THERMOSTAT_MOTION] = False
 
     def allocate_output_memory(self, t_start, t_end, t_step, categories_dict):
-        """preallocate output memory as numpy arrays to speed up simulation
-        """
+        """preallocate output memory as numpy arrays to speed up simulation"""
         # reset output memory
         self.output = {}
         self.fmu_output = {}
@@ -239,7 +235,9 @@ class EnergyPlusBuildingModel(BuildingModel):
                     Internal.full.spec[state]["dtype"]
                 )
                 self.output[state] = np.full(
-                    n_s, np_default_value, dtype=np_dtype,
+                    n_s,
+                    np_default_value,
+                    dtype=np_dtype,
                 )
 
         # add fmu state variables
@@ -278,7 +276,9 @@ class EnergyPlusBuildingModel(BuildingModel):
         self.actuate_HVAC_equipment(step_control_input)
 
         status = self.fmu.do_step(
-            current_t=t_start, step_size=t_step, new_step=True,
+            current_t=t_start,
+            step_size=t_step,
+            new_step=True,
         )
         self.update_output(status, step_sensor_input)
 
@@ -291,7 +291,6 @@ class EnergyPlusBuildingModel(BuildingModel):
         self.fmu_output[STATES.STEP_STATUS][self.current_t_idx] = status
 
         # get fmi zone output
-        # breakpoint()
         for k, v in self.idf.output_spec.items():
             self.fmu_output[k][self.current_t_idx] = self.fmu.get(k)[0]
 

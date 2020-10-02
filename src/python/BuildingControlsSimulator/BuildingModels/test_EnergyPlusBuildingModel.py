@@ -36,7 +36,9 @@ class TestEnergyPlusBuildingModel:
         )
         if not os.path.isfile(cls.dummy_epw_path):
             _fpath = os.path.join(
-                os.environ.get("EPLUS_DIR"), "WeatherData", cls.dummy_epw_name,
+                os.environ.get("EPLUS_DIR"),
+                "WeatherData",
+                cls.dummy_epw_name,
             )
             shutil.copyfile(_fpath, cls.dummy_epw_path)
 
@@ -50,21 +52,12 @@ class TestEnergyPlusBuildingModel:
             )
             shutil.copyfile(_fpath, cls.dummy_idf_path)
 
-        # idf = IDFPreprocessor(
-        #     idf_file=cls.dummy_idf_path, init_temperature=20.0
-        # )
-        # idf.preprocess()
-
-        # idf_dupe = IDFPreprocessor(
-        #     idf_file=cls.dummy_idf_path, init_temperature=20.0
-        # )
-        # breakpoint()
-
         # make test/ dirs
         EnergyPlusBuildingModel.make_directories()
         cls.building_model = EnergyPlusBuildingModel(
             idf=IDFPreprocessor(
-                idf_file=cls.dummy_idf_path, init_temperature=20.0,
+                idf_file=cls.dummy_idf_path,
+                init_temperature=20.0,
             ),
             epw_path=cls.dummy_epw_path,
             timesteps_per_hour=12,
@@ -74,7 +67,7 @@ class TestEnergyPlusBuildingModel:
 
     @classmethod
     def teardown_class(cls):
-        """ teardown any state that was previously setup with a call to
+        """teardown any state that was previously setup with a call to
         setup_class.
         """
         pass
@@ -102,7 +95,7 @@ class TestEnergyPlusBuildingModel:
 
     def test_fmu_compliance(self):
         """test that fmu file is compliant with FMI.
-        
+
         Note: if this test fails check ./Output_EPExport_Slave/Furnace_prep.err
         """
         output_path = os.path.join(
@@ -132,7 +125,7 @@ class TestEnergyPlusBuildingModel:
 
     def test_simulate_fmu(self):
         """test that fmu can be simulated with pyfmi
-        
+
         Note: if this test fails check ./Output_EPExport_Slave/Furnace_prep.err
         """
         fmu = pyfmi.load_fmu(self.building_model.fmu_path)
@@ -153,7 +146,7 @@ class TestEnergyPlusBuildingModel:
     )
     def test_step_fmu(self):
         """test that fmu can be simulated with pyfmi
-        
+
         Note: if this test fails check ./Output_EPExport_Slave/Furnace_prep.err
         """
         fmu = pyfmi.load_fmu(self.building_model.fmu_path)
@@ -167,7 +160,9 @@ class TestEnergyPlusBuildingModel:
 
         for i in range(ns):
             status[i] = fmu.do_step(
-                current_t=t_start, step_size=t_step, new_step=True,
+                current_t=t_start,
+                step_size=t_step,
+                new_step=True,
             )
             t_start += t_step
         logger.info(f"status={all(status == 0)}")
@@ -179,7 +174,7 @@ class TestEnergyPlusBuildingModel:
 
     def test_step_model(self):
         """test that fmu can be simulated with pyfmi
-        
+
         Note: if this test fails check ./Output_EPExport_Slave/Furnace_prep.err
         """
         t_start = 0
