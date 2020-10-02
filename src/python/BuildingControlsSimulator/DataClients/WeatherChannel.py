@@ -25,17 +25,17 @@ class WeatherChannel(DataChannel):
     """
 
     epw_path = attr.ib(default=None)
-    epw_data = attr.ib(default={})
-    epw_meta = attr.ib(default={})
+    epw_data = attr.ib(factory=dict)
+    epw_meta = attr.ib(factory=dict)
 
     # env variables
+    ep_tmy3_cache_dir = attr.ib()
+    simulation_epw_dir = attr.ib()
     nrel_dev_api_key = attr.ib(default=None)
     nrel_dev_email = attr.ib(default=None)
     archive_tmy3_dir = attr.ib(default=None)
     archive_tmy3_meta = attr.ib(default=None)
     archive_tmy3_data_dir = attr.ib(default=None)
-    ep_tmy3_cache_dir = attr.ib()
-    simulation_epw_dir = attr.ib()
 
     # column names
     datetime_column = attr.ib(default=EnergyPlusWeather.datetime_column)
@@ -223,7 +223,8 @@ class WeatherChannel(DataChannel):
         cache_name = (
             f"eplus_geojson_cache_{datetime.today().strftime('%Y_%m_%d')}.csv"
         )
-        cache_path = os.path.join(self.archive_tmy3_dir, cache_name)
+        if self.archive_tmy3_dir:
+            cache_path = os.path.join(self.archive_tmy3_dir, cache_name)
         if self.archive_tmy3_dir and os.path.exists(cache_path):
             logger.info(
                 f"Reading TMY weather geojson from cache: {cache_path}"

@@ -32,6 +32,8 @@ class TestSimulator:
 
         EnergyPlusBuildingModel.make_directories()
 
+        # the weather file here does not need to be correct for IDF file
+        # this is closest file found in standard EPlus installation
         weather_name = "USA_FL_Tampa.Intl.AP.722110_TMY3.epw"
         cls.test_weather_path = os.path.join(
             os.environ.get("WEATHER_DIR"), weather_name
@@ -47,8 +49,6 @@ class TestSimulator:
         cls.deadband_fmu_path = (
             f"{os.environ.get('FMU_DIR')}/../fmu-models/deadband/deadband.fmu"
         )
-
-        cls.idtm_fmu_path = f"{os.environ.get('FMU_DIR')}/../fmu-models/idtm.0f94bb5d90d898380ff165b5caf1a70171c3bacc.fmu"
 
         cls.dc = DataClient(
             source=GCSDYDSource(
@@ -97,12 +97,12 @@ class TestSimulator:
         )
         master.simulate(local=True, preprocess_check=True)
         assert (
-            pytest.approx(27.363228, 0.1)
+            pytest.approx(27.380976, 0.1)
             == master.simulations[0]
             .output[STATES.THERMOSTAT_TEMPERATURE]
             .mean()
         )
         assert (
-            pytest.approx(0.18416277, 0.1)
+            pytest.approx(0.18192752, 0.1)
             == master.simulations[0].output[STATES.THERMOSTAT_HUMIDITY].mean()
         )

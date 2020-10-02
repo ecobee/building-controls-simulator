@@ -22,7 +22,7 @@ class DataClient:
     hvac = attr.ib(default=None)
     sensors = attr.ib(default=None)
     weather = attr.ib(default=None)
-    full_data_periods = attr.ib(default=[])
+    full_data_periods = attr.ib(factory=list)
 
     # input variables
     source = attr.ib(validator=attr.validators.instance_of(DataSource))
@@ -75,11 +75,10 @@ class DataClient:
 
         _data = _data.drop_duplicates(ignore_index=True).reset_index(drop=True)
         _data = _data.sort_values(Internal.datetime_column, ascending=True)
-
         # truncate the data to desired simulation start and end time
         _data = _data[
             (_data[Internal.datetime_column] >= self.sim_config["start_utc"])
-            & (_data[Internal.datetime_column] < self.sim_config["end_utc"])
+            & (_data[Internal.datetime_column] <= self.sim_config["end_utc"])
         ].reset_index(drop=True)
 
         _expected_period = f"{self.sim_config['step_size_minutes']}M"
@@ -87,7 +86,6 @@ class DataClient:
         _data = DataClient.fill_missing_data(
             full_data=_data, expected_period=_expected_period,
         )
-
         # compute full_data_periods with only first 15 minutes ffilled
         self.full_data_periods = DataClient.get_full_data_periods(
             full_data=_data,
@@ -111,7 +109,7 @@ class DataClient:
         # end is less than
         _data = _data[
             (_data[Internal.datetime_column] >= _start_utc)
-            & (_data[Internal.datetime_column] < _end_utc)
+            & (_data[Internal.datetime_column] <= _end_utc)
         ].reset_index(drop=True)
 
         # bfill to interpolate missing data
@@ -163,64 +161,68 @@ class DataClient:
     def get_simulation_period(self, expected_period):
         # set start and end times from full_data_periods and simulation config
         # take limiting period as start_utc and end_utc
-        if self.sim_config["start_utc"] > self.full_data_periods[0][0]:
-            self.start_utc = self.sim_config["start_utc"]
-        else:
-            logger.info(
-                f"config start_utc={self.sim_config['start_utc']} is before "
-                + f"first full data period={self.full_data_periods[0][0]}. "
-                + "Simulation start_utc set to first full data period."
-            )
-            self.start_utc = self.full_data_periods[0][0]
+        if self.full_data_periods:
+            if self.sim_config["start_utc"] >= self.full_data_periods[0][0]:
+                self.start_utc = self.sim_config["start_utc"]
+            else:
+                logger.info(
+                    f"config start_utc={self.sim_config['start_utc']} is before "
+                    + f"first full data period={self.full_data_periods[0][0]}. "
+                    + "Simulation start_utc set to first full data period."
+                )
+                self.start_utc = self.full_data_periods[0][0]
 
-        if self.sim_config["end_utc"] < self.full_data_periods[-1][-1]:
-            self.end_utc = self.sim_config["end_utc"]
-        else:
-            logger.info(
-                f"config end_utc={self.sim_config['end_utc']} is after "
-                + f"last full data period={self.full_data_periods[-1][-1]}. "
-                + "Simulation end_utc set to last full data period."
-            )
-            self.end_utc = self.full_data_periods[-1][-1]
+            if self.sim_config["end_utc"] <= self.full_data_periods[-1][-1]:
+                self.end_utc = self.sim_config["end_utc"]
+            else:
+                logger.info(
+                    f"config end_utc={self.sim_config['end_utc']} is after "
+                    + f"last full data period={self.full_data_periods[-1][-1]}. "
+                    + "Simulation end_utc set to last full data period."
+                )
+                self.end_utc = self.full_data_periods[-1][-1]
 
-        if self.end_utc < self.start_utc:
-            raise ValueError(
-                f"end_utc={self.end_utc} before start_utc={self.start_utc}.\n"
-                + f"Set sim_config start_utc and end_utc within "
-                + f"full_data_period: {self.full_data_periods[0][0]} to "
-                + f"{self.full_data_periods[-1][-1]}"
-            )
+            if self.end_utc < self.start_utc:
+                raise ValueError(
+                    f"end_utc={self.end_utc} before start_utc={self.start_utc}.\n"
+                    + f"Set sim_config start_utc and end_utc within "
+                    + f"full_data_period: {self.full_data_periods[0][0]} to "
+                    + f"{self.full_data_periods[-1][-1]}"
+                )
 
-        _start_utc, _end_utc = DataClient.eplus_day_fill_simulation_time(
-            start_utc=self.start_utc,
-            end_utc=self.end_utc,
-            expected_period=expected_period,
-        )
-        _minimum_warmup_seconds = 2 * 3600
-        if (
-            self.start_utc - _start_utc
-        ).total_seconds() < _minimum_warmup_seconds:
-            # attempt to enforce a minimum warmup time in EnergyPlus
-            (
-                _retry_start_utc,
-                _retry_end_utc,
-            ) = DataClient.eplus_day_fill_simulation_time(
-                start_utc=self.start_utc
-                - pd.Timedelta(seconds=_minimum_warmup_seconds),
+            _start_utc, _end_utc = DataClient.eplus_day_fill_simulation_time(
+                start_utc=self.start_utc,
                 end_utc=self.end_utc,
                 expected_period=expected_period,
             )
-            if _retry_start_utc.year == _start_utc.year:
-                _start_utc = _retry_start_utc
-                _end_utc = _retry_end_utc
+            _minimum_warmup_seconds = 2 * 3600
+            if (
+                self.start_utc - _start_utc
+            ).total_seconds() < _minimum_warmup_seconds:
+                # attempt to enforce a minimum warmup time in EnergyPlus
+                (
+                    _retry_start_utc,
+                    _retry_end_utc,
+                ) = DataClient.eplus_day_fill_simulation_time(
+                    start_utc=self.start_utc
+                    - pd.Timedelta(seconds=_minimum_warmup_seconds),
+                    end_utc=self.end_utc,
+                    expected_period=expected_period,
+                )
+                if _retry_start_utc.year == _start_utc.year:
+                    _start_utc = _retry_start_utc
+                    _end_utc = _retry_end_utc
 
-        self.start_utc = _start_utc
-        self.end_utc = _end_utc
+            self.start_utc = _start_utc
+            self.end_utc = _end_utc
 
         return self.start_utc, self.end_utc
 
     @staticmethod
     def add_null_records(df, start_utc, end_utc, expected_period):
+        if not (start_utc and end_utc):
+            return df
+
         rec = pd.Series(pd.NA, index=df.columns)
 
         should_resample = False
@@ -265,12 +267,18 @@ class DataClient:
         # backfilled is more desirable than adding time to end of simulation
         # this time will not be included in the full_data_periods and thus
         # will not be considered during analysis
-        add_timedelta = pd.Timedelta(days=(end_utc - start_utc).days + 1) - (
-            end_utc - start_utc
+
+        # the added_timedelta is the difference to wholes days minus one period
+        # this period can be considered 23:55 to 00:00
+        # EnergyPlus will be initialized for this extra period but not simulated
+        add_timedelta = (
+            pd.Timedelta(days=(end_utc - start_utc).days + 1)
+            - (end_utc - start_utc)
+            - pd.Timedelta(expected_period)
         )
 
         # check if need to add time
-        if add_timedelta >= pd.Timedelta(expected_period):
+        if add_timedelta != pd.Timedelta(days=1):
             # check if time available at start of year or end of year
             # EPlus requires single year simulations
 

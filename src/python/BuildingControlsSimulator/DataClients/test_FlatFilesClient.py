@@ -27,7 +27,7 @@ class TestFlatFilesClient:
             identifier=[
                 os.environ.get("TEST_FLATFILES_IDENTIFIER_MISSING"),  # missing
                 os.environ.get("TEST_FLATFILES_IDENTIFIER_FULL"),  # full
-                "17676",  # file not found
+                "9999999",  # file not found
             ],
             latitude=33.481136,
             longitude=-112.078232,
@@ -67,15 +67,12 @@ class TestFlatFilesClient:
         """
         pass
 
-    def test_get_simulation_data(self):
+    def test_get_data(self):
         # test HVAC data returns dict of non-empty pd.DataFrame
         for dc in self.data_clients:
-            assert all(
-                [isinstance(_df, pd.DataFrame) for _df in dc.hvac.sim_data]
-            )
-            assert all(
-                [isinstance(_df, pd.DataFrame) for _df in dc.weather.sim_data]
-            )
+            assert isinstance(dc.hvac.data, pd.DataFrame)
+            assert isinstance(dc.sensors.data, pd.DataFrame)
+            assert isinstance(dc.weather.data, pd.DataFrame)
 
     def test_read_epw(self):
         # read back cached filled epw files
@@ -111,16 +108,21 @@ class TestFlatFilesClient:
             if dc.sim_config["identifier"] == os.environ.get(
                 "TEST_FLATFILES_IDENTIFIER_FULL"
             ):
-                # verify that data ffill and bfill works with full_data_periods
+                # verify that data bfill works with full_data_periods
                 assert (
-                    pytest.approx(26.722221)
-                    == dc.hvac.data[5163:5166][STATES.TEMPERATURE_CTRL].mean()
+                    pytest.approx(26.864197)
+                    == dc.hvac.data[
+                        (
+                            dc.hvac.data[STATES.DATE_TIME]
+                            >= pd.Timestamp("2018-06-18 22:10:00", tz="utc")
+                        )
+                        & (
+                            dc.hvac.data[STATES.DATE_TIME]
+                            <= pd.Timestamp("2018-06-18 22:50:00", tz="utc")
+                        )
+                    ][STATES.TEMPERATURE_CTRL].mean()
                 )
-                assert (
-                    pytest.approx(26.888889)
-                    == dc.hvac.data[5166:5170][STATES.TEMPERATURE_CTRL].mean()
-                )
-                assert dc.full_data_periods[0] == (
+                assert dc.full_data_periods[0] == [
                     pd.to_datetime("2018-06-10 04:00:00", utc=True),
-                    pd.to_datetime("2018-06-18 22:25:00", utc=True),
-                )
+                    pd.to_datetime("2018-06-18 22:10:00", utc=True),
+                ]

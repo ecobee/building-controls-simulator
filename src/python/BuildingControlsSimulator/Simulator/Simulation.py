@@ -168,7 +168,7 @@ class Simulation:
         _sim_start_proc_time = time.process_time()
         _sim_time = np.arange(
             self.start_time_seconds,
-            self.final_time_seconds,
+            self.final_time_seconds + self.step_size_seconds,
             self.step_size_seconds,
             dtype="int64",
         )

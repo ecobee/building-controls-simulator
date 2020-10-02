@@ -28,8 +28,8 @@ class TestFlatFilesClient:
             ],
             latitude=33.481136,
             longitude=-112.078232,
-            start_utc="2018-01-01",
-            end_utc="2018-12-31",
+            start_utc="2018-01-01 00:00:00",
+            end_utc="2018-12-31 23:55:00",
             min_sim_period="7D",
             min_chunk_period="30D",
             step_size_minutes=5,
@@ -65,15 +65,12 @@ class TestFlatFilesClient:
         """
         pass
 
-    def test_get_simulation_data(self):
+    def test_get_data(self):
         # test HVAC data returns dict of non-empty pd.DataFrame
         for dc in self.data_clients:
-            assert all(
-                [isinstance(_df, pd.DataFrame) for _df in dc.hvac.sim_data]
-            )
-            assert all(
-                [isinstance(_df, pd.DataFrame) for _df in dc.weather.sim_data]
-            )
+            assert isinstance(dc.hvac.data, pd.DataFrame)
+            assert isinstance(dc.sensors.data, pd.DataFrame)
+            assert isinstance(dc.weather.data, pd.DataFrame)
 
     def test_read_epw(self):
         # read back cached filled epw files
@@ -110,16 +107,14 @@ class TestFlatFilesClient:
                 dc.sim_config["identifier"]
                 == "2df6959cdf502c23f04f3155758d7b678af0c631"
             ):
-                # verify that data ffill and bfill works with full_data_periods
+                # verify that data bfill works with full_data_periods
                 assert (
-                    pytest.approx(21.11111)
-                    == dc.hvac.data[1382:1385][STATES.TEMPERATURE_CTRL].mean()
+                    pytest.approx(30.0)
+                    == dc.hvac.data[20620:20627][
+                        STATES.TEMPERATURE_CTRL
+                    ].mean()
                 )
-                assert (
-                    pytest.approx(20.555555)
-                    == dc.hvac.data[1385:1389][STATES.TEMPERATURE_CTRL].mean()
-                )
-                assert dc.full_data_periods[0] == (
-                    pd.to_datetime("2018-04-13 17:00:00", utc=True),
-                    pd.to_datetime("2018-04-26 16:10:00", utc=True),
-                )
+                assert dc.full_data_periods[0] == [
+                    pd.Timestamp("2018-04-13 17:00:00", tz="utc"),
+                    pd.Timestamp("2018-04-26 15:55:00", tz="utc"),
+                ]

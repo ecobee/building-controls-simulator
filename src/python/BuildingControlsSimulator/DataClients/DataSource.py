@@ -17,9 +17,8 @@ class DataSource(ABC):
     file_extension = attr.ib()
     data_spec = attr.ib()
     local_cache = attr.ib(default=os.environ.get("LOCAL_CACHE_DIR"))
-    data = attr.ib(default={})
+    data = attr.ib(factory=dict)
     source_name = attr.ib(default=None)
-    full_data_periods = attr.ib(default={})
 
     @abstractmethod
     def get_data(self, sim_config):

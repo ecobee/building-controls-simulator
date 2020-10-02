@@ -44,7 +44,8 @@ class Simulator:
             iterable_validator=attr.validators.instance_of(list),
         )
     )
-    simulations = attr.ib(default=[])
+    simulations = attr.ib(factory=list)
+
     output_data_dir = attr.ib(
         default=os.path.join(os.environ.get("OUTPUT_DIR"), "data")
     )

@@ -60,7 +60,7 @@ class Spec:
         return {k: v["internal_state"] for k, v in self.spec.items()}
 
 
-@attr.s(frozen=True)
+@attr.s()
 class Internal:
     """Definition of internal data fields and types.
     For details of string dtype aliases see: 
@@ -348,7 +348,10 @@ class Internal:
         a channel be composed from multiple sources."""
         for k, v in _spec.items():
             if k in df.columns:
-                if v["unit"] != Internal.full.spec[v["internal_state"]]["unit"]:
+                if (
+                    v["unit"]
+                    != Internal.full.spec[v["internal_state"]]["unit"]
+                ):
                     if (v["unit"] == UNITS.FARHENHEIT) and (
                         Internal.full.spec[v["internal_state"]]["unit"]
                         == UNITS.CELSIUS
@@ -363,7 +366,9 @@ class Internal:
                         logger.error(
                             "Unsupported conversion: {} to {}".format(
                                 v["unit"],
-                                Internal.full.spec[v["internal_state"]]["unit"],
+                                Internal.full.spec[v["internal_state"]][
+                                    "unit"
+                                ],
                             )
                         )
         return df

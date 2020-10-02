@@ -57,14 +57,21 @@ class EnergyPlusBuildingModel(BuildingModel):
     fmu_dir = attr.ib(default=os.environ.get("FMU_DIR"))
     eplustofmu_path = attr.ib(default=os.environ.get("ENERGYPLUSTOFMUSCRIPT"))
     ext_dir = attr.ib(default=os.environ.get("EXT_DIR"))
-    fmu_output = attr.ib(default={})
-    output = attr.ib(default={})
-    step_output = attr.ib(default={})
+    fmu_output = attr.ib(factory=dict)
+    output = attr.ib(factory=dict)
+    step_output = attr.ib(factory=dict)
     init_humidity = attr.ib(default=50.0)
     init_temperature = attr.ib(default=21.0)
+    fmu = attr.ib(default=None)
 
-    input_states = attr.ib(
-        default=[
+    # for reference on how attr defaults wor for mutable types (e.g. list) see:
+    # https://www.attrs.org/en/stable/init.html#defaults
+    input_states = attr.ib()
+    output_states = attr.ib()
+
+    @input_states.default
+    def get_input_states(self):
+        return [
             STATES.AUXHEAT1,
             STATES.AUXHEAT2,
             STATES.AUXHEAT3,
@@ -76,17 +83,14 @@ class EnergyPlusBuildingModel(BuildingModel):
             STATES.FAN_STAGE_TWO,
             STATES.FAN_STAGE_THREE,
         ]
-    )
 
-    output_states = attr.ib(
-        default=[
+    @output_states.default
+    def get_output_states(self):
+        return [
             STATES.THERMOSTAT_TEMPERATURE,
             STATES.THERMOSTAT_HUMIDITY,
             STATES.THERMOSTAT_MOTION,
         ]
-    )
-
-    fmu = attr.ib(default=None)
 
     def __attrs_post_init__(self):
         pass
@@ -189,7 +193,8 @@ class EnergyPlusBuildingModel(BuildingModel):
         self.init_step_output()
 
         self.fmu = pyfmi.load_fmu(fmu=self.fmu_path)
-        self.fmu.initialize(t_start, t_end)
+        # initialize for extra step to keep whole days for final period at 23:55
+        self.fmu.initialize(t_start, t_end + t_step)
 
     def tear_down(self):
         """tear down FMU"""
@@ -206,10 +211,13 @@ class EnergyPlusBuildingModel(BuildingModel):
     def allocate_output_memory(self, t_start, t_end, t_step, categories_dict):
         """preallocate output memory as numpy arrays to speed up simulation
         """
+        # reset output memory
+        self.output = {}
+        self.fmu_output = {}
 
         self.output = {
             STATES.SIMULATION_TIME: np.arange(
-                t_start, t_end, t_step, dtype="int64"
+                t_start, t_end + t_step, t_step, dtype="int64"
             )
         }
         n_s = len(self.output[STATES.SIMULATION_TIME])
@@ -282,7 +290,8 @@ class EnergyPlusBuildingModel(BuildingModel):
 
         self.fmu_output[STATES.STEP_STATUS][self.current_t_idx] = status
 
-        # first get fmi zone output
+        # get fmi zone output
+        # breakpoint()
         for k, v in self.idf.output_spec.items():
             self.fmu_output[k][self.current_t_idx] = self.fmu.get(k)[0]
 

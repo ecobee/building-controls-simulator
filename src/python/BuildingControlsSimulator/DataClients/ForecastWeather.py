@@ -27,8 +27,42 @@ class EnergyPlusWeather(object):
     end_time_UTC = attr.ib()
     data_dir = attr.ib()
 
-    headers = attr.ib(
-        default=[
+    data_source = attr.ib(default="dyd")
+    gcs_project = attr.ib(default="datascience-181217")
+    gcs_bucket = attr.ib(default="donate_your_data_2019")
+    weather_dir = attr.ib(default=os.environ.get("WEATHER_DIR"))
+
+    meta_dir = attr.ib(
+        default=os.path.join(
+            os.environ.get("PACKAGE_DIR"), "data", "dyd", "meta"
+        )
+    )
+    meta_fname = attr.ib(default="meta_data.csv")
+    meta_gs_uri = attr.ib(default="gs://donate_your_data_2019/meta_data.csv")
+
+    latitude = attr.ib(default=None)
+    longitude = attr.ib(default=None)
+    timezone = attr.ib(default=None)
+
+    postal_code = attr.ib(default=None)
+
+    country = attr.ib(default=None)
+    prov_state = attr.ib(default=None)
+    city = attr.ib(default=None)
+
+    forecast_model = attr.ib(default=None)
+
+    # local or distributed hosting
+    backing = attr.ib(default="local")
+
+    # for reference on how attr defaults wor for mutable types (e.g. list) see:
+    # https://www.attrs.org/en/stable/init.html#defaults
+    headers = attr.ib()
+    colnames = attr.ib()
+
+    @headers.default
+    def _get_headers(self):
+        return [
             "loc",
             "city",
             "state-prov",
@@ -40,10 +74,10 @@ class EnergyPlusWeather(object):
             "TZ",
             "altitude",
         ]
-    )
 
-    colnames = attr.ib(
-        default=[
+    @colnames.default
+    def _get_colnames(self):
+        return [
             "year",
             "month",
             "day",
@@ -80,35 +114,6 @@ class EnergyPlusWeather(object):
             "liquid_precipitation_depth",
             "liquid_precipitation_quantity",
         ]
-    )
-
-    data_source = attr.ib(default="dyd")
-    gcs_project = attr.ib(default="datascience-181217")
-    gcs_bucket = attr.ib(default="donate_your_data_2019")
-    weather_dir = attr.ib(default=os.environ.get("WEATHER_DIR"))
-
-    meta_dir = attr.ib(
-        default=os.path.join(
-            os.environ.get("PACKAGE_DIR"), "data", "dyd", "meta"
-        )
-    )
-    meta_fname = attr.ib(default="meta_data.csv")
-    meta_gs_uri = attr.ib(default="gs://donate_your_data_2019/meta_data.csv")
-
-    latitude = attr.ib(default=None)
-    longitude = attr.ib(default=None)
-    timezone = attr.ib(default=None)
-
-    postal_code = attr.ib(default=None)
-
-    country = attr.ib(default=None)
-    prov_state = attr.ib(default=None)
-    city = attr.ib(default=None)
-
-    forecast_model = attr.ib(default=None)
-
-    # local or distributed hosting
-    backing = attr.ib(default="local")
 
     def __attrs_post_init__(self):
         """
