@@ -21,8 +21,7 @@ logger = logging.getLogger(__name__)
 
 @attr.s(kw_only=True)
 class WeatherChannel(DataChannel):
-    """Client for weather data.
-    """
+    """Client for weather data."""
 
     epw_path = attr.ib(default=None)
     epw_data = attr.ib(factory=dict)
@@ -43,21 +42,17 @@ class WeatherChannel(DataChannel):
     epw_meta_keys = attr.ib(default=EnergyPlusWeather.epw_meta)
     epw_column_map = attr.ib(default=EnergyPlusWeather.output_rename_dict)
 
-    def get_epw_path(self, identifier, fill_epw_fname):
-        os.path.join(
-            self.simulation_epw_dir,
-            f"{self.data_source_name}"
-            + f"_{identifier}"
-            + f"_{fill_epw_fname}",
-        )
-
     def make_epw_file(self, sim_config):
         _epw_path = None
         # attempt to get .epw data from NREL
         fill_epw_path, fill_epw_fname = self.get_tmy_epw(
             sim_config["latitude"], sim_config["longitude"]
         )
-        (fill_epw_data, epw_meta, meta_lines,) = self.read_epw(fill_epw_path)
+        (
+            fill_epw_data,
+            epw_meta,
+            meta_lines,
+        ) = self.read_epw(fill_epw_path)
 
         if not fill_epw_data.empty:
             _epw_path = os.path.join(
@@ -69,7 +64,10 @@ class WeatherChannel(DataChannel):
 
             # fill any missing fields in epw
             # need to pass in original dyd datetime column name
-            epw_data = self.fill_epw(self.data, fill_epw_data,)
+            epw_data = self.fill_epw(
+                self.data,
+                fill_epw_data,
+            )
 
             # save to file
             self.to_epw(
@@ -406,9 +404,10 @@ class WeatherChannel(DataChannel):
             )
             # loop over spec columns and replace missing values
             for _col in self.spec.columns:
-                fill_data.loc[fill_data[_col].isnull(), _col,] = fill_data[
-                    EnergyPlusWeather.output_rename_dict[_col]
-                ]
+                fill_data.loc[
+                    fill_data[_col].isnull(),
+                    _col,
+                ] = fill_data[EnergyPlusWeather.output_rename_dict[_col]]
 
                 fill_data[
                     EnergyPlusWeather.output_rename_dict[_col]

@@ -28,8 +28,16 @@ class TestGCSFlatFilesSource:
             ],
             latitude=33.481136,
             longitude=-112.078232,
-            start_utc="2018-01-01 00:00:00",
-            end_utc="2018-12-31 23:55:00",
+            start_utc=[
+                "2018-01-01 00:00:00",
+                "2018-01-01 00:00:00",
+                "2018-01-01 00:00:00",
+            ],
+            end_utc=[
+                "2018-12-31 23:55:00",
+                "2018-12-31 23:55:00",
+                "2018-12-31 23:55:00",
+            ],
             min_sim_period="7D",
             min_chunk_period="30D",
             step_size_minutes=5,
