@@ -23,11 +23,16 @@ You're going to need Docker Desktop installed, if not see https://www.docker.com
 
 `docker-compose.yml` defines the Dockerfile and image to use, ports to map, and volumes to mount. It also specifies the env file `.env` to inject environment variables that are needed both to build the container and to be used inside the container. As a user all you need to know is that any API keys or GCP variables are stored here (safely) the default EnergyPlus version is 8-9-0, and this can be changed later very easily. 
 
-
-Copy the template and fill in the variables mentioned below:
+Copy the template files and fill in the variables mentioned below:
 ```bash
 cp .env.template .env
+cp docker-compose.yml.template docker-compose.yml
 ```
+Note: `docker-compose` behaviour may be slightly different on your host OS 
+(Windows, Mac OS, Linux) with respect to how the expansion of environment 
+variables works. If the base `docker-compose.yml` file fails on interpreting 
+variables, try inlining those specific variables, e.g. replacing `${LOCAL_PACKAGE_DIR}` 
+with `<where you cloned the repo to>/building-controls-simulator`.
 
 Edit in `.env.template`:
 ```bash
@@ -135,11 +140,10 @@ sudo chown -R "bcs":"bcs" ~/.config/application_default_credentials.json
 
 ### Example Notebook (Hello World)
 
-This requires that you downloaded the IECC .idf files or have some preexisting building model to work with.
-First move the .idf file to the IDR_DIR.
+First move the test .idf file to the `$IDR_DIR`.
 
 ```bash
-cp "idf/IECC_2018/cz_2B/SF+CZ2B+USA_AZ_Phoenix-Sky.Harbor.Intl.AP.722780+gasfurnace+crawlspace+IECC_2018.idf" "${IDF_DIR}"
+cp "test/idf/v8-9-0/AZ_Phoenix_gasfurnace_crawlspace_IECC_2018_cycles.idf" "${IDF_DIR}"
 ```
 
 Next, download the weather file for that geography using https://energyplus.net/weather.
@@ -150,6 +154,24 @@ EPLUS_WEATHER_URL_USA="https://energyplus.net/weather-download/north_and_central
 WEATHER_FILE="AZ/USA_AZ_Phoenix-Sky.Harbor.Intl.AP.722780_TMY3/USA_AZ_Phoenix-Sky.Harbor.Intl.AP.722780_TMY3.epw"
 wget "${EPLUS_WEATHER_URL_USA}/${WEATHER_FILE}" -P "${WEATHER_DIR}"
 ```
+
+### Example Notebook with Donate Your Data (DYD)
+
+Support for ecobee Donate Your Data (DYD) is included with the GCSDYDSource. 
+For example usage see `notebooks/demo_GCSDYDSource.ipynb`.
+The `GCSDYDSource` supports using a local cache of the data files. Simply copy them using 
+format `data/cache/GCSDYD/<hash ID>.csv.zip`, for example:
+
+```bash
+$ ls data/cache/GCSDYD
+2df6959cdf502c23f04f3155758d7b678af0c631.csv.zip
+6e63291da5427ae87d34bb75022ee54ee3b1fc1a.csv.zip
+4cea487023a11f3bc16cc66c6ca8a919fc6d6144.csv.zip
+f2254479e14daf04089082d1cd9df53948f98f1e.csv.zip
+...
+```
+
+For information about the ecobee DYD program please see: https://www.ecobee.com/donate-your-data/.
 
 ### Development setup - Using VS Code Remote Containers
 
