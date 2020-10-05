@@ -30,3 +30,4 @@ docs/build/
 docs/source/generated/
 .env
 .test.env
+docker-compose.yml
