@@ -1,4 +1,4 @@
-#! /usr/bin/env bash
+#!/bin/bash
 
 # this script should be sources into current shell
 . "${PACKAGE_DIR}/scripts/epvm.sh" "8-9-0"

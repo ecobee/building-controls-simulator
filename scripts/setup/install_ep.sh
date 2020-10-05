@@ -1,4 +1,4 @@
-#! /usr/bin/env bash
+#!/bin/bash
 
 # bash script to install EnergyPlus releases from:
 # https://github.com/NREL/docker-energyplus/blob/develop/Dockerfile
