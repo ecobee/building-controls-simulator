@@ -57,6 +57,12 @@ class OutputAnalysis(object):
     def diagnostic_plot(self, show=False, actuals=True):
         """"""
         if actuals:
+            _titles = (
+                "Thermal Response",
+                "Equipment Run-time",
+                "Actual Thermal Response",
+                "Actual Equipment Run-time",
+            )
             _rows = 4
             _row_heights = [2, 1, 2, 1]
             _specs = [
@@ -74,6 +80,7 @@ class OutputAnalysis(object):
                 ],
             ]
         else:
+            _titles = ("Thermal Response", "Equipment Run-time")
             _rows = 2
             _row_heights = [2, 1]
             _specs = [
@@ -86,7 +93,7 @@ class OutputAnalysis(object):
             ]
 
         fig = plotly.subplots.make_subplots(
-            subplot_titles=("Thermal", "Equipment Run-time"),
+            subplot_titles=_titles,
             rows=_rows,
             cols=1,
             shared_xaxes=True,
