@@ -16,7 +16,7 @@ from BuildingControlsSimulator.DataClients.DataStates import STATES
 logger = logging.getLogger(__name__)
 
 
-class TestFlatFilesClient:
+class TestGCSFlatFilesSource:
     @classmethod
     def setup_class(cls):
         # initialize with data to avoid pulling multiple times
@@ -28,8 +28,16 @@ class TestFlatFilesClient:
             ],
             latitude=33.481136,
             longitude=-112.078232,
-            start_utc="2018-01-01 00:00:00",
-            end_utc="2018-12-31 23:55:00",
+            start_utc=[
+                "2018-01-01 00:00:00",
+                "2018-01-01 00:00:00",
+                "2018-01-01 00:00:00",
+            ],
+            end_utc=[
+                "2018-12-31 23:55:00",
+                "2018-12-31 23:55:00",
+                "2018-12-31 23:55:00",
+            ],
             min_sim_period="7D",
             min_chunk_period="30D",
             step_size_minutes=5,
@@ -38,7 +46,7 @@ class TestFlatFilesClient:
         cls.data_clients = []
         cls.data_client = DataClient(
             source=GCSDYDSource(
-                gcp_project=os.environ.get("GOOGLE_CLOUD_PROJECT"),
+                gcp_project=os.environ.get("DYD_GOOGLE_CLOUD_PROJECT"),
                 gcs_uri_base=os.environ.get("DYD_GCS_URI_BASE"),
             ),
             nrel_dev_api_key=os.environ.get("NREL_DEV_API_KEY"),
@@ -60,7 +68,7 @@ class TestFlatFilesClient:
 
     @classmethod
     def teardown_class(cls):
-        """ teardown any state that was previously setup with a call to
+        """teardown any state that was previously setup with a call to
         setup_class.
         """
         pass

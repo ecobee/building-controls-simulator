@@ -188,7 +188,6 @@ class EnergyPlusBuildingModel(BuildingModel):
         logger.info(f"Initializing EnergyPlusBuildingModel: {self.fmu_path}")
         self.allocate_output_memory(t_start, t_end, t_step, categories_dict)
         self.init_step_output()
-
         self.fmu = pyfmi.load_fmu(fmu=self.fmu_path)
         # initialize for extra step to keep whole days for final period at 23:55
         self.fmu.initialize(t_start, t_end + t_step)

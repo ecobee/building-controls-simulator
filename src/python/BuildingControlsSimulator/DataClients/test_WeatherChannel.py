@@ -30,7 +30,7 @@ class TestWeatherChannel:
 
     @classmethod
     def teardown_class(cls):
-        """ teardown any state that was previously setup with a call to
+        """teardown any state that was previously setup with a call to
         setup_class.
         """
         pass

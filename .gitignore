@@ -28,3 +28,5 @@ __pycache__/
 application_default_credentials.json
 docs/build/
 docs/source/generated/
+.env
+.test.env
