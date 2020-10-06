@@ -51,8 +51,7 @@ class Deadband(ControlModel):
         ]
 
     def initialize(self, t_start, t_end, t_step, categories_dict):
-        """
-        """
+        """"""
         self.current_t_idx = 0
         self.step_size_seconds = t_step
         self.allocate_output_memory(
@@ -92,7 +91,9 @@ class Deadband(ControlModel):
                     Internal.full.spec[state]["dtype"]
                 )
                 self.output[state] = np.full(
-                    n_s, np_default_value, dtype=np_dtype,
+                    n_s,
+                    np_default_value,
+                    dtype=np_dtype,
                 )
 
         self.output[STATES.STEP_STATUS] = np.full(n_s, 0, dtype="int8")
@@ -105,6 +106,10 @@ class Deadband(ControlModel):
         # initialize all off
         self.step_output = {state: 0 for state in self.output_states}
 
+    def calc_t_control(self, step_sensor_input):
+        t_ctrl = step_sensor_input[STATES.THERMOSTAT_TEMPERATURE]
+        return t_ctrl
+
     def do_step(
         self,
         t_start,
@@ -114,7 +119,7 @@ class Deadband(ControlModel):
         step_weather_input,
     ):
         """Simulate controller time step."""
-        t_ctrl = step_sensor_input[STATES.THERMOSTAT_TEMPERATURE]
+        t_ctrl = self.calc_t_control(step_sensor_input)
         self.step_output[STATES.TEMPERATURE_CTRL] = t_ctrl
 
         if t_ctrl < (

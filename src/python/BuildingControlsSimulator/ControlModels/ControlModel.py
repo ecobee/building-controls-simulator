@@ -25,6 +25,11 @@ class ControlModel(ABC):
         pass
 
     @abstractmethod
+    def calc_t_control(self):
+        """Calculates control temperature from given state"""
+        pass
+
+    @abstractmethod
     def do_step(self):
         """Defines sequence of step internals."""
         pass

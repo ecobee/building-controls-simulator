@@ -16,7 +16,7 @@ from BuildingControlsSimulator.DataClients.DataStates import STATES
 logger = logging.getLogger(__name__)
 
 
-class TestGCSFlatFilesSource:
+class TestGCSDYDSource:
     @classmethod
     def setup_class(cls):
         # initialize with data to avoid pulling multiple times

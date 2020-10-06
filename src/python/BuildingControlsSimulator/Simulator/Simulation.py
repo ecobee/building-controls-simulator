@@ -201,6 +201,16 @@ class Simulation:
 
         self.tear_down()
 
+        # t_ctrl output is time-shifted to make runtime integral over preceeding timestep
+        self.controller_model.output[STATES.TEMPERATURE_CTRL][
+            0:-1
+        ] = self.controller_model.output[STATES.TEMPERATURE_CTRL][1:]
+        self.controller_model.output[STATES.TEMPERATURE_CTRL][
+            -1
+        ] = self.controller_model.calc_t_control(
+            step_sensor_input=self.building_model.step_output
+        )
+
         # convert output to dataframe
         self.output = pd.DataFrame.from_dict(
             {

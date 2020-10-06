@@ -311,7 +311,7 @@ class OutputAnalysis(object):
                     x=output_df[STATES.DATE_TIME],
                     y=output_df[c],
                     mode="lines",
-                    line_shape="hv",
+                    line_shape="vh",
                     name=Internal.full.spec[c]["name"],
                     hoverlabel={"namelength": -1},
                 ),
