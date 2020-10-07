@@ -81,6 +81,17 @@ class DataClient:
             & (_data[Internal.datetime_column] <= self.sim_config["end_utc"])
         ].reset_index(drop=True)
 
+        # run settings change point detection before filling missing data
+        # the fill data would create false positive change points
+        # the change points can also be used to correctly fill the schedule
+        # and comfort preferences
+        (
+            _change_points_schedule,
+            _change_points_comfort_prefs,
+        ) = HVACChannel.get_settings_change_points(
+            _data, self.sim_config["step_size_minutes"]
+        )
+
         _expected_period = f"{self.sim_config['step_size_minutes']}M"
         # ffill first 15 minutes of missing data periods
         _data = DataClient.fill_missing_data(

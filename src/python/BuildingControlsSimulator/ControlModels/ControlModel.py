@@ -20,13 +20,8 @@ class ControlModel(ABC):
     step_output = attr.ib(default={})
 
     @abstractmethod
-    def initialize(self, t_start, t_end, ts):
+    def initialize(self, start_utc, t_start, t_end, ts, categories_dict):
         """Run on first setup and not again."""
-        pass
-
-    @abstractmethod
-    def calc_t_control(self):
-        """Calculates control temperature from given state"""
         pass
 
     @abstractmethod

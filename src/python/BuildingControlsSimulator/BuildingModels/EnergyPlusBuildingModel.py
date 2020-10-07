@@ -183,7 +183,9 @@ class EnergyPlusBuildingModel(BuildingModel):
 
         return self.fmu_path
 
-    def initialize(self, t_start, t_end, t_step, categories_dict={}):
+    def initialize(
+        self, start_utc, t_start, t_end, t_step, categories_dict={}
+    ):
         """"""
         logger.info(f"Initializing EnergyPlusBuildingModel: {self.fmu_path}")
         self.allocate_output_memory(t_start, t_end, t_step, categories_dict)

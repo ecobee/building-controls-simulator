@@ -50,7 +50,7 @@ class Deadband(ControlModel):
             STATES.FAN_STAGE_THREE,
         ]
 
-    def initialize(self, t_start, t_end, t_step, categories_dict):
+    def initialize(self, start_utc, t_start, t_end, t_step, categories_dict):
         """"""
         self.current_t_idx = 0
         self.step_size_seconds = t_step

@@ -137,13 +137,21 @@ class Simulation:
         self.start_utc = self.data_client.start_utc
         self.end_utc = self.data_client.end_utc
 
+        if not self.start_utc:
+            raise ValueError("start_utc is None.")
+
+        if not self.end_utc:
+            raise ValueError("end_utc is None.")
+
         self.building_model.initialize(
+            start_utc=self.start_utc,
             t_start=self.start_time_seconds,
             t_end=self.final_time_seconds,
             t_step=self.step_size_seconds,
             categories_dict=self.data_client.hvac.get_categories_dict(),
         )
         self.controller_model.initialize(
+            start_utc=self.start_utc,
             t_start=self.start_time_seconds,
             t_end=self.final_time_seconds,
             t_step=self.step_size_seconds,
@@ -193,6 +201,13 @@ class Simulation:
                 step_weather_input=self.data_client.weather.data.iloc[i],
             )
 
+        # t_ctrl output is time-shifted to make runtime integral over preceeding timestep
+        # final timestep controller output will be repeated
+        # TODO: recompute t_ctrl given final state
+        self.controller_model.output[STATES.TEMPERATURE_CTRL][
+            0:-1
+        ] = self.controller_model.output[STATES.TEMPERATURE_CTRL][1:]
+
         logger.info(
             "Finished co-simulation\n"
             + f"Elapsed time: {time.perf_counter() - _sim_start_wall_time} seconds\n"
@@ -200,16 +215,6 @@ class Simulation:
         )
 
         self.tear_down()
-
-        # t_ctrl output is time-shifted to make runtime integral over preceeding timestep
-        self.controller_model.output[STATES.TEMPERATURE_CTRL][
-            0:-1
-        ] = self.controller_model.output[STATES.TEMPERATURE_CTRL][1:]
-        self.controller_model.output[STATES.TEMPERATURE_CTRL][
-            -1
-        ] = self.controller_model.calc_t_control(
-            step_sensor_input=self.building_model.step_output
-        )
 
         # convert output to dataframe
         self.output = pd.DataFrame.from_dict(
