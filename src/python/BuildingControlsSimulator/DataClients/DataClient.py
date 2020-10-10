@@ -135,6 +135,8 @@ class DataClient:
                 + Internal.intersect_columns(_data.columns, Internal.hvac.spec)
             ],
             spec=Internal.hvac,
+            change_points_schedule=_change_points_schedule,
+            change_points_comfort_prefs=_change_points_comfort_prefs,
         )
 
         self.sensors = SensorsChannel(

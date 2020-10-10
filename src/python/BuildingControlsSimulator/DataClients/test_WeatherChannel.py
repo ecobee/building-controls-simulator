@@ -56,7 +56,7 @@ class TestWeatherChannel:
         cols.remove(self.weather.datetime_column)
         assert cols == self.weather.epw_columns
 
-    @pytest.mark.skip()
+    @pytest.mark.skip(reason="Not implemented.")
     def test_get_archive_tmy3(self):
         lat = 33.481136
         lon = -112.078232
