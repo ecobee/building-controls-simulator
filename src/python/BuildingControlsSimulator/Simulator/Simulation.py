@@ -169,6 +169,22 @@ class Simulation:
         self.building_model.tear_down()
         self.controller_model.tear_down()
 
+    def determine_settings(self, t_idx):
+        """Ensure settings are correct for given time step."""
+        _time = self.data_client.hvac.iloc[t_idx][STATES.DATE_TIME]
+        new_settings = {}
+        if _time in self.data_client.hvac.change_points_schedule.keys():
+            new_settings[
+                "schedules"
+            ] = self.data_client.hvac.change_points_schedule[_time]
+        if _time in self.data_client.hvac.change_points_comfort_prefs.keys():
+            new_settings[
+                "setpoints"
+            ] = self.data_client.hvac.change_points_comfort_prefs[_time]
+
+        if new_settings:
+            self.controller_model.change_settings(new_settings)
+
     def run(self, local=True):
         """Main co-simulation loop"""
         logger.info("Initializing co-simulation models")
@@ -186,6 +202,7 @@ class Simulation:
             dtype="int64",
         )
         for i in range(0, len(_sim_time)):
+            self.determine_settings(t_idx=i)
             self.controller_model.do_step(
                 t_start=_sim_time[i],
                 t_step=self.step_size_seconds,

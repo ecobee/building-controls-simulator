@@ -153,3 +153,7 @@ class Deadband(ControlModel):
     def add_step_to_output(self, step_output):
         for k, v in step_output.items():
             self.output[k][self.current_t_idx] = v
+
+    def change_settings(self, new_settings):
+        # this model has no settings
+        pass

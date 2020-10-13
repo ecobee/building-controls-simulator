@@ -28,3 +28,8 @@ class ControlModel(ABC):
     def do_step(self):
         """Defines sequence of step internals."""
         pass
+
+    @abstractmethod
+    def change_settings(self, new_settings):
+        """Change persistent internal settings to model."""
+        pass

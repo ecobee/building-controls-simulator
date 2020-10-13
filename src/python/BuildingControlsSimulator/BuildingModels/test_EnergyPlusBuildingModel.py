@@ -8,6 +8,7 @@ import logging
 
 import pytest
 import pyfmi
+import pandas as pd
 import numpy as np
 
 from BuildingControlsSimulator.BuildingModels.IDFPreprocessor import (
@@ -177,6 +178,7 @@ class TestEnergyPlusBuildingModel:
 
         Note: if this test fails check ./Output_EPExport_Slave/Furnace_prep.err
         """
+        start_utc = pd.Timestamp("2020-01-01", tz="utc")
         t_start = 0
         t_step = 300
         t_end = 86400.0
@@ -187,7 +189,10 @@ class TestEnergyPlusBuildingModel:
         )
         # need to recude t_end because of non-inclusion of last time step
         self.building_model.initialize(
-            t_start=t_start, t_end=t_end - t_step, t_step=t_step
+            start_utc=start_utc,
+            t_start=t_start,
+            t_end=t_end - t_step,
+            t_step=t_step,
         )
 
         step_control_input = {

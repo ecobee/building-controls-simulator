@@ -3,6 +3,8 @@ import logging
 import os
 import copy
 
+from pprint import pprint
+
 import pytest
 import pandas as pd
 import pytz
@@ -72,32 +74,29 @@ class TestGCSDYDSource:
     def test_get_settings_change_points(self):
         # test HVAC data returns dict of non-empty pd.DataFrame
         for dc in self.data_clients:
-            breakpoint()
             if (
                 dc.sim_config["identifier"]
-                == "2df6959cdf502c23f04f3155758d7b678af0c631"
+                == "9958f46d13419344ec0c21fb60f9b0b3990ac0ef"
             ):
-                # verify that data bfill works with full_data_periods
                 assert (
-                    pytest.approx(30.0)
-                    == dc.hvac.data[20620:20627][
-                        STATES.TEMPERATURE_CTRL
-                    ].mean()
+                    dc.hvac.change_points_schedule
+                    == TestGCSDYDSource._return_change_points_schedule()
                 )
-                assert dc.full_data_periods[0] == [
-                    pd.Timestamp("2018-04-13 17:00:00", tz="utc"),
-                    pd.Timestamp("2018-04-26 15:55:00", tz="utc"),
-                ]
+                assert (
+                    dc.hvac.change_points_comfort_prefs
+                    == TestGCSDYDSource._return_change_points_comfort_prefs()
+                )
 
+    @staticmethod
     def _return_change_points_schedule():
         return {
-            Timestamp("2018-01-01 18:00:00+0000", tz="UTC"): [
+            pd.Timestamp("2018-01-01 18:00:00+0000", tz="UTC"): [
                 {
-                    "name": "Home",
                     "minute_of_day": 1080,
+                    "name": "Home",
                     "on_day_of_week": [
                         True,
-                        False,
+                        True,
                         True,
                         True,
                         True,
@@ -106,11 +105,11 @@ class TestGCSDYDSource:
                     ],
                 },
                 {
-                    "name": "Sleep",
                     "minute_of_day": 1290,
+                    "name": "Sleep",
                     "on_day_of_week": [
                         True,
-                        False,
+                        True,
                         True,
                         True,
                         True,
@@ -119,8 +118,8 @@ class TestGCSDYDSource:
                     ],
                 },
                 {
-                    "name": "Away",
                     "minute_of_day": 510,
+                    "name": "Away",
                     "on_day_of_week": [
                         True,
                         True,
@@ -132,133 +131,10 @@ class TestGCSDYDSource:
                     ],
                 },
             ],
-            Timestamp("2018-01-09 18:00:00+0000", tz="UTC"): [
+            pd.Timestamp("2018-07-07 16:25:00+0000", tz="UTC"): [
                 {
-                    "name": "Home",
-                    "minute_of_day": 1080,
-                    "on_day_of_week": [
-                        True,
-                        True,
-                        True,
-                        True,
-                        True,
-                        True,
-                        True,
-                    ],
-                },
-                {
-                    "name": "Sleep",
-                    "minute_of_day": 1290,
-                    "on_day_of_week": [
-                        True,
-                        True,
-                        True,
-                        True,
-                        True,
-                        True,
-                        True,
-                    ],
-                },
-                {
-                    "name": "Away",
-                    "minute_of_day": 510,
-                    "on_day_of_week": [
-                        True,
-                        True,
-                        True,
-                        True,
-                        True,
-                        True,
-                        True,
-                    ],
-                },
-            ],
-            Timestamp("2018-02-12 08:30:00+0000", tz="UTC"): [
-                {
-                    "name": "Home",
-                    "minute_of_day": 1080,
-                    "on_day_of_week": [
-                        True,
-                        True,
-                        True,
-                        True,
-                        True,
-                        True,
-                        True,
-                    ],
-                },
-                {
-                    "name": "Sleep",
-                    "minute_of_day": 1290,
-                    "on_day_of_week": [
-                        True,
-                        True,
-                        True,
-                        True,
-                        True,
-                        True,
-                        True,
-                    ],
-                },
-                {
-                    "name": "Away",
-                    "minute_of_day": 510,
-                    "on_day_of_week": [
-                        False,
-                        True,
-                        True,
-                        True,
-                        True,
-                        True,
-                        True,
-                    ],
-                },
-            ],
-            Timestamp("2018-02-19 08:30:00+0000", tz="UTC"): [
-                {
-                    "name": "Away",
-                    "minute_of_day": 510,
-                    "on_day_of_week": [
-                        True,
-                        True,
-                        True,
-                        True,
-                        True,
-                        True,
-                        True,
-                    ],
-                },
-                {
-                    "name": "Home",
-                    "minute_of_day": 1080,
-                    "on_day_of_week": [
-                        True,
-                        True,
-                        True,
-                        True,
-                        True,
-                        True,
-                        True,
-                    ],
-                },
-                {
-                    "name": "Sleep",
-                    "minute_of_day": 1290,
-                    "on_day_of_week": [
-                        True,
-                        True,
-                        True,
-                        True,
-                        True,
-                        True,
-                        True,
-                    ],
-                },
-            ],
-            Timestamp("2018-07-07 16:25:00+0000", tz="UTC"): [
-                {
-                    "name": "Home",
                     "minute_of_day": 985,
+                    "name": "Home",
                     "on_day_of_week": [
                         False,
                         False,
@@ -270,10 +146,10 @@ class TestGCSDYDSource:
                     ],
                 },
                 {
-                    "name": "Sleep",
                     "minute_of_day": 1290,
+                    "name": "Sleep",
                     "on_day_of_week": [
-                        False,
+                        True,
                         True,
                         True,
                         True,
@@ -283,34 +159,34 @@ class TestGCSDYDSource:
                     ],
                 },
                 {
-                    "name": "Home",
                     "minute_of_day": 480,
-                    "on_day_of_week": [
-                        False,
-                        False,
-                        False,
-                        False,
-                        False,
-                        True,
-                        True,
-                    ],
-                },
-                {
-                    "name": "Away",
-                    "minute_of_day": 510,
-                    "on_day_of_week": [
-                        True,
-                        True,
-                        True,
-                        True,
-                        False,
-                        False,
-                        False,
-                    ],
-                },
-                {
                     "name": "Home",
+                    "on_day_of_week": [
+                        False,
+                        False,
+                        False,
+                        False,
+                        False,
+                        True,
+                        True,
+                    ],
+                },
+                {
+                    "minute_of_day": 510,
+                    "name": "Away",
+                    "on_day_of_week": [
+                        True,
+                        True,
+                        True,
+                        True,
+                        True,
+                        False,
+                        False,
+                    ],
+                },
+                {
                     "minute_of_day": 1080,
+                    "name": "Home",
                     "on_day_of_week": [
                         True,
                         True,
@@ -322,10 +198,10 @@ class TestGCSDYDSource:
                     ],
                 },
             ],
-            Timestamp("2018-07-16 21:30:00+0000", tz="UTC"): [
+            pd.Timestamp("2018-07-14 16:25:00+0000", tz="UTC"): [
                 {
-                    "name": "Sleep",
                     "minute_of_day": 1290,
+                    "name": "Sleep",
                     "on_day_of_week": [
                         True,
                         True,
@@ -337,34 +213,8 @@ class TestGCSDYDSource:
                     ],
                 },
                 {
-                    "name": "Away",
-                    "minute_of_day": 510,
-                    "on_day_of_week": [
-                        True,
-                        True,
-                        True,
-                        True,
-                        True,
-                        False,
-                        False,
-                    ],
-                },
-                {
-                    "name": "Home",
-                    "minute_of_day": 1080,
-                    "on_day_of_week": [
-                        True,
-                        True,
-                        True,
-                        True,
-                        True,
-                        False,
-                        False,
-                    ],
-                },
-                {
-                    "name": "Home",
                     "minute_of_day": 480,
+                    "name": "Home",
                     "on_day_of_week": [
                         False,
                         False,
@@ -373,7 +223,116 @@ class TestGCSDYDSource:
                         False,
                         True,
                         True,
+                    ],
+                },
+                {
+                    "minute_of_day": 510,
+                    "name": "Away",
+                    "on_day_of_week": [
+                        True,
+                        True,
+                        True,
+                        True,
+                        True,
+                        False,
+                        False,
+                    ],
+                },
+                {
+                    "minute_of_day": 1080,
+                    "name": "Home",
+                    "on_day_of_week": [
+                        True,
+                        True,
+                        True,
+                        True,
+                        True,
+                        False,
+                        False,
                     ],
                 },
             ],
+        }
+
+    @staticmethod
+    def _return_change_points_comfort_prefs():
+        return {
+            pd.Timestamp("2018-03-23 19:55:00+0000", tz="UTC"): {
+                "Home": {
+                    STATES.TEMPERATURE_STP_COOL: 26.66666603088379,
+                    STATES.TEMPERATURE_STP_HEAT: 18.33333396911621,
+                }
+            },
+            pd.Timestamp("2018-03-23 20:00:00+0000", tz="UTC"): {
+                "Home": {
+                    STATES.TEMPERATURE_STP_COOL: 25.55555534362793,
+                    STATES.TEMPERATURE_STP_HEAT: 18.88888931274414,
+                }
+            },
+            pd.Timestamp("2018-03-31 21:35:00+0000", tz="UTC"): {
+                "Sleep": {
+                    STATES.TEMPERATURE_STP_COOL: 24.44444465637207,
+                    STATES.TEMPERATURE_STP_HEAT: 18.88888931274414,
+                }
+            },
+            pd.Timestamp("2018-04-06 18:05:00+0000", tz="UTC"): {
+                "Home": {
+                    STATES.TEMPERATURE_STP_COOL: 26.11111068725586,
+                    STATES.TEMPERATURE_STP_HEAT: 18.88888931274414,
+                }
+            },
+            pd.Timestamp("2018-04-14 19:55:00+0000", tz="UTC"): {
+                "Home": {
+                    STATES.TEMPERATURE_STP_COOL: 26.11111068725586,
+                    STATES.TEMPERATURE_STP_HEAT: 18.33333396911621,
+                }
+            },
+            pd.Timestamp("2018-04-14 20:00:00+0000", tz="UTC"): {
+                "Home": {
+                    STATES.TEMPERATURE_STP_COOL: 26.11111068725586,
+                    STATES.TEMPERATURE_STP_HEAT: 18.88888931274414,
+                }
+            },
+            pd.Timestamp("2018-04-17 19:10:00+0000", tz="UTC"): {
+                "Home": {
+                    STATES.TEMPERATURE_STP_COOL: 26.66666603088379,
+                    STATES.TEMPERATURE_STP_HEAT: 18.88888931274414,
+                }
+            },
+            pd.Timestamp("2018-07-08 09:45:00+0000", tz="UTC"): {
+                "Home": {
+                    STATES.TEMPERATURE_STP_COOL: 26.11111068725586,
+                    STATES.TEMPERATURE_STP_HEAT: 18.88888931274414,
+                }
+            },
+            pd.Timestamp("2018-07-08 09:50:00+0000", tz="UTC"): {
+                "Home": {
+                    STATES.TEMPERATURE_STP_COOL: 25.55555534362793,
+                    STATES.TEMPERATURE_STP_HEAT: 18.88888931274414,
+                }
+            },
+            pd.Timestamp("2018-07-24 19:55:00+0000", tz="UTC"): {
+                "Home": {
+                    STATES.TEMPERATURE_STP_COOL: 25.55555534362793,
+                    STATES.TEMPERATURE_STP_HEAT: 18.33333396911621,
+                }
+            },
+            pd.Timestamp("2018-07-24 20:00:00+0000", tz="UTC"): {
+                "Home": {
+                    STATES.TEMPERATURE_STP_COOL: 25.55555534362793,
+                    STATES.TEMPERATURE_STP_HEAT: 18.88888931274414,
+                }
+            },
+            pd.Timestamp("2018-09-09 11:25:00+0000", tz="UTC"): {
+                "Home": {
+                    STATES.TEMPERATURE_STP_COOL: 26.66666603088379,
+                    STATES.TEMPERATURE_STP_HEAT: 18.33333396911621,
+                }
+            },
+            pd.Timestamp("2018-09-09 11:30:00+0000", tz="UTC"): {
+                "Home": {
+                    STATES.TEMPERATURE_STP_COOL: 25.55555534362793,
+                    STATES.TEMPERATURE_STP_HEAT: 18.88888931274414,
+                }
+            },
         }
