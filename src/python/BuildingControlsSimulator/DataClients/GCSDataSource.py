@@ -83,11 +83,11 @@ class GCSDataSource(DataSource, ABC):
                 + "Set env variable for specific source, e.g. DYD_GCS_URI_BASE"
             )
 
-        if not self.gcs_uri_base:
+        if not sim_config["identifier"]:
             raise ValueError(
-                f"gcs_uri_base={self.gcs_uri_base} is unset. "
-                + "Set env variable: GOOGLE_CLOUD_PROJECT"
+                f"Invalid sim_config: sim_config[identifier]={sim_config['identifier']}"
             )
+
         gcs_uri = self.get_gcs_uri(sim_config)
         try:
             _df = pd.read_csv(

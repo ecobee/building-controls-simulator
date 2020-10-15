@@ -5,10 +5,20 @@ import logging
 import attr
 import pandas as pd
 import numpy as np
+from tzwhere import tzwhere
+import pytz
 
 from BuildingControlsSimulator.DataClients.DataSpec import Internal
+from BuildingControlsSimulator.DataClients.DateTimeChannel import (
+    DateTimeChannel,
+)
+from BuildingControlsSimulator.DataClients.ThermostatChannel import (
+    ThermostatChannel,
+)
+from BuildingControlsSimulator.DataClients.EquipmentChannel import (
+    EquipmentChannel,
+)
 from BuildingControlsSimulator.DataClients.SensorsChannel import SensorsChannel
-from BuildingControlsSimulator.DataClients.HVACChannel import HVACChannel
 from BuildingControlsSimulator.DataClients.WeatherChannel import WeatherChannel
 from BuildingControlsSimulator.DataClients.DataSource import DataSource
 
@@ -19,7 +29,8 @@ logger = logging.getLogger(__name__)
 class DataClient:
 
     # data channels
-    hvac = attr.ib(default=None)
+    thermostat = attr.ib(default=None)
+    equipment = attr.ib(default=None)
     sensors = attr.ib(default=None)
     weather = attr.ib(default=None)
     full_data_periods = attr.ib(factory=list)
@@ -81,6 +92,26 @@ class DataClient:
             & (_data[Internal.datetime_column] <= self.sim_config["end_utc"])
         ].reset_index(drop=True)
 
+        # remove unused categories from categorical columns after date range
+        # for simulation is selected
+        for _cat_col in [
+            _col
+            for _col in _data.columns
+            if isinstance(_data[_col].dtype, pd.api.types.CategoricalDtype)
+        ]:
+            _data[_cat_col].cat.remove_unused_categories(inplace=True)
+
+        # run settings change point detection before filling missing data
+        # the fill data would create false positive change points
+        # the change points can also be used to correctly fill the schedule
+        # and comfort preferences
+        (
+            _change_points_schedule,
+            _change_points_comfort_prefs,
+        ) = ThermostatChannel.get_settings_change_points(
+            _data, self.sim_config["step_size_minutes"]
+        )
+
         _expected_period = f"{self.sim_config['step_size_minutes']}M"
         # ffill first 15 minutes of missing data periods
         _data = DataClient.fill_missing_data(
@@ -117,19 +148,37 @@ class DataClient:
             # first and last records must be full because we used full data periods
             _data = _data.fillna(method="bfill", limit=None)
 
+        self.datetime = DateTimeChannel(
+            data=_data[Internal.datetime_column],
+            spec=Internal.datetime,
+            latitude=self.sim_config["latitude"],
+            longitude=self.sim_config["longitude"],
+        )
+
         # finally create the data channel objs for usage during simulation
-        self.hvac = HVACChannel(
+        self.thermostat = ThermostatChannel(
             data=_data[
-                [Internal.datetime_column]
-                + Internal.intersect_columns(_data.columns, Internal.hvac.spec)
+                Internal.intersect_columns(
+                    _data.columns, Internal.thermostat.spec
+                )
             ],
-            spec=Internal.hvac,
+            spec=Internal.thermostat,
+            change_points_schedule=_change_points_schedule,
+            change_points_comfort_prefs=_change_points_comfort_prefs,
+        )
+
+        self.equipment = EquipmentChannel(
+            data=_data[
+                Internal.intersect_columns(
+                    _data.columns, Internal.equipment.spec
+                )
+            ],
+            spec=Internal.equipment,
         )
 
         self.sensors = SensorsChannel(
             data=_data[
-                [Internal.datetime_column]
-                + Internal.intersect_columns(
+                Internal.intersect_columns(
                     _data.columns, Internal.sensors.spec
                 )
             ],
@@ -139,8 +188,7 @@ class DataClient:
 
         self.weather = WeatherChannel(
             data=_data[
-                [Internal.datetime_column]
-                + Internal.intersect_columns(
+                Internal.intersect_columns(
                     _data.columns, Internal.weather.spec
                 )
             ],
@@ -152,7 +200,9 @@ class DataClient:
         )
 
         # post-processing of weather channel for EnergyPlus usage
-        self.weather.make_epw_file(sim_config=self.sim_config)
+        self.weather.make_epw_file(
+            sim_config=self.sim_config, datetime=self.datetime
+        )
 
     def get_metadata(self):
         if self.meta_gs_uri:
