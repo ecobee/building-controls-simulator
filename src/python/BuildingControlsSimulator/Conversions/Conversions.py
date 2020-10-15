@@ -10,6 +10,14 @@ class Conversions:
         return (temp_F - 32) * 5 / 9
 
     @staticmethod
+    def C2F(temp_C):
+        return (temp_C * 9 / 5) + 32
+
+    @staticmethod
+    def C2Fx10(temp_C):
+        return Conversions.C2F(temp_C) * 10
+
+    @staticmethod
     def saturation_vapor_pressure(temperature):
         """
         The formula used is that from [Bolton1980] for T in degrees Celsius:
@@ -51,7 +59,7 @@ class Conversions:
 
     @staticmethod
     def numpy_down_cast_default_value_dtype(dtype):
-        """Default values for numpy/pandas dtypes. These are used when setting 
+        """Default values for numpy/pandas dtypes. These are used when setting
         initial values for input and output data. This mostly chooses sane defaults
         that allows for not using nullable dtypes that consume much more memory.
         Checks for these coded default values should be done before using simulation

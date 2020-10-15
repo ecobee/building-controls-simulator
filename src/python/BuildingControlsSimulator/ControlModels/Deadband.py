@@ -114,7 +114,7 @@ class Deadband(ControlModel):
         self,
         t_start,
         t_step,
-        step_hvac_input,
+        step_thermostat_input,
         step_sensor_input,
         step_weather_input,
     ):
@@ -123,7 +123,7 @@ class Deadband(ControlModel):
         self.step_output[STATES.TEMPERATURE_CTRL] = t_ctrl
 
         if t_ctrl < (
-            step_hvac_input[STATES.TEMPERATURE_STP_HEAT] - self.deadband
+            step_thermostat_input[STATES.TEMPERATURE_STP_HEAT] - self.deadband
         ):
             # turn on heat
             # turn off cool
@@ -131,7 +131,7 @@ class Deadband(ControlModel):
             self.step_output[STATES.FAN_STAGE_ONE] = self.step_size_seconds
             self.step_output[STATES.COMPCOOL1] = 0
         elif t_ctrl > (
-            step_hvac_input[STATES.TEMPERATURE_STP_COOL] + self.deadband
+            step_thermostat_input[STATES.TEMPERATURE_STP_COOL] + self.deadband
         ):
             # turn on cool
             # turn off heat

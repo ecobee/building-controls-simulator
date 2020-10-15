@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 
 
 @attr.s(kw_only=True)
-class HVACChannel(DataChannel):
+class ThermostatChannel(DataChannel):
 
     change_points_schedule = attr.ib()
     change_points_comfort_prefs = attr.ib()
@@ -71,7 +71,7 @@ class HVACChannel(DataChannel):
             (schedule_chgs[STATES.DATE_TIME] >= dt)
             & (schedule_chgs[STATES.DATE_TIME] < dt + pd.Timedelta(days=7))
         ]
-        periods = HVACChannel.extract_schedule_periods(week_chgs)
+        periods = ThermostatChannel.extract_schedule_periods(week_chgs)
 
         # finally, change all on_day_of_week None to False
         # these periods were never observed
@@ -94,6 +94,10 @@ class HVACChannel(DataChannel):
             subset=[STATES.SCHEDULE]
         )
 
+        if schedule_data.empty:
+            schedule_chg_pts = {}
+            return schedule_chg_pts
+
         # feature cols
         schedule_data["prev_schedule"] = schedule_data[STATES.SCHEDULE].shift(
             1
@@ -112,7 +116,15 @@ class HVACChannel(DataChannel):
 
         if schedule_chgs.empty:
             # extract only schedule and return
-            breakpoint()
+            first_rec = schedule_data[STATES.DATE_TIME].iloc[0]
+            schedule_chg_pts = {
+                first_rec[STATES.DATE_TIME]: {
+                    "name": first_rec[STATES.SCHEDULE],
+                    "minute_of_day": 0,
+                    "on_day_of_week": [True] * 7,
+                }
+            }
+            return schedule_chg_pts
 
         schedule_chgs["day_of_week"] = schedule_chgs[
             STATES.DATE_TIME
@@ -127,7 +139,7 @@ class HVACChannel(DataChannel):
         pt_end = schedule_chgs[STATES.DATE_TIME].max()
         # get first week schedule
         schedule_chg_pts = {
-            pt_start: HVACChannel.get_next_week_schedule(
+            pt_start: ThermostatChannel.get_next_week_schedule(
                 schedule_chgs, pt_start
             )
         }
@@ -211,7 +223,7 @@ class HVACChannel(DataChannel):
 
                         # revise last schedule
                         schedule_chg_pts = (
-                            HVACChannel.add_chg_to_last_schedule(
+                            ThermostatChannel.add_chg_to_last_schedule(
                                 schedule_chg_pts, _chg
                             )
                         )
@@ -261,7 +273,7 @@ class HVACChannel(DataChannel):
                             # add change point in schedule
                             schedule_chg_pts[
                                 _chg_time
-                            ] = HVACChannel.get_next_week_schedule(
+                            ] = ThermostatChannel.get_next_week_schedule(
                                 schedule_chgs, _chg_time
                             )
                             # set cur_schedule_week_chgs to new schedule
@@ -334,7 +346,7 @@ class HVACChannel(DataChannel):
                         ):
                             schedule_chg_pts[
                                 _chg_time
-                            ] = HVACChannel.get_next_week_schedule(
+                            ] = ThermostatChannel.get_next_week_schedule(
                                 schedule_chgs, _chg_time
                             )
                             # set cur_schedule_week_chgs to new schedule
@@ -407,13 +419,26 @@ class HVACChannel(DataChannel):
         for _schedule in filtered_df[STATES.SCHEDULE].cat.categories:
             schedule_spt_df = filtered_df[
                 (filtered_df[STATES.SCHEDULE] == _schedule)
-            ]
+            ].reset_index(drop=True)
+
+            if schedule_spt_df.empty:
+                # while schedule may exist in full df it may have no occurance
+                # in filtered df if the periods always occur with a hold
+                # as well
+                break
+
             schedule_spt_df["prev_stp_cool"] = schedule_spt_df[
                 STATES.TEMPERATURE_STP_COOL
             ].shift(1)
             schedule_spt_df["prev_stp_heat"] = schedule_spt_df[
                 STATES.TEMPERATURE_STP_HEAT
             ].shift(1)
+
+            # extract initial setpoints for schedule
+            _init_row = schedule_spt_df.iloc[0]
+            comfort_chg_pts[
+                _init_row[STATES.DATE_TIME]
+            ] = ThermostatChannel.extract_comfort_preferences(_init_row)
 
             comfort_chgs = schedule_spt_df[
                 (
@@ -433,11 +458,12 @@ class HVACChannel(DataChannel):
                     & (~schedule_spt_df[STATES.TEMPERATURE_STP_HEAT].isnull())
                 )
             ]
-            # store change points for schedule
+
+            # store setpoint changes for schedule
             for _, _row in comfort_chgs.iterrows():
                 comfort_chg_pts[
                     _row[STATES.DATE_TIME]
-                ] = HVACChannel.extract_comfort_preferences(_row)
+                ] = ThermostatChannel.extract_comfort_preferences(_row)
 
         return comfort_chg_pts
 
@@ -509,10 +535,10 @@ class HVACChannel(DataChannel):
         """
 
         data = data.sort_values(STATES.DATE_TIME).reset_index(drop=True)
-        schedule_chg_pts = HVACChannel.get_schedule_change_points(
+        schedule_chg_pts = ThermostatChannel.get_schedule_change_points(
             data, step_size_minutes
         )
-        comfort_chg_pts = HVACChannel.get_comfort_change_points(
+        comfort_chg_pts = ThermostatChannel.get_comfort_change_points(
             data, step_size_minutes
         )
 

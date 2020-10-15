@@ -54,7 +54,7 @@ class OutputAnalysis(object):
             ]
         ].sum(axis=1)
 
-    def diagnostic_plot(self, show=False, actuals=True):
+    def diagnostic_plot(self, show=False, actuals=True, local_time=True):
         """"""
         if actuals:
             _titles = (
@@ -149,7 +149,6 @@ class OutputAnalysis(object):
 
     def thermal_plot(self, output_df, input_df, fig, row, col):
         """"""
-
         fig.update_yaxes(title_text="Temperature (°C)", row=row, col=col)
 
         # legend subtitle
@@ -201,8 +200,8 @@ class OutputAnalysis(object):
         )
         fig.add_trace(
             go.Scatter(
-                x=input_df[STATES.DATE_TIME],
-                y=input_df[STATES.TEMPERATURE_STP_HEAT],
+                x=output_df[STATES.DATE_TIME],
+                y=output_df[STATES.TEMPERATURE_STP_HEAT],
                 mode="lines",
                 line=dict(color="firebrick", width=1, dash="dash"),
                 name=Internal.full.spec[STATES.TEMPERATURE_STP_HEAT]["name"],
@@ -215,8 +214,8 @@ class OutputAnalysis(object):
 
         fig.add_trace(
             go.Scatter(
-                x=input_df[STATES.DATE_TIME],
-                y=input_df[STATES.TEMPERATURE_STP_COOL],
+                x=output_df[STATES.DATE_TIME],
+                y=output_df[STATES.TEMPERATURE_STP_COOL],
                 mode="lines",
                 line=dict(color="blue", width=1, dash="dash"),
                 name=Internal.full.spec[STATES.TEMPERATURE_STP_COOL]["name"],
@@ -226,6 +225,33 @@ class OutputAnalysis(object):
             col=col,
             secondary_y=False,
         )
+        # fig.add_trace(
+        #     go.Scatter(
+        #         x=input_df[STATES.DATE_TIME],
+        #         y=input_df[STATES.TEMPERATURE_STP_HEAT],
+        #         mode="lines",
+        #         line=dict(color="firebrick", width=1, dash="dash"),
+        #         name=Internal.full.spec[STATES.TEMPERATURE_STP_HEAT]["name"],
+        #         hoverlabel={"namelength": -1},
+        #     ),
+        #     row=row,
+        #     col=col,
+        #     secondary_y=False,
+        # )
+
+        # fig.add_trace(
+        #     go.Scatter(
+        #         x=input_df[STATES.DATE_TIME],
+        #         y=input_df[STATES.TEMPERATURE_STP_COOL],
+        #         mode="lines",
+        #         line=dict(color="blue", width=1, dash="dash"),
+        #         name=Internal.full.spec[STATES.TEMPERATURE_STP_COOL]["name"],
+        #         hoverlabel={"namelength": -1},
+        #     ),
+        #     row=row,
+        #     col=col,
+        #     secondary_y=False,
+        # )
 
     def power_plot(self, fig, row, col):
         """"""

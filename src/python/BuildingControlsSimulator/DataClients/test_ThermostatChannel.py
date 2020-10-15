@@ -3,10 +3,9 @@ import logging
 import os
 import copy
 
-from pprint import pprint
-
 import pytest
 import pandas as pd
+import numpy as np
 import pytz
 
 from BuildingControlsSimulator.Simulator.Config import Config
@@ -79,11 +78,11 @@ class TestGCSDYDSource:
                 == "9958f46d13419344ec0c21fb60f9b0b3990ac0ef"
             ):
                 assert (
-                    dc.hvac.change_points_schedule
+                    dc.thermostat.change_points_schedule
                     == TestGCSDYDSource._return_change_points_schedule()
                 )
                 assert (
-                    dc.hvac.change_points_comfort_prefs
+                    dc.thermostat.change_points_comfort_prefs
                     == TestGCSDYDSource._return_change_points_comfort_prefs()
                 )
 
@@ -257,82 +256,100 @@ class TestGCSDYDSource:
     @staticmethod
     def _return_change_points_comfort_prefs():
         return {
+            pd.Timestamp("2018-01-01 17:05:00+0000", tz="UTC"): {
+                "Away": {
+                    STATES.TEMPERATURE_STP_COOL: np.float32(27.777779),
+                    STATES.TEMPERATURE_STP_HEAT: np.float32(17.777779),
+                }
+            },
+            pd.Timestamp("2018-01-01 18:05:00+0000", tz="UTC"): {
+                "Home": {
+                    STATES.TEMPERATURE_STP_COOL: np.float32(25.555555),
+                    STATES.TEMPERATURE_STP_HEAT: np.float32(18.88889),
+                }
+            },
             pd.Timestamp("2018-03-23 19:55:00+0000", tz="UTC"): {
                 "Home": {
-                    STATES.TEMPERATURE_STP_COOL: 26.66666603088379,
-                    STATES.TEMPERATURE_STP_HEAT: 18.33333396911621,
+                    STATES.TEMPERATURE_STP_COOL: np.float32(26.66666603088379),
+                    STATES.TEMPERATURE_STP_HEAT: np.float32(18.33333396911621),
                 }
             },
             pd.Timestamp("2018-03-23 20:00:00+0000", tz="UTC"): {
                 "Home": {
-                    STATES.TEMPERATURE_STP_COOL: 25.55555534362793,
-                    STATES.TEMPERATURE_STP_HEAT: 18.88888931274414,
-                }
-            },
-            pd.Timestamp("2018-03-31 21:35:00+0000", tz="UTC"): {
-                "Sleep": {
-                    STATES.TEMPERATURE_STP_COOL: 24.44444465637207,
-                    STATES.TEMPERATURE_STP_HEAT: 18.88888931274414,
+                    STATES.TEMPERATURE_STP_COOL: np.float32(25.55555534362793),
+                    STATES.TEMPERATURE_STP_HEAT: np.float32(18.88888931274414),
                 }
             },
             pd.Timestamp("2018-04-06 18:05:00+0000", tz="UTC"): {
                 "Home": {
-                    STATES.TEMPERATURE_STP_COOL: 26.11111068725586,
-                    STATES.TEMPERATURE_STP_HEAT: 18.88888931274414,
+                    STATES.TEMPERATURE_STP_COOL: np.float32(26.11111068725586),
+                    STATES.TEMPERATURE_STP_HEAT: np.float32(18.88888931274414),
                 }
             },
             pd.Timestamp("2018-04-14 19:55:00+0000", tz="UTC"): {
                 "Home": {
-                    STATES.TEMPERATURE_STP_COOL: 26.11111068725586,
-                    STATES.TEMPERATURE_STP_HEAT: 18.33333396911621,
+                    STATES.TEMPERATURE_STP_COOL: np.float32(26.11111068725586),
+                    STATES.TEMPERATURE_STP_HEAT: np.float32(18.33333396911621),
                 }
             },
             pd.Timestamp("2018-04-14 20:00:00+0000", tz="UTC"): {
                 "Home": {
-                    STATES.TEMPERATURE_STP_COOL: 26.11111068725586,
-                    STATES.TEMPERATURE_STP_HEAT: 18.88888931274414,
+                    STATES.TEMPERATURE_STP_COOL: np.float32(26.11111068725586),
+                    STATES.TEMPERATURE_STP_HEAT: np.float32(18.88888931274414),
                 }
             },
             pd.Timestamp("2018-04-17 19:10:00+0000", tz="UTC"): {
                 "Home": {
-                    STATES.TEMPERATURE_STP_COOL: 26.66666603088379,
-                    STATES.TEMPERATURE_STP_HEAT: 18.88888931274414,
+                    STATES.TEMPERATURE_STP_COOL: np.float32(26.66666603088379),
+                    STATES.TEMPERATURE_STP_HEAT: np.float32(18.88888931274414),
                 }
             },
             pd.Timestamp("2018-07-08 09:45:00+0000", tz="UTC"): {
                 "Home": {
-                    STATES.TEMPERATURE_STP_COOL: 26.11111068725586,
-                    STATES.TEMPERATURE_STP_HEAT: 18.88888931274414,
+                    STATES.TEMPERATURE_STP_COOL: np.float32(26.11111068725586),
+                    STATES.TEMPERATURE_STP_HEAT: np.float32(18.88888931274414),
                 }
             },
             pd.Timestamp("2018-07-08 09:50:00+0000", tz="UTC"): {
                 "Home": {
-                    STATES.TEMPERATURE_STP_COOL: 25.55555534362793,
-                    STATES.TEMPERATURE_STP_HEAT: 18.88888931274414,
+                    STATES.TEMPERATURE_STP_COOL: np.float32(25.55555534362793),
+                    STATES.TEMPERATURE_STP_HEAT: np.float32(18.88888931274414),
                 }
             },
             pd.Timestamp("2018-07-24 19:55:00+0000", tz="UTC"): {
                 "Home": {
-                    STATES.TEMPERATURE_STP_COOL: 25.55555534362793,
-                    STATES.TEMPERATURE_STP_HEAT: 18.33333396911621,
+                    STATES.TEMPERATURE_STP_COOL: np.float32(25.55555534362793),
+                    STATES.TEMPERATURE_STP_HEAT: np.float32(18.33333396911621),
                 }
             },
             pd.Timestamp("2018-07-24 20:00:00+0000", tz="UTC"): {
                 "Home": {
-                    STATES.TEMPERATURE_STP_COOL: 25.55555534362793,
-                    STATES.TEMPERATURE_STP_HEAT: 18.88888931274414,
+                    STATES.TEMPERATURE_STP_COOL: np.float32(25.55555534362793),
+                    STATES.TEMPERATURE_STP_HEAT: np.float32(18.88888931274414),
                 }
             },
             pd.Timestamp("2018-09-09 11:25:00+0000", tz="UTC"): {
                 "Home": {
-                    STATES.TEMPERATURE_STP_COOL: 26.66666603088379,
-                    STATES.TEMPERATURE_STP_HEAT: 18.33333396911621,
+                    STATES.TEMPERATURE_STP_COOL: np.float32(26.66666603088379),
+                    STATES.TEMPERATURE_STP_HEAT: np.float32(18.33333396911621),
                 }
             },
             pd.Timestamp("2018-09-09 11:30:00+0000", tz="UTC"): {
                 "Home": {
-                    STATES.TEMPERATURE_STP_COOL: 25.55555534362793,
-                    STATES.TEMPERATURE_STP_HEAT: 18.88888931274414,
+                    STATES.TEMPERATURE_STP_COOL: np.float32(25.55555534362793),
+                    STATES.TEMPERATURE_STP_HEAT: np.float32(18.88888931274414),
+                }
+            },
+            pd.Timestamp("2018-01-01 21:35:00+0000", tz="UTC"): {
+                "Sleep": {
+                    STATES.TEMPERATURE_STP_COOL: np.float32(25.555555),
+                    STATES.TEMPERATURE_STP_HEAT: np.float32(18.88889),
+                }
+            },
+            pd.Timestamp("2018-03-31 21:35:00+0000", tz="UTC"): {
+                "Sleep": {
+                    STATES.TEMPERATURE_STP_COOL: np.float32(24.44444465637207),
+                    STATES.TEMPERATURE_STP_HEAT: np.float32(18.88888931274414),
                 }
             },
         }

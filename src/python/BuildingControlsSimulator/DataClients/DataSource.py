@@ -29,7 +29,7 @@ class DataSource(ABC):
         if local_cache_path:
             os.makedirs(os.path.dirname(local_cache_path), exist_ok=True)
             # explictly infer compression from source file extension
-            _df.to_csv(local_cache_path, compression="infer")
+            _df.to_csv(local_cache_path, compression="infer", index=False)
         else:
             logger.error("put_cache recieved no local_cache_path.")
 

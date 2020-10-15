@@ -19,7 +19,8 @@ class CHANNELS(enum.IntEnum):
     """Definition of component part of input data for preprocessing to
     internal formats."""
 
-    HVAC = enum.auto()
+    THERMOSTAT_SETTING = enum.auto()
+    EQUIPMENT = enum.auto()
     THERMOSTAT_SENSOR = enum.auto()
     REMOTE_SENSOR = enum.auto()
     WEATHER = enum.auto()

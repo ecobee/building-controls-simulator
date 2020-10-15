@@ -63,7 +63,7 @@ class Spec:
 @attr.s()
 class Internal:
     """Definition of internal data fields and types.
-    For details of string dtype aliases see: 
+    For details of string dtype aliases see:
     https://pandas.pydata.org/pandas-docs/stable/user_guide/basics.html#basics-dtypes
     """
 
@@ -85,158 +85,165 @@ class Internal:
             },
         },
     )
-    hvac = Spec(
+
+    thermostat = Spec(
         datetime_column=datetime_column,
         null_check_columns=[STATES.HVAC_MODE],
         spec={
             STATES.HVAC_MODE: {
                 "name": "hvac_mode",
                 "dtype": "category",
-                "channel": CHANNELS.HVAC,
+                "channel": CHANNELS.THERMOSTAT_SETTING,
                 "unit": UNITS.OTHER,
             },
             STATES.SYSTEM_MODE: {
                 "name": "system_mode",
                 "dtype": "category",
-                "channel": CHANNELS.HVAC,
+                "channel": CHANNELS.THERMOSTAT_SETTING,
                 "unit": UNITS.OTHER,
             },
             STATES.CALENDAR_EVENT: {
                 "name": "calendar_event",
                 "dtype": "category",
-                "channel": CHANNELS.HVAC,
+                "channel": CHANNELS.THERMOSTAT_SETTING,
                 "unit": UNITS.OTHER,
             },
             STATES.SCHEDULE: {
                 "name": "schedule",
                 "dtype": "category",
-                "channel": CHANNELS.HVAC,
+                "channel": CHANNELS.THERMOSTAT_SETTING,
                 "unit": UNITS.OTHER,
             },
             STATES.TEMPERATURE_CTRL: {
                 "name": "temperature_ctrl",
                 "dtype": "Float32",
-                "channel": CHANNELS.HVAC,
+                "channel": CHANNELS.THERMOSTAT_SETTING,
                 "unit": UNITS.CELSIUS,
             },
             STATES.TEMPERATURE_STP_COOL: {
                 "name": "temperature_stp_cool",
                 "dtype": "Float32",
-                "channel": CHANNELS.HVAC,
+                "channel": CHANNELS.THERMOSTAT_SETTING,
                 "unit": UNITS.CELSIUS,
             },
             STATES.TEMPERATURE_STP_HEAT: {
                 "name": "temperature_stp_heat",
                 "dtype": "Float32",
-                "channel": CHANNELS.HVAC,
+                "channel": CHANNELS.THERMOSTAT_SETTING,
                 "unit": UNITS.CELSIUS,
             },
             STATES.HUMIDITY: {
                 "name": "humidity",
                 "dtype": "Float32",
-                "channel": CHANNELS.HVAC,
+                "channel": CHANNELS.THERMOSTAT_SETTING,
                 "unit": UNITS.RELATIVE_HUMIDITY,
             },
             STATES.HUMIDITY_EXPECTED_LOW: {
                 "name": "humidity_expected_low",
                 "dtype": "Float32",
-                "channel": CHANNELS.HVAC,
+                "channel": CHANNELS.THERMOSTAT_SETTING,
                 "unit": UNITS.RELATIVE_HUMIDITY,
             },
             STATES.HUMIDITY_EXPECTED_HIGH: {
                 "name": "humidity_expected_high",
                 "dtype": "Float32",
-                "channel": CHANNELS.HVAC,
+                "channel": CHANNELS.THERMOSTAT_SETTING,
                 "unit": UNITS.RELATIVE_HUMIDITY,
             },
+        },
+    )
+    equipment = Spec(
+        datetime_column=datetime_column,
+        null_check_columns=[STATES.HVAC_MODE],
+        spec={
             STATES.AUXHEAT1: {
                 "name": "auxHeat1",
                 "dtype": "Int16",
-                "channel": CHANNELS.HVAC,
+                "channel": CHANNELS.EQUIPMENT,
                 "unit": UNITS.SECONDS,
             },
             STATES.AUXHEAT2: {
                 "name": "auxHeat2",
                 "dtype": "Int16",
-                "channel": CHANNELS.HVAC,
+                "channel": CHANNELS.EQUIPMENT,
                 "unit": UNITS.SECONDS,
             },
             STATES.AUXHEAT3: {
                 "name": "auxHeat3",
                 "dtype": "Int16",
-                "channel": CHANNELS.HVAC,
+                "channel": CHANNELS.EQUIPMENT,
                 "unit": UNITS.SECONDS,
             },
             STATES.COMPCOOL1: {
                 "name": "compCool1",
                 "dtype": "Int16",
-                "channel": CHANNELS.HVAC,
+                "channel": CHANNELS.EQUIPMENT,
                 "unit": UNITS.SECONDS,
             },
             STATES.COMPCOOL2: {
                 "name": "compCool2",
                 "dtype": "Int16",
-                "channel": CHANNELS.HVAC,
+                "channel": CHANNELS.EQUIPMENT,
                 "unit": UNITS.SECONDS,
             },
             STATES.COMPHEAT1: {
                 "name": "compHeat1",
                 "dtype": "Int16",
-                "channel": CHANNELS.HVAC,
+                "channel": CHANNELS.EQUIPMENT,
                 "unit": UNITS.SECONDS,
             },
             STATES.COMPHEAT2: {
                 "name": "compHeat2",
                 "dtype": "Int16",
-                "channel": CHANNELS.HVAC,
+                "channel": CHANNELS.EQUIPMENT,
                 "unit": UNITS.SECONDS,
             },
             STATES.DEHUMIDIFIER: {
                 "name": "dehumidifier",
                 "dtype": "Int16",
-                "channel": CHANNELS.HVAC,
+                "channel": CHANNELS.EQUIPMENT,
                 "unit": UNITS.SECONDS,
             },
             STATES.ECONOMIZER: {
                 "name": "economizer",
                 "dtype": "Int16",
-                "channel": CHANNELS.HVAC,
+                "channel": CHANNELS.EQUIPMENT,
                 "unit": UNITS.SECONDS,
             },
             STATES.FAN: {
                 "name": "fan",
                 "dtype": "Int16",
-                "channel": CHANNELS.HVAC,
+                "channel": CHANNELS.EQUIPMENT,
                 "unit": UNITS.SECONDS,
             },
             STATES.FAN_STAGE_ONE: {
                 "name": "fan",
                 "dtype": "Int16",
-                "channel": CHANNELS.HVAC,
+                "channel": CHANNELS.EQUIPMENT,
                 "unit": UNITS.SECONDS,
             },
             STATES.FAN_STAGE_TWO: {
                 "name": "fan",
                 "dtype": "Int16",
-                "channel": CHANNELS.HVAC,
+                "channel": CHANNELS.EQUIPMENT,
                 "unit": UNITS.SECONDS,
             },
             STATES.FAN_STAGE_THREE: {
                 "name": "fan",
                 "dtype": "Int16",
-                "channel": CHANNELS.HVAC,
+                "channel": CHANNELS.EQUIPMENT,
                 "unit": UNITS.SECONDS,
             },
             STATES.HUMIDIFIER: {
                 "name": "humidifier",
                 "dtype": "Int16",
-                "channel": CHANNELS.HVAC,
+                "channel": CHANNELS.EQUIPMENT,
                 "unit": UNITS.SECONDS,
             },
             STATES.VENTILATOR: {
                 "name": "ventilator",
                 "dtype": "Int16",
-                "channel": CHANNELS.HVAC,
+                "channel": CHANNELS.EQUIPMENT,
                 "unit": UNITS.SECONDS,
             },
         },
@@ -326,12 +333,14 @@ class Internal:
     full = Spec(
         datetime_column=datetime_column,
         null_check_columns=datetime.null_check_columns
-        + hvac.null_check_columns
+        + thermostat.null_check_columns
+        + equipment.null_check_columns
         + sensors.null_check_columns
         + weather.null_check_columns,
         spec={
             **datetime.spec,
-            **hvac.spec,
+            **thermostat.spec,
+            **equipment.spec,
             **sensors.spec,
             **weather.spec,
             **simulation.spec,
@@ -403,140 +412,147 @@ class FlatFilesSpec:
             },
         },
     )
-    hvac = Spec(
+    thermostat = Spec(
         datetime_column=datetime_column,
         null_check_columns="HvacMode",
         spec={
             "HvacMode": {
                 "internal_state": STATES.HVAC_MODE,
                 "dtype": "category",
-                "channel": CHANNELS.HVAC,
+                "channel": CHANNELS.THERMOSTAT_SETTING,
                 "unit": UNITS.OTHER,
             },
             "SystemMode": {
                 "internal_state": STATES.SYSTEM_MODE,
                 "dtype": "category",
-                "channel": CHANNELS.HVAC,
+                "channel": CHANNELS.THERMOSTAT_SETTING,
                 "unit": UNITS.OTHER,
             },
             "CalendarEvent": {
                 "internal_state": STATES.CALENDAR_EVENT,
                 "dtype": "category",
-                "channel": CHANNELS.HVAC,
+                "channel": CHANNELS.THERMOSTAT_SETTING,
                 "unit": UNITS.OTHER,
             },
             "Climate": {
                 "internal_state": STATES.SCHEDULE,
                 "dtype": "category",
-                "channel": CHANNELS.HVAC,
+                "channel": CHANNELS.THERMOSTAT_SETTING,
                 "unit": UNITS.OTHER,
             },
             "Temperature_ctrl": {
                 "internal_state": STATES.TEMPERATURE_CTRL,
                 "dtype": "Int16",
-                "channel": CHANNELS.HVAC,
+                "channel": CHANNELS.THERMOSTAT_SETTING,
                 "unit": UNITS.FARHENHEITx10,
             },
             "TemperatureExpectedCool": {
                 "internal_state": STATES.TEMPERATURE_STP_COOL,
                 "dtype": "Int16",
-                "channel": CHANNELS.HVAC,
+                "channel": CHANNELS.THERMOSTAT_SETTING,
                 "unit": UNITS.FARHENHEITx10,
             },
             "TemperatureExpectedHeat": {
                 "internal_state": STATES.TEMPERATURE_STP_HEAT,
                 "dtype": "Int16",
-                "channel": CHANNELS.HVAC,
+                "channel": CHANNELS.THERMOSTAT_SETTING,
                 "unit": UNITS.FARHENHEITx10,
             },
             "Humidity": {
                 "internal_state": STATES.HUMIDITY,
                 "dtype": "Float32",
-                "channel": CHANNELS.HVAC,
+                "channel": CHANNELS.THERMOSTAT_SETTING,
                 "unit": UNITS.RELATIVE_HUMIDITY,
             },
             "HumidityExpectedLow": {
                 "internal_state": STATES.HUMIDITY_EXPECTED_LOW,
                 "dtype": "Float32",
-                "channel": CHANNELS.HVAC,
+                "channel": CHANNELS.THERMOSTAT_SETTING,
                 "unit": UNITS.RELATIVE_HUMIDITY,
             },
             "HumidityExpectedHigh": {
                 "internal_state": STATES.HUMIDITY_EXPECTED_HIGH,
                 "dtype": "Float32",
-                "channel": CHANNELS.HVAC,
+                "channel": CHANNELS.THERMOSTAT_SETTING,
                 "unit": UNITS.RELATIVE_HUMIDITY,
             },
+        },
+    )
+
+    equipment = Spec(
+        datetime_column=datetime_column,
+        null_check_columns="HvacMode",
+        spec={
             "auxHeat1": {
                 "internal_state": STATES.AUXHEAT1,
                 "dtype": "Int16",
-                "channel": CHANNELS.HVAC,
+                "channel": CHANNELS.EQUIPMENT,
                 "unit": UNITS.SECONDS,
             },
             "auxHeat2": {
                 "internal_state": STATES.AUXHEAT2,
                 "dtype": "Int16",
-                "channel": CHANNELS.HVAC,
+                "channel": CHANNELS.EQUIPMENT,
                 "unit": UNITS.SECONDS,
             },
             "auxHeat3": {
                 "internal_state": STATES.AUXHEAT3,
                 "dtype": "Int16",
-                "channel": CHANNELS.HVAC,
+                "channel": CHANNELS.EQUIPMENT,
                 "unit": UNITS.SECONDS,
             },
             "compCool1": {
                 "internal_state": STATES.COMPCOOL1,
                 "dtype": "Int16",
-                "channel": CHANNELS.HVAC,
+                "channel": CHANNELS.EQUIPMENT,
                 "unit": UNITS.SECONDS,
             },
             "compCool2": {
                 "internal_state": STATES.COMPCOOL2,
                 "dtype": "Int16",
-                "channel": CHANNELS.HVAC,
+                "channel": CHANNELS.EQUIPMENT,
                 "unit": UNITS.SECONDS,
             },
             "compHeat1": {
                 "internal_state": STATES.COMPHEAT1,
                 "dtype": "Int16",
-                "channel": CHANNELS.HVAC,
+                "channel": CHANNELS.EQUIPMENT,
                 "unit": UNITS.SECONDS,
             },
             "compHeat2": {
                 "internal_state": STATES.COMPHEAT2,
                 "dtype": "Int16",
-                "channel": CHANNELS.HVAC,
+                "channel": CHANNELS.EQUIPMENT,
                 "unit": UNITS.SECONDS,
             },
             "dehumidifier": {
                 "internal_state": STATES.DEHUMIDIFIER,
                 "dtype": "Int16",
-                "channel": CHANNELS.HVAC,
+                "channel": CHANNELS.EQUIPMENT,
                 "unit": UNITS.SECONDS,
             },
             "economizer": {
                 "internal_state": STATES.ECONOMIZER,
                 "dtype": "Int16",
-                "channel": CHANNELS.HVAC,
+                "channel": CHANNELS.EQUIPMENT,
                 "unit": UNITS.SECONDS,
             },
             "fan": {
                 "internal_state": STATES.FAN,
                 "dtype": "Int16",
-                "channel": CHANNELS.HVAC,
+                "channel": CHANNELS.EQUIPMENT,
                 "unit": UNITS.SECONDS,
             },
             "humidifier": {
                 "internal_state": STATES.HUMIDIFIER,
                 "dtype": "Int16",
-                "channel": CHANNELS.HVAC,
+                "channel": CHANNELS.EQUIPMENT,
                 "unit": UNITS.SECONDS,
             },
             "ventilator": {
                 "internal_state": STATES.VENTILATOR,
                 "dtype": "Int16",
-                "channel": CHANNELS.HVAC,
+                "channel": CHANNELS.EQUIPMENT,
                 "unit": UNITS.SECONDS,
             },
         },
@@ -608,11 +624,18 @@ class FlatFilesSpec:
         datetime_column=datetime_column,
         null_check_columns=[
             datetime.null_check_columns
-            + hvac.null_check_columns
+            + thermostat.null_check_columns
+            + equipment.null_check_columns
             + sensors.null_check_columns
             + weather.null_check_columns
         ],
-        spec={**datetime.spec, **hvac.spec, **sensors.spec, **weather.spec,},
+        spec={
+            **datetime.spec,
+            **thermostat.spec,
+            **equipment.spec,
+            **sensors.spec,
+            **weather.spec,
+        },
     )
 
 
@@ -633,104 +656,111 @@ class DonateYourDataSpec:
             },
         },
     )
-    hvac = Spec(
+    thermostat = Spec(
         datetime_column=datetime_column,
         null_check_columns="HvacMode",
         spec={
             "HvacMode": {
                 "internal_state": STATES.HVAC_MODE,
                 "dtype": "category",
-                "channel": CHANNELS.HVAC,
+                "channel": CHANNELS.THERMOSTAT_SETTING,
                 "unit": UNITS.OTHER,
             },
             "Event": {
                 "internal_state": STATES.CALENDAR_EVENT,
                 "dtype": "category",
-                "channel": CHANNELS.HVAC,
+                "channel": CHANNELS.THERMOSTAT_SETTING,
                 "unit": UNITS.OTHER,
             },
             "Schedule": {
                 "internal_state": STATES.SCHEDULE,
                 "dtype": "category",
-                "channel": CHANNELS.HVAC,
+                "channel": CHANNELS.THERMOSTAT_SETTING,
                 "unit": UNITS.OTHER,
             },
             "T_ctrl": {
                 "internal_state": STATES.TEMPERATURE_CTRL,
                 "dtype": "Int16",
-                "channel": CHANNELS.HVAC,
+                "channel": CHANNELS.THERMOSTAT_SETTING,
                 "unit": UNITS.FARHENHEIT,
             },
             "T_stp_cool": {
                 "internal_state": STATES.TEMPERATURE_STP_COOL,
                 "dtype": "Int16",
-                "channel": CHANNELS.HVAC,
+                "channel": CHANNELS.THERMOSTAT_SETTING,
                 "unit": UNITS.FARHENHEIT,
             },
             "T_stp_heat": {
                 "internal_state": STATES.TEMPERATURE_STP_HEAT,
                 "dtype": "Int16",
-                "channel": CHANNELS.HVAC,
+                "channel": CHANNELS.THERMOSTAT_SETTING,
                 "unit": UNITS.FARHENHEIT,
             },
             "HumidityExpectedLow": {
                 "internal_state": STATES.HUMIDITY_EXPECTED_LOW,
                 "dtype": "Float32",
-                "channel": CHANNELS.HVAC,
+                "channel": CHANNELS.THERMOSTAT_SETTING,
                 "unit": UNITS.RELATIVE_HUMIDITY,
             },
             "HumidityExpectedHigh": {
                 "internal_state": STATES.HUMIDITY_EXPECTED_HIGH,
                 "dtype": "Float32",
-                "channel": CHANNELS.HVAC,
+                "channel": CHANNELS.THERMOSTAT_SETTING,
                 "unit": UNITS.RELATIVE_HUMIDITY,
             },
+        },
+    )
+
+    equipment = Spec(
+        datetime_column=datetime_column,
+        null_check_columns="HvacMode",
+        spec={
             "auxHeat1": {
                 "internal_state": STATES.AUXHEAT1,
                 "dtype": "Int16",
-                "channel": CHANNELS.HVAC,
+                "channel": CHANNELS.EQUIPMENT,
                 "unit": UNITS.SECONDS,
             },
             "auxHeat2": {
                 "internal_state": STATES.AUXHEAT2,
                 "dtype": "Int16",
-                "channel": CHANNELS.HVAC,
+                "channel": CHANNELS.EQUIPMENT,
                 "unit": UNITS.SECONDS,
             },
             "auxHeat3": {
                 "internal_state": STATES.AUXHEAT3,
                 "dtype": "Int16",
-                "channel": CHANNELS.HVAC,
+                "channel": CHANNELS.EQUIPMENT,
                 "unit": UNITS.SECONDS,
             },
             "compCool1": {
                 "internal_state": STATES.COMPCOOL1,
                 "dtype": "Int16",
-                "channel": CHANNELS.HVAC,
+                "channel": CHANNELS.EQUIPMENT,
                 "unit": UNITS.SECONDS,
             },
             "compCool2": {
                 "internal_state": STATES.COMPCOOL2,
                 "dtype": "Int16",
-                "channel": CHANNELS.HVAC,
+                "channel": CHANNELS.EQUIPMENT,
                 "unit": UNITS.SECONDS,
             },
             "compHeat1": {
                 "internal_state": STATES.COMPHEAT1,
                 "dtype": "Int16",
-                "channel": CHANNELS.HVAC,
+                "channel": CHANNELS.EQUIPMENT,
                 "unit": UNITS.SECONDS,
             },
             "compHeat2": {
                 "internal_state": STATES.COMPHEAT2,
                 "dtype": "Int16",
-                "channel": CHANNELS.HVAC,
+                "channel": CHANNELS.EQUIPMENT,
                 "unit": UNITS.SECONDS,
             },
             "fan": {
                 "internal_state": STATES.FAN,
                 "dtype": "Int16",
-                "channel": CHANNELS.HVAC,
+                "channel": CHANNELS.EQUIPMENT,
                 "unit": UNITS.SECONDS,
             },
         },
@@ -802,11 +832,18 @@ class DonateYourDataSpec:
         datetime_column=datetime_column,
         null_check_columns=[
             datetime.null_check_columns
-            + hvac.null_check_columns
+            + thermostat.null_check_columns
+            + equipment.null_check_columns
             + sensors.null_check_columns
             + weather.null_check_columns
         ],
-        spec={**datetime.spec, **hvac.spec, **sensors.spec, **weather.spec,},
+        spec={
+            **datetime.spec,
+            **thermostat.spec,
+            **equipment.spec,
+            **sensors.spec,
+            **weather.spec,
+        },
     )
 
 
@@ -869,4 +906,3 @@ class EnergyPlusWeather:
         STATES.OUTDOOR_TEMPERATURE: "temp_air",
         STATES.OUTDOOR_RELATIVE_HUMIDITY: "relative_humidity",
     }
-
