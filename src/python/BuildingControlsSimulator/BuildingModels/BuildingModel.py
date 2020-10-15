@@ -16,14 +16,13 @@ logger = logging.getLogger(__name__)
 
 @attr.s
 class BuildingModel(ABC):
-    """Abstract Base Class for building models
-    """
+    """Abstract Base Class for building models"""
 
     input_states = attr.ib()
     output_states = attr.ib()
 
     @abstractmethod
-    def initialize(self, t_start, t_end, ts):
+    def initialize(self, start_utc, t_start, t_end, ts, categories_dict):
         pass
 
     @abstractmethod

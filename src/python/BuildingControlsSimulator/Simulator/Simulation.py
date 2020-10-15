@@ -50,7 +50,15 @@ class Simulation:
         # get all data states that can be input to each model
         available_data_states = [
             v["internal_state"]
-            for k, v in self.data_client.source.data_spec.hvac.spec.items()
+            for k, v in self.data_client.source.data_spec.datetime.spec.items()
+        ]
+        available_data_states += [
+            v["internal_state"]
+            for k, v in self.data_client.source.data_spec.thermostat.spec.items()
+        ]
+        available_data_states += [
+            v["internal_state"]
+            for k, v in self.data_client.source.data_spec.equipment.spec.items()
         ]
         available_data_states += [
             v["internal_state"]
@@ -137,17 +145,31 @@ class Simulation:
         self.start_utc = self.data_client.start_utc
         self.end_utc = self.data_client.end_utc
 
+        if not self.start_utc:
+            raise ValueError("start_utc is None.")
+
+        if not self.end_utc:
+            raise ValueError("end_utc is None.")
+
         self.building_model.initialize(
+            start_utc=self.start_utc,
             t_start=self.start_time_seconds,
             t_end=self.final_time_seconds,
             t_step=self.step_size_seconds,
-            categories_dict=self.data_client.hvac.get_categories_dict(),
+            categories_dict=self.data_client.thermostat.get_categories_dict(),
+        )
+
+        self.controller_model.update_settings(
+            change_points_schedule=self.data_client.thermostat.change_points_schedule,
+            change_points_comfort_prefs=self.data_client.thermostat.change_points_comfort_prefs,
+            init=True,
         )
         self.controller_model.initialize(
+            start_utc=self.start_utc,
             t_start=self.start_time_seconds,
             t_end=self.final_time_seconds,
             t_step=self.step_size_seconds,
-            categories_dict=self.data_client.hvac.get_categories_dict(),
+            categories_dict=self.data_client.thermostat.get_categories_dict(),
         )
 
         self.allocate_memory()
@@ -178,10 +200,17 @@ class Simulation:
             dtype="int64",
         )
         for i in range(0, len(_sim_time)):
+
+            self.controller_model.update_settings(
+                change_points_schedule=self.data_client.thermostat.change_points_schedule,
+                change_points_comfort_prefs=self.data_client.thermostat.change_points_comfort_prefs,
+                time_utc=self.data_client.datetime.data.iloc[i],
+            )
+
             self.controller_model.do_step(
                 t_start=_sim_time[i],
                 t_step=self.step_size_seconds,
-                step_hvac_input=self.data_client.hvac.data.iloc[i],
+                step_thermostat_input=self.data_client.thermostat.data.iloc[i],
                 step_sensor_input=self.building_model.step_output,
                 step_weather_input=self.data_client.weather.data.iloc[i],
             )
@@ -192,6 +221,13 @@ class Simulation:
                 step_sensor_input=self.data_client.sensors.data.iloc[i],
                 step_weather_input=self.data_client.weather.data.iloc[i],
             )
+
+        # t_ctrl output is time-shifted to make runtime integral over preceeding timestep
+        # final timestep controller output will be repeated
+        # TODO: recompute t_ctrl given final state
+        self.controller_model.output[STATES.TEMPERATURE_CTRL][
+            0:-1
+        ] = self.controller_model.output[STATES.TEMPERATURE_CTRL][1:]
 
         logger.info(
             "Finished co-simulation\n"
@@ -204,9 +240,7 @@ class Simulation:
         # convert output to dataframe
         self.output = pd.DataFrame.from_dict(
             {
-                STATES.DATE_TIME: self.data_client.hvac.data[
-                    STATES.DATE_TIME
-                ].to_numpy(),
+                STATES.DATE_TIME: self.data_client.datetime.data,
                 **self.controller_model.output,
                 **self.building_model.output,
             }
@@ -226,7 +260,9 @@ class Simulation:
     def get_full_input(self):
         full_input = pd.concat(
             [
-                self.data_client.hvac.data,
+                self.data_client.datetime.data,
+                self.data_client.thermostat.data,
+                self.data_client.equipment.data,
                 self.data_client.sensors.data,
                 self.data_client.weather.data,
             ],

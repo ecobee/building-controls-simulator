@@ -50,9 +50,8 @@ class Deadband(ControlModel):
             STATES.FAN_STAGE_THREE,
         ]
 
-    def initialize(self, t_start, t_end, t_step, categories_dict):
-        """
-        """
+    def initialize(self, start_utc, t_start, t_end, t_step, categories_dict):
+        """"""
         self.current_t_idx = 0
         self.step_size_seconds = t_step
         self.allocate_output_memory(
@@ -92,7 +91,9 @@ class Deadband(ControlModel):
                     Internal.full.spec[state]["dtype"]
                 )
                 self.output[state] = np.full(
-                    n_s, np_default_value, dtype=np_dtype,
+                    n_s,
+                    np_default_value,
+                    dtype=np_dtype,
                 )
 
         self.output[STATES.STEP_STATUS] = np.full(n_s, 0, dtype="int8")
@@ -105,20 +106,24 @@ class Deadband(ControlModel):
         # initialize all off
         self.step_output = {state: 0 for state in self.output_states}
 
+    def calc_t_control(self, step_sensor_input):
+        t_ctrl = step_sensor_input[STATES.THERMOSTAT_TEMPERATURE]
+        return t_ctrl
+
     def do_step(
         self,
         t_start,
         t_step,
-        step_hvac_input,
+        step_thermostat_input,
         step_sensor_input,
         step_weather_input,
     ):
         """Simulate controller time step."""
-        t_ctrl = step_sensor_input[STATES.THERMOSTAT_TEMPERATURE]
+        t_ctrl = self.calc_t_control(step_sensor_input)
         self.step_output[STATES.TEMPERATURE_CTRL] = t_ctrl
 
         if t_ctrl < (
-            step_hvac_input[STATES.TEMPERATURE_STP_HEAT] - self.deadband
+            step_thermostat_input[STATES.TEMPERATURE_STP_HEAT] - self.deadband
         ):
             # turn on heat
             # turn off cool
@@ -126,7 +131,7 @@ class Deadband(ControlModel):
             self.step_output[STATES.FAN_STAGE_ONE] = self.step_size_seconds
             self.step_output[STATES.COMPCOOL1] = 0
         elif t_ctrl > (
-            step_hvac_input[STATES.TEMPERATURE_STP_COOL] + self.deadband
+            step_thermostat_input[STATES.TEMPERATURE_STP_COOL] + self.deadband
         ):
             # turn on cool
             # turn off heat
@@ -148,3 +153,7 @@ class Deadband(ControlModel):
     def add_step_to_output(self, step_output):
         for k, v in step_output.items():
             self.output[k][self.current_t_idx] = v
+
+    def change_settings(self, new_settings):
+        # this model has no settings
+        pass

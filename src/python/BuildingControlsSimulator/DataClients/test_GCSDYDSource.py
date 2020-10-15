@@ -16,7 +16,7 @@ from BuildingControlsSimulator.DataClients.DataStates import STATES
 logger = logging.getLogger(__name__)
 
 
-class TestGCSFlatFilesSource:
+class TestGCSDYDSource:
     @classmethod
     def setup_class(cls):
         # initialize with data to avoid pulling multiple times
@@ -76,7 +76,9 @@ class TestGCSFlatFilesSource:
     def test_get_data(self):
         # test HVAC data returns dict of non-empty pd.DataFrame
         for dc in self.data_clients:
-            assert isinstance(dc.hvac.data, pd.DataFrame)
+            assert isinstance(dc.datetime.data, pd.Series)
+            assert isinstance(dc.thermostat.data, pd.DataFrame)
+            assert isinstance(dc.equipment.data, pd.DataFrame)
             assert isinstance(dc.sensors.data, pd.DataFrame)
             assert isinstance(dc.weather.data, pd.DataFrame)
 
@@ -95,16 +97,10 @@ class TestGCSFlatFilesSource:
                 )
 
     def test_data_utc(self):
-
         for dc in self.data_clients:
-            if not dc.hvac.data.empty:
+            if not dc.datetime.data.empty:
                 assert (
-                    dc.hvac.data[dc.hvac.spec.datetime_column].dt.tz
-                    == pytz.utc
-                )
-            if not dc.weather.data.empty:
-                assert (
-                    dc.weather.data[dc.weather.spec.datetime_column].dt.tz
+                    dc.datetime.data[dc.datetime.spec.datetime_column].tz
                     == pytz.utc
                 )
 
@@ -117,10 +113,23 @@ class TestGCSFlatFilesSource:
             ):
                 # verify that data bfill works with full_data_periods
                 assert (
-                    pytest.approx(30.0)
-                    == dc.hvac.data[20620:20627][
-                        STATES.TEMPERATURE_CTRL
-                    ].mean()
+                    pytest.approx(27.64957)
+                    == dc.thermostat.data.iloc[
+                        dc.datetime.data[
+                            (
+                                dc.datetime.data
+                                >= pd.Timestamp(
+                                    "2018-05-15 16:30:00", tz="utc"
+                                )
+                            )
+                            & (
+                                dc.datetime.data
+                                <= pd.Timestamp(
+                                    "2018-05-15 17:30:00", tz="utc"
+                                )
+                            )
+                        ].index,
+                    ][STATES.TEMPERATURE_CTRL].mean()
                 )
                 assert dc.full_data_periods[0] == [
                     pd.Timestamp("2018-04-13 17:00:00", tz="utc"),

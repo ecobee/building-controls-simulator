@@ -36,6 +36,7 @@ dask = {extras = ["complete"],version = "*"}
 requests = "*"
 scikit-learn = "*"
 statsmodels = "*"
+tzwhere = "*"
 
 [requires]
 python_version = "3.7.6"

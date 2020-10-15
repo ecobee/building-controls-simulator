@@ -40,7 +40,9 @@ class TestSimulator:
         )
         if not os.path.isfile(cls.test_weather_path):
             _fpath = os.path.join(
-                os.environ.get("EPLUS_DIR"), "WeatherData", weather_name,
+                os.environ.get("EPLUS_DIR"),
+                "WeatherData",
+                weather_name,
             )
             shutil.copyfile(_fpath, cls.test_weather_path)
 
@@ -78,7 +80,7 @@ class TestSimulator:
 
     @classmethod
     def teardown_class(cls):
-        """ teardown any state that was previously setup with a call to
+        """teardown any state that was previously setup with a call to
         setup_class.
         """
         pass
@@ -90,10 +92,14 @@ class TestSimulator:
             sim_config=self.sim_config,
             building_models=[
                 EnergyPlusBuildingModel(
-                    idf=IDFPreprocessor(idf_file=self.idf_name,),
+                    idf=IDFPreprocessor(
+                        idf_file=self.idf_name,
+                    ),
                 )
             ],
-            controller_models=[Deadband(deadband=1.0),],
+            controller_models=[
+                Deadband(deadband=1.0),
+            ],
         )
         master.simulate(local=True, preprocess_check=True)
         assert (
