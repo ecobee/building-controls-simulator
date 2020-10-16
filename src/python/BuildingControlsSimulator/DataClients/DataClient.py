@@ -5,8 +5,6 @@ import logging
 import attr
 import pandas as pd
 import numpy as np
-from tzwhere import tzwhere
-import pytz
 
 from BuildingControlsSimulator.DataClients.DataSpec import Internal
 from BuildingControlsSimulator.DataClients.DateTimeChannel import (
@@ -313,6 +311,12 @@ class DataClient:
             df = df.set_index(Internal.datetime_column)
             df = df.resample(resample_freq).asfreq()
             df = df.reset_index()
+
+        # adding a null record breaks categorical dtypes
+        # convert back to categories
+        for state in df.columns:
+            if Internal.full.spec[state]["dtype"] == "category":
+                df[state] = df[state].astype("category")
 
         return df
 
