@@ -127,8 +127,9 @@ running configurable setting up commands in ${HOME}/.bashrc ...
 EndOfMessage
     if [ -d "${PACKAGE_DIR:?}" ]; then
         cd "${PACKAGE_DIR:?}"
-        echo "Setting EnergyPlus version to default 8-9-0" 
         echo "Set this to desired versions using ${PACKAGE_DIR:?}/scripts/epvm.sh"
+        echo "Setting EnergyPlus version to default: 8-9-0"
+        echo "Configure this default in ${PACKAGE_DIR:?}/scripts/.bashrc"
         . "${PACKAGE_DIR:?}/scripts/epvm.sh" "8-9-0"
     else
         echo "PACKAGE_DIR=${PACKAGE_DIR} does not exist. PACKAGE_DIR env var may be incorrect."
@@ -147,6 +148,3 @@ EndOfMessage
     fi
     pipenv shell
 fi
-
-
-
