@@ -73,7 +73,7 @@ class TestSimulator:
             longitude=-112.078232,
             start_utc="2018-05-16",
             end_utc="2018-06-01",
-            min_sim_period="14D",
+            min_sim_period="3D",
             min_chunk_period="30D",
             step_size_minutes=5,
         )
