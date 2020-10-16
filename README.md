@@ -47,8 +47,43 @@ NREL_DEV_EMAIL=<your email>
 ```
 
 Now you're ready to build and launch the container!
+If you delete the docker image just go through the setup here again to rebuild it.
 
-#### Run with bash (recommended first time setup)
+##### Note: Docker images may use up to 12 GB of disk space - make sure you have this available before building.
+The size of the container image can be reduced to roughly 5 GB by not installing
+every EnergyPlus version in `scripts/setup/install_ep.sh` and not downloading 
+all IECC 2018 IDF files in `scripts/setup/download_IECC_idfs.sh`. Simply comment
+out the files you do not need.
+
+## Run BCS with Jupyter Lab Server (option 1)
+
+A jupyter-lab server is setup to run when the container is brought up by `docker-compose up`. This is accessible locally at: http://localhost:8888/lab. 
+
+`docker-compose up` will also build the image if it does not exist already, and then run `scripts/setup/jupyter_lab.sh`.
+
+Stopping or exiting the container will also shutdown the jupyter-lab server.
+
+```bash
+docker-compose up
+```
+
+The container can be shutdown using another terminal on the host via:
+
+```bash
+docker-compose down
+```
+
+#### Configure EnergyPlus version
+
+Using this flow of `docker-compose up` and `docker-compose down` you can 
+modify the `scripts/setup/.bashrc` file line that targets the EnergyPlus
+version, by default this is "8-9-0" which is the minimum version supported.
+
+```bash
+. "${PACKAGE_DIR:?}/scripts/epvm.sh" "<x-x-x>"
+```
+
+## Run BCS with interactive bash shell (option 2)
 
 The `docker-compose run` command does most of the set up and can be used again 
 to run the container after it is built. The `--service-ports` flag should be set 
@@ -69,47 +104,14 @@ docker-compose run --service-ports building-controls-simulator bash
 . scripts/setup/download_IECC_idfs.sh
 
 # you're done with container setup! now exit container shell or just stop the docker container
-# the docker container can now be reattached to, stopped, and restarted when you need it again (see below for usage)
 # unless you specifically delete this docker container it can be restarted with the setup already done
 exit    # first exit to get out of pipenv shell
 exit    # second exit to get out of container shell
 ```
 
-If you delete the container just go through the setup here again to rebuild it.
-
-##### Note: Docker images may use up to 12 GB of disk space - make sure you have this available before building.
-The size of the container image can be reduced to roughly 5 GB by not installing
-every EnergyPlus version in `scripts/setup/install_ep.sh` and not downloading 
-all IECC 2018 IDF files in `scripts/setup/download_IECC_idfs.sh`. Simply comment
-out the files you do not need.
-
-##### Note: Docker build may fail if memory or network issues:
-Some issues that have occurred on different machines are:
-- `apt-get install` failing or other packages not being found by apt-get
-    - Verify network connection and build container again
-- `jupyter lab build` failing
-    - try setting in Dockerfile command `jupyter lab build --dev-build=False --minimize=False`.
-
-### Run Jupyter Lab Server
-
-A jupyter-lab server is setup to run when the container is brought up by `dockef-compose up`.
-This is accessible locally at: http://localhost:8888/lab
-
-Stopping or exiting the container will also shutdown the jupyter server.
-
-```bash
-docker-compose up
-```
-
-`dockef-compose up` will also build the image if it does not exist already, and then run `scripts/setup/jupyter_lab.sh`.
-The container can be shutdown using another terminal on the host via:
-
-```bash
-docker-compose down
-```
-
-There is also a background script `scripts/setup/jupyter_lab_bkgrnd.sh` if you would like
-to keep your bash tty available.
+There is also a background script `scripts/setup/jupyter_lab_bkgrnd.sh` 
+if you would like to run the jupyter-lab server from bash tty and keep your 
+prompt available.
 
 ```bash
 docker-compose run --service-ports building-controls-simulator bash
@@ -119,28 +121,68 @@ pipenv shell
 . scripts/setup/jupyter_lab_bkgrnd.sh
 ```
 
+### Open bash shell in running container
+
+If you've run the container with `docker-compose up` or `docker-compose run` 
+and need an interactive bash shell inside, lookup the container id with 
+`docker ps` then run:
+
+```bash
+docker exec -it <running container id> bash
+```
+
 ## Authentication with GCP
 
-First authenticate normally to GCP, e.g. using ` gcloud auth`. Then copy `${GOOGLE_APPLICATION_CREDENTIALS}` into the container to access GCP resources with 
+GCP credentials are not required to use the BCS but make accessing data much
+easier. If you do not have credentials but have local access to data see 
+section below.
+
+First authenticate normally to GCP, e.g. using `gcloud auth`. Then copy `${GOOGLE_APPLICATION_CREDENTIALS}` into the container to access GCP resources with 
 the same permissions.
 
 On host machine:
 ```bash
-# on local machine source .env and copy credentials to container
+# on local machine copy credentials to container
 docker cp ${GOOGLE_APPLICATION_CREDENTIALS} <container ID>:/home/bcs/.config/application_default_credentials.json
 ```
 
 Within container:
 ```bash
 # in container make sure bcs user can read credentials
-sudo chown -R "bcs":"bcs" ~/.config/application_default_credentials.json
+sudo chown "bcs":"bcs" ~/.config/application_default_credentials.json
 ```
+
+## Using locally cached data
+
+Instead of using GCS access to download data you can use a locally cached
+DYD files following the format: `data/cache/GCSDYD/<hashed ID>.csv.zip`.
+
+Simply save the files using this format and you can use them in local simulations.
+
+## Docker Issues
+
+Some issues that have occurred on different machines are:
+
+### Build issues
+
+- `apt-get install` failing or other packages not being found by apt-get
+    - Verify network connection and build container again
+- `jupyter lab build` failing
+    - try setting in Dockerfile command `jupyter lab build --dev-build=False --minimize=False`.
+
+### File permissions issues
+
+1. After switching branches on host machine mounted volumes give permissions
+errors when access is attempted within docker container.
+    - on Mac OS permissions for Full Disk Access must be given to Docker App. 
+    This is found in Settings > Security & Privacy > Full Disk Access. See answer 1 in https://stackoverflow.com/questions/64319987/docker-compose-volume-started-acting-weird-no-permissions-on-files-after-switch
+
 
 ## Usage
 
 ### Example Notebook (Hello World)
 
-First move the test .idf file to the `$IDR_DIR`.
+First move the test .idf file to the `$IDF_DIR`.
 
 ```bash
 cp "test/idf/v8-9-0/AZ_Phoenix_gasfurnace_crawlspace_IECC_2018_cycles.idf" "${IDF_DIR}"
@@ -227,8 +269,6 @@ Finally, run all the tests:
 ```bash
 python -m pytest src/python
 ```
-
-
 
 ## Weather Data
 
