@@ -131,7 +131,7 @@ RUN cd "${PACKAGE_DIR}" \
     && jupyter labextension install @jupyter-widgets/jupyterlab-manager@2 --no-build \
     && jupyter labextension install jupyterlab-plotly --no-build \
     && jupyter labextension install plotlywidget@1.5.0 --no-build \
-    && jupyter lab build --dev-build=False --minimize=True \
+    && jupyter lab build --dev-build=False --minimize=False \
     && unset NODE_OPTIONS \
     && cp "${PACKAGE_DIR}/scripts/setup/.bashrc" "$HOME/.bashrc" \
     && chmod +x "${PACKAGE_DIR}/scripts/setup/jupyter_lab_bkgrnd.sh"

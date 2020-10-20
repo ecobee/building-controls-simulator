@@ -47,9 +47,9 @@ _ENERGYPLUS_INSTALL_DIR="${1}"
 
 # versions and SHA numbers can be found at https://github.com/NREL/docker-energyplus/blob/develop/Dockerfile
 install_ep "8-9-0" "40101eaafd" "${_ENERGYPLUS_INSTALL_DIR}"
-install_ep "9-0-1" "bb7ca4f0da" "${_ENERGYPLUS_INSTALL_DIR}"
-install_ep "9-1-0" "08d2e308bb" "${_ENERGYPLUS_INSTALL_DIR}"
-install_ep "9-2-0" "921312fa1d" "${_ENERGYPLUS_INSTALL_DIR}"
-install_ep "9-3-0" "baff08990c" "${_ENERGYPLUS_INSTALL_DIR}"
+#install_ep "9-0-1" "bb7ca4f0da" "${_ENERGYPLUS_INSTALL_DIR}"
+#install_ep "9-1-0" "08d2e308bb" "${_ENERGYPLUS_INSTALL_DIR}"
+#install_ep "9-2-0" "921312fa1d" "${_ENERGYPLUS_INSTALL_DIR}"
+#install_ep "9-3-0" "baff08990c" "${_ENERGYPLUS_INSTALL_DIR}"
 
 exit 0
