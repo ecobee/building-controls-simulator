@@ -19,9 +19,6 @@ cd building-controls-simulator
 
 You're going to need Docker Desktop installed, if not see https://www.docker.com/. Docker Compose is used to manage the containers and is included by default in the desktop versions of docker for all systems.
 
-Recommended version of Docker Desktop: 2.4.0.0
-Recommended version of Docker Compose: 1.27.4
-
 ### Using Docker-Compose
 
 `docker-compose.yml` defines the Dockerfile and image to use, ports to map, and volumes to mount. It also specifies the env file `.env` to inject environment variables that are needed both to build the container and to be used inside the container. As a user all you need to know is that any API keys or GCP variables are stored here (safely) the default EnergyPlus version is 8-9-0, and this can be changed later very easily. 
