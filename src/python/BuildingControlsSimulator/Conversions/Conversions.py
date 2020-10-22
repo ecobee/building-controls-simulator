@@ -26,9 +26,11 @@ class Conversions:
 
     @staticmethod
     def relative_humidity_from_dewpoint(temperature, dewpoint):
-        return Conversions.saturation_vapor_pressure(
-            dewpoint
-        ) / Conversions.saturation_vapor_pressure(temperature)
+        """ Return RH in % [0-100]"""
+        return (
+            Conversions.saturation_vapor_pressure(dewpoint)
+            / Conversions.saturation_vapor_pressure(temperature)
+        ) * 100
 
     @staticmethod
     def relative_humidity_to_dewpoint(temp_air, relative_humidity):
