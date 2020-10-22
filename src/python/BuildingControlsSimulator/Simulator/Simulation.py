@@ -248,22 +248,7 @@ class Simulation:
 
         self.output = self.output[_mask]
 
-        self.full_input = self.get_full_input()[_mask]
-
-    def get_full_input(self):
-        full_input = pd.concat(
-            [
-                self.data_client.datetime.data,
-                self.data_client.thermostat.data,
-                self.data_client.equipment.data,
-                self.data_client.sensors.data,
-                self.data_client.weather.data,
-            ],
-            axis="columns",
-        )
-        # drop duplicated datetime columns
-        full_input = full_input.loc[:, ~full_input.columns.duplicated()]
-        return full_input
+        self.full_input = self.data_client.get_full_input()[_mask]
 
     def show_plots(self):
         output_analysis = OutputAnalysis(df=self.output_df)
