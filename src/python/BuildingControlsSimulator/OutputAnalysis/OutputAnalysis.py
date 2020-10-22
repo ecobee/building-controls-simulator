@@ -188,6 +188,20 @@ class OutputAnalysis(object):
 
         fig.add_trace(
             go.Scatter(
+                x=output_df[STATES.DATE_TIME],
+                y=output_df[STATES.THERMOSTAT_HUMIDITY],
+                mode="lines",
+                line=dict(color="blue"),
+                name=Internal.full.spec[STATES.THERMOSTAT_HUMIDITY]["name"],
+                hoverlabel={"namelength": -1},
+            ),
+            row=row,
+            col=col,
+            secondary_y=True,
+        )
+
+        fig.add_trace(
+            go.Scatter(
                 x=input_df[STATES.DATE_TIME],
                 y=input_df[STATES.OUTDOOR_TEMPERATURE],
                 mode="lines",
@@ -196,8 +210,24 @@ class OutputAnalysis(object):
             ),
             row=row,
             col=col,
+            secondary_y=False,
+        )
+
+        fig.add_trace(
+            go.Scatter(
+                x=input_df[STATES.DATE_TIME],
+                y=input_df[STATES.OUTDOOR_RELATIVE_HUMIDITY],
+                mode="lines",
+                name=Internal.full.spec[STATES.OUTDOOR_RELATIVE_HUMIDITY][
+                    "name"
+                ],
+                hoverlabel={"namelength": -1},
+            ),
+            row=row,
+            col=col,
             secondary_y=True,
         )
+
         fig.add_trace(
             go.Scatter(
                 x=output_df[STATES.DATE_TIME],
@@ -225,33 +255,38 @@ class OutputAnalysis(object):
             col=col,
             secondary_y=False,
         )
-        # fig.add_trace(
-        #     go.Scatter(
-        #         x=input_df[STATES.DATE_TIME],
-        #         y=input_df[STATES.TEMPERATURE_STP_HEAT],
-        #         mode="lines",
-        #         line=dict(color="firebrick", width=1, dash="dash"),
-        #         name=Internal.full.spec[STATES.TEMPERATURE_STP_HEAT]["name"],
-        #         hoverlabel={"namelength": -1},
-        #     ),
-        #     row=row,
-        #     col=col,
-        #     secondary_y=False,
-        # )
 
-        # fig.add_trace(
-        #     go.Scatter(
-        #         x=input_df[STATES.DATE_TIME],
-        #         y=input_df[STATES.TEMPERATURE_STP_COOL],
-        #         mode="lines",
-        #         line=dict(color="blue", width=1, dash="dash"),
-        #         name=Internal.full.spec[STATES.TEMPERATURE_STP_COOL]["name"],
-        #         hoverlabel={"namelength": -1},
-        #     ),
-        #     row=row,
-        #     col=col,
-        #     secondary_y=False,
-        # )
+        # changes in calendar events
+        chg_event = output_df[
+            (
+                output_df[STATES.CALENDAR_EVENT]
+                != output_df[STATES.CALENDAR_EVENT].shift(1)
+            )
+            & ~(
+                (output_df[STATES.CALENDAR_EVENT].isnull())
+                & (output_df[STATES.CALENDAR_EVENT].shift(1).isnull())
+            )
+        ][
+            [
+                STATES.DATE_TIME,
+                STATES.TEMPERATURE_STP_COOL,
+                STATES.CALENDAR_EVENT,
+            ]
+        ]
+        fig.add_trace(
+            go.Scatter(
+                x=chg_event[STATES.DATE_TIME],
+                y=chg_event[STATES.TEMPERATURE_STP_COOL] + 2.0,
+                mode="markers+text",
+                name=Internal.full.spec[STATES.CALENDAR_EVENT]["name"],
+                text=chg_event[STATES.CALENDAR_EVENT],
+                textposition="bottom center",
+                hoverlabel={"namelength": -1},
+            ),
+            row=row,
+            col=col,
+            secondary_y=False,
+        )
 
     def power_plot(self, fig, row, col):
         """"""

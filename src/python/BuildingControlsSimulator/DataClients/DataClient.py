@@ -7,6 +7,11 @@ import pandas as pd
 import numpy as np
 
 from BuildingControlsSimulator.DataClients.DataSpec import Internal
+from BuildingControlsSimulator.DataClients.DataStates import (
+    UNITS,
+    CHANNELS,
+    STATES,
+)
 from BuildingControlsSimulator.DataClients.DateTimeChannel import (
     DateTimeChannel,
 )
@@ -144,7 +149,21 @@ class DataClient:
 
             # bfill to interpolate missing data
             # first and last records must be full because we used full data periods
+            # need to add a NA_code to stop fillna from clobbering columns
+            # where NA means something
+            na_code_name = "NA_code"
+            _data[STATES.CALENDAR_EVENT].cat.add_categories(
+                new_categories=na_code_name, inplace=True
+            )
+            _data[STATES.CALENDAR_EVENT] = _data[STATES.CALENDAR_EVENT].fillna(
+                na_code_name
+            )
             _data = _data.fillna(method="bfill", limit=None)
+
+            _data.loc[
+                _data[STATES.CALENDAR_EVENT] == na_code_name,
+                [STATES.CALENDAR_EVENT],
+            ] = pd.NA
 
         self.datetime = DateTimeChannel(
             data=_data[Internal.datetime_column],
