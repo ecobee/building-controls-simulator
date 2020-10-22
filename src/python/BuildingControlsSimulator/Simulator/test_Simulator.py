@@ -109,6 +109,6 @@ class TestSimulator:
             .mean()
         )
         assert (
-            pytest.approx(0.18192752, 0.1)
+            pytest.approx(18.139503, 0.1)
             == master.simulations[0].output[STATES.THERMOSTAT_HUMIDITY].mean()
         )
