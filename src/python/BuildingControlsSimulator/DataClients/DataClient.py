@@ -40,6 +40,7 @@ class DataClient:
 
     # input variables
     source = attr.ib(validator=attr.validators.instance_of(DataSource))
+    # destination = attr.ib(validator=attr.validators.instance_of(DataSource))
     nrel_dev_api_key = attr.ib(default=None)
     nrel_dev_email = attr.ib(default=None)
     archive_tmy3_dir = attr.ib(default=os.environ.get("ARCHIVE_TMY3_DIR"))
@@ -513,3 +514,24 @@ class DataClient:
             )
 
         return full_data
+
+    def get_full_input(self, column_names=False):
+        full_input = pd.concat(
+            [
+                self.datetime.data,
+                self.thermostat.data,
+                self.equipment.data,
+                self.sensors.data,
+                self.weather.data,
+            ],
+            axis="columns",
+        )
+        # drop duplicated datetime columns
+        full_input = full_input.loc[:, ~full_input.columns.duplicated()]
+
+        if column_names:
+            full_input.columns = [
+                Internal.full.spec[_col]["name"] for _col in full_input.columns
+            ]
+
+        return full_input
