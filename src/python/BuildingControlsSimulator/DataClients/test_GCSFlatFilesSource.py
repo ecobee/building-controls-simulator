@@ -39,10 +39,13 @@ class TestGCSFlatFilesSource:
         )
 
         cls.data_clients = []
+
+        # set local_cache=None to test connection with GCS
         cls.data_client = DataClient(
             source=GCSFlatFilesSource(
                 gcp_project=os.environ.get("FLATFILE_GOOGLE_CLOUD_PROJECT"),
                 gcs_uri_base=os.environ.get("FLATFILES_GCS_URI_BASE"),
+                local_cache=None,
             ),
             nrel_dev_api_key=os.environ.get("NREL_DEV_API_KEY"),
             nrel_dev_email=os.environ.get("NREL_DEV_EMAIL"),

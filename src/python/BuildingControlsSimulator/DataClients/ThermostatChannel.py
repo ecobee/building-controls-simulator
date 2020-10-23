@@ -116,7 +116,7 @@ class ThermostatChannel(DataChannel):
 
         if schedule_chgs.empty:
             # extract only schedule and return
-            first_rec = schedule_data[STATES.DATE_TIME].iloc[0]
+            first_rec = schedule_data.iloc[0]
             schedule_chg_pts = {
                 first_rec[STATES.DATE_TIME]: {
                     "name": first_rec[STATES.SCHEDULE],

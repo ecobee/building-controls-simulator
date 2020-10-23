@@ -37,9 +37,11 @@ requests = "*"
 scikit-learn = "*"
 statsmodels = "*"
 tzwhere = "*"
+numexpr = "*"
+bottleneck = "*"
 
 [requires]
-python_version = "3.7.6"
+python_version = "3.8.6"
 
 [scripts]
 jupyter_lab_bkgrnd = "${PACKAGE_DIR:?}/scripts/setup/jupyter_lab_bkgrnd.sh"

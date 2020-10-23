@@ -8,49 +8,43 @@ import pandas as pd
 import pytz
 
 from BuildingControlsSimulator.Simulator.Config import Config
+from BuildingControlsSimulator.DataClients.DataSpec import DonateYourDataSpec
 from BuildingControlsSimulator.DataClients.DataClient import DataClient
-from BuildingControlsSimulator.DataClients.GCSDYDSource import GCSDYDSource
+from BuildingControlsSimulator.DataClients.LocalSource import (
+    LocalSource,
+)
 from BuildingControlsSimulator.DataClients.DataSpec import EnergyPlusWeather
 from BuildingControlsSimulator.DataClients.DataStates import STATES
 
 logger = logging.getLogger(__name__)
 
 
-class TestGCSDYDSource:
+class TestLocalSource:
     @classmethod
     def setup_class(cls):
         # initialize with data to avoid pulling multiple times
         cls.sim_config = Config.make_sim_config(
             identifier=[
-                "f2254479e14daf04089082d1cd9df53948f98f1e",  # missing thermostat_temperature data
-                "2df6959cdf502c23f04f3155758d7b678af0c631",  # has full data periods
-                "6e63291da5427ae87d34bb75022ee54ee3b1fc1a",  # file not found
+                "DYD_dummy_data",  # test file
             ],
             latitude=33.481136,
             longitude=-112.078232,
             start_utc=[
                 "2018-01-01 00:00:00",
-                "2018-01-01 00:00:00",
-                "2018-01-01 00:00:00",
             ],
             end_utc=[
                 "2018-12-31 23:55:00",
-                "2018-12-31 23:55:00",
-                "2018-12-31 23:55:00",
             ],
-            min_sim_period="7D",
+            min_sim_period="3D",
             min_chunk_period="30D",
             step_size_minutes=5,
         )
 
         cls.data_clients = []
-
-        # set local_cache=None to test connection with GCS
         cls.data_client = DataClient(
-            source=GCSDYDSource(
-                gcp_project=os.environ.get("DYD_GOOGLE_CLOUD_PROJECT"),
-                gcs_uri_base=os.environ.get("DYD_GCS_URI_BASE"),
-                local_cache=None,
+            source=LocalSource(
+                local_cache=os.environ.get("LOCAL_CACHE_DIR"),
+                data_spec=DonateYourDataSpec,
             ),
             nrel_dev_api_key=os.environ.get("NREL_DEV_API_KEY"),
             nrel_dev_email=os.environ.get("NREL_DEV_EMAIL"),
@@ -110,31 +104,26 @@ class TestGCSDYDSource:
     def test_fill_missing_data(self):
         """Check that filled data exists and doesnt over fill"""
         for dc in self.data_clients:
-            if (
-                dc.sim_config["identifier"]
-                == "2df6959cdf502c23f04f3155758d7b678af0c631"
-            ):
+            if dc.sim_config["identifier"] == "DYD_dummy_data":
                 # verify that data bfill works with full_data_periods
                 assert (
-                    pytest.approx(27.64957)
+                    pytest.approx(21.6666316986084)
                     == dc.thermostat.data.iloc[
                         dc.datetime.data[
                             (
                                 dc.datetime.data
-                                >= pd.Timestamp(
-                                    "2018-05-15 16:30:00", tz="utc"
-                                )
+                                >= pd.Timestamp("2018-06-21 16:55", tz="utc")
                             )
                             & (
                                 dc.datetime.data
                                 <= pd.Timestamp(
-                                    "2018-05-15 17:30:00", tz="utc"
+                                    "2018-06-22 17:00:00", tz="utc"
                                 )
                             )
                         ].index,
                     ][STATES.TEMPERATURE_CTRL].mean()
                 )
                 assert dc.full_data_periods[0] == [
-                    pd.Timestamp("2018-04-13 17:00:00", tz="utc"),
-                    pd.Timestamp("2018-04-26 15:55:00", tz="utc"),
+                    pd.Timestamp("2018-03-25 17:00:00", tz="utc"),
+                    pd.Timestamp("2018-06-21 16:55:00", tz="utc"),
                 ]

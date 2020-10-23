@@ -40,7 +40,6 @@ class DataClient:
 
     # input variables
     source = attr.ib(validator=attr.validators.instance_of(DataSource))
-    # destination = attr.ib(validator=attr.validators.instance_of(DataSource))
     nrel_dev_api_key = attr.ib(default=None)
     nrel_dev_email = attr.ib(default=None)
     archive_tmy3_dir = attr.ib(default=os.environ.get("ARCHIVE_TMY3_DIR"))
