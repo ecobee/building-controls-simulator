@@ -6,7 +6,6 @@ import numpy as np
 
 from BuildingControlsSimulator.ControlModels.ControlModel import ControlModel
 from BuildingControlsSimulator.DataClients.DataStates import STATES
-from BuildingControlsSimulator.DataClients.DataSpec import Internal
 from BuildingControlsSimulator.Conversions.Conversions import Conversions
 
 
@@ -38,6 +37,8 @@ class Deadband(ControlModel):
     def get_output_states(self):
         return [
             STATES.TEMPERATURE_CTRL,
+            STATES.TEMPERATURE_STP_COOL,
+            STATES.TEMPERATURE_STP_HEAT,
             STATES.AUXHEAT1,
             STATES.AUXHEAT2,
             STATES.AUXHEAT3,
@@ -50,7 +51,18 @@ class Deadband(ControlModel):
             STATES.FAN_STAGE_THREE,
         ]
 
-    def initialize(self, start_utc, t_start, t_end, t_step, categories_dict):
+    def get_model_name(self):
+        return f"Deadband_{self.deadband}".replace(".", "-")
+
+    def initialize(
+        self,
+        start_utc,
+        t_start,
+        t_end,
+        t_step,
+        data_spec,
+        categories_dict,
+    ):
         """"""
         self.current_t_idx = 0
         self.step_size_seconds = t_step
@@ -58,11 +70,14 @@ class Deadband(ControlModel):
             t_start=t_start,
             t_end=t_end,
             t_step=t_step,
+            data_spec=data_spec,
             categories_dict=categories_dict,
         )
         self.init_step_output()
 
-    def allocate_output_memory(self, t_start, t_end, t_step, categories_dict):
+    def allocate_output_memory(
+        self, t_start, t_end, t_step, data_spec, categories_dict
+    ):
         """preallocate output memory to speed up simulation"""
         # reset output
         self.output = {}
@@ -76,7 +91,7 @@ class Deadband(ControlModel):
 
         # add state variables
         for state in self.output_states:
-            if Internal.full.spec[state]["dtype"] == "category":
+            if data_spec.full.spec[state]["dtype"] == "category":
                 self.output[state] = pd.Series(
                     pd.Categorical(
                         pd.Series(index=np.arange(n_s)),
@@ -88,7 +103,7 @@ class Deadband(ControlModel):
                     np_default_value,
                     np_dtype,
                 ) = Conversions.numpy_down_cast_default_value_dtype(
-                    Internal.full.spec[state]["dtype"]
+                    data_spec.full.spec[state]["dtype"]
                 )
                 self.output[state] = np.full(
                     n_s,
@@ -121,6 +136,12 @@ class Deadband(ControlModel):
         """Simulate controller time step."""
         t_ctrl = self.calc_t_control(step_sensor_input)
         self.step_output[STATES.TEMPERATURE_CTRL] = t_ctrl
+        self.step_output[STATES.TEMPERATURE_STP_COOL] = step_thermostat_input[
+            STATES.TEMPERATURE_STP_COOL
+        ]
+        self.step_output[STATES.TEMPERATURE_STP_HEAT] = step_thermostat_input[
+            STATES.TEMPERATURE_STP_HEAT
+        ]
 
         if t_ctrl < (
             step_thermostat_input[STATES.TEMPERATURE_STP_HEAT] - self.deadband

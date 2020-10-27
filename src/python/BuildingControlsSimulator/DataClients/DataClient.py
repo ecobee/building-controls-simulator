@@ -1,17 +1,18 @@
 # created by Tom Stesco tom.s@ecobee.com
 import os
 import logging
+import pkg_resources
 
 import attr
 import pandas as pd
 import numpy as np
 
-from BuildingControlsSimulator.DataClients.DataSpec import Internal
 from BuildingControlsSimulator.DataClients.DataStates import (
     UNITS,
     CHANNELS,
     STATES,
 )
+from BuildingControlsSimulator.DataClients.DataSpec import Internal
 from BuildingControlsSimulator.DataClients.DateTimeChannel import (
     DateTimeChannel,
 )
@@ -24,6 +25,10 @@ from BuildingControlsSimulator.DataClients.EquipmentChannel import (
 from BuildingControlsSimulator.DataClients.SensorsChannel import SensorsChannel
 from BuildingControlsSimulator.DataClients.WeatherChannel import WeatherChannel
 from BuildingControlsSimulator.DataClients.DataSource import DataSource
+from BuildingControlsSimulator.DataClients.DataDestination import (
+    DataDestination,
+)
+
 
 logger = logging.getLogger(__name__)
 
@@ -40,7 +45,9 @@ class DataClient:
 
     # input variables
     source = attr.ib(validator=attr.validators.instance_of(DataSource))
-    # destination = attr.ib(validator=attr.validators.instance_of(DataSource))
+    destination = attr.ib(
+        validator=attr.validators.instance_of(DataDestination)
+    )
     nrel_dev_api_key = attr.ib(default=None)
     nrel_dev_email = attr.ib(default=None)
     archive_tmy3_dir = attr.ib(default=os.environ.get("ARCHIVE_TMY3_DIR"))
@@ -54,11 +61,11 @@ class DataClient:
 
     # state variables
     sim_config = attr.ib(default=None)
-    meta_gs_uri = attr.ib(default=None)
     start_utc = attr.ib(default=None)
     end_utc = attr.ib(default=None)
     eplus_fill_to_day_seconds = attr.ib(default=None)
     eplus_warmup_seconds = attr.ib(default=None)
+    internal_spec = attr.ib(factory=Internal)
 
     def __attrs_post_init__(self):
         # first, post init class specification
@@ -69,6 +76,23 @@ class DataClient:
         os.makedirs(self.archive_tmy3_data_dir, exist_ok=True)
         os.makedirs(self.ep_tmy3_cache_dir, exist_ok=True)
         os.makedirs(self.simulation_epw_dir, exist_ok=True)
+        if self.source.local_cache:
+            os.makedirs(
+                os.path.join(
+                    self.source.local_cache,
+                    self.source.operator_name,
+                    self.source.source_name,
+                ),
+                exist_ok=True,
+            )
+        if self.destination.local_cache:
+            os.makedirs(
+                os.path.join(
+                    self.destination.local_cache,
+                    self.destination.operator_name,
+                ),
+                exist_ok=True,
+            )
 
     def get_data(self):
         # check for invalid start/end combination
@@ -81,19 +105,27 @@ class DataClient:
         _data = _data.sort_index()
 
         if _data.empty:
-            logging.error(
+            logger.error(
                 "EMPTY DATA SOURCE: \nsim_config={} \nsource={}\n".format(
                     self.sim_config, self.source
                 )
             )
-            _data = Internal.get_empty_df()
+            _data = self.internal_spec.get_empty_df()
 
         _data = _data.drop_duplicates(ignore_index=True).reset_index(drop=True)
-        _data = _data.sort_values(Internal.datetime_column, ascending=True)
+        _data = _data.sort_values(
+            self.internal_spec.datetime_column, ascending=True
+        )
         # truncate the data to desired simulation start and end time
         _data = _data[
-            (_data[Internal.datetime_column] >= self.sim_config["start_utc"])
-            & (_data[Internal.datetime_column] <= self.sim_config["end_utc"])
+            (
+                _data[self.internal_spec.datetime_column]
+                >= self.sim_config["start_utc"]
+            )
+            & (
+                _data[self.internal_spec.datetime_column]
+                <= self.sim_config["end_utc"]
+            )
         ].reset_index(drop=True)
 
         # remove unused categories from categorical columns after date range
@@ -121,10 +153,12 @@ class DataClient:
         _data = DataClient.fill_missing_data(
             full_data=_data,
             expected_period=_expected_period,
+            data_spec=self.internal_spec,
         )
         # compute full_data_periods with only first 15 minutes ffilled
         self.full_data_periods = DataClient.get_full_data_periods(
             full_data=_data,
+            data_spec=self.internal_spec,
             expected_period=_expected_period,
             min_sim_period=self.sim_config["min_sim_period"],
         )
@@ -136,6 +170,7 @@ class DataClient:
             # add records for warmup period if needed
             _data = DataClient.add_null_records(
                 df=_data,
+                data_spec=self.internal_spec,
                 start_utc=_start_utc,
                 end_utc=_end_utc,
                 expected_period=_expected_period,
@@ -144,8 +179,8 @@ class DataClient:
             # drop records before and after full simulation time
             # end is less than
             _data = _data[
-                (_data[Internal.datetime_column] >= _start_utc)
-                & (_data[Internal.datetime_column] <= _end_utc)
+                (_data[self.internal_spec.datetime_column] >= _start_utc)
+                & (_data[self.internal_spec.datetime_column] <= _end_utc)
             ].reset_index(drop=True)
 
             # bfill to interpolate missing data
@@ -166,9 +201,20 @@ class DataClient:
                 [STATES.CALENDAR_EVENT],
             ] = pd.NA
 
+        else:
+            logger.error(
+                "No full_data_periods for requested duration: "
+                + f"start_utc={self.sim_config['start_utc']}, "
+                + f"end_utc={self.sim_config['end_utc']}"
+            )
+
         self.datetime = DateTimeChannel(
-            data=_data[Internal.datetime_column],
-            spec=Internal.datetime,
+            data=_data[
+                self.internal_spec.intersect_columns(
+                    _data.columns, self.internal_spec.datetime.spec
+                )
+            ],
+            spec=self.internal_spec.datetime,
             latitude=self.sim_config["latitude"],
             longitude=self.sim_config["longitude"],
         )
@@ -176,59 +222,50 @@ class DataClient:
         # finally create the data channel objs for usage during simulation
         self.thermostat = ThermostatChannel(
             data=_data[
-                Internal.intersect_columns(
-                    _data.columns, Internal.thermostat.spec
+                self.internal_spec.intersect_columns(
+                    _data.columns, self.internal_spec.thermostat.spec
                 )
             ],
-            spec=Internal.thermostat,
+            spec=self.internal_spec.thermostat,
             change_points_schedule=_change_points_schedule,
             change_points_comfort_prefs=_change_points_comfort_prefs,
         )
 
         self.equipment = EquipmentChannel(
             data=_data[
-                Internal.intersect_columns(
-                    _data.columns, Internal.equipment.spec
+                self.internal_spec.intersect_columns(
+                    _data.columns, self.internal_spec.equipment.spec
                 )
             ],
-            spec=Internal.equipment,
+            spec=self.internal_spec.equipment,
         )
 
         self.sensors = SensorsChannel(
             data=_data[
-                Internal.intersect_columns(
-                    _data.columns, Internal.sensors.spec
+                self.internal_spec.intersect_columns(
+                    _data.columns, self.internal_spec.sensors.spec
                 )
             ],
-            spec=Internal.sensors,
+            spec=self.internal_spec.sensors,
         )
         self.sensors.drop_unused_room_sensors()
 
         self.weather = WeatherChannel(
             data=_data[
-                Internal.intersect_columns(
-                    _data.columns, Internal.weather.spec
+                self.internal_spec.intersect_columns(
+                    _data.columns, self.internal_spec.weather.spec
                 )
             ],
-            spec=Internal.weather,
+            spec=self.internal_spec.weather,
             archive_tmy3_dir=self.archive_tmy3_dir,
             archive_tmy3_data_dir=self.archive_tmy3_data_dir,
             ep_tmy3_cache_dir=self.ep_tmy3_cache_dir,
             simulation_epw_dir=self.simulation_epw_dir,
         )
-
         # post-processing of weather channel for EnergyPlus usage
         self.weather.make_epw_file(
             sim_config=self.sim_config, datetime=self.datetime
         )
-
-    def get_metadata(self):
-        if self.meta_gs_uri:
-            return pd.read_csv(self.meta_gs_uri).drop_duplicates(
-                subset=["Identifier"]
-            )
-        else:
-            raise ValueError("Must supply `meta_gs_uri` to dataclient.")
 
     def get_simulation_period(self, expected_period):
         # set start and end times from full_data_periods and simulation config
@@ -293,27 +330,32 @@ class DataClient:
 
         return self.start_utc, self.end_utc
 
+    def store_output(self, output, sim_name, src_spec):
+        self.destination.put_data(
+            df=output, sim_name=sim_name, src_spec=src_spec
+        )
+
     @staticmethod
-    def add_null_records(df, start_utc, end_utc, expected_period):
+    def add_null_records(df, data_spec, start_utc, end_utc, expected_period):
         if not (start_utc and end_utc):
             return df
 
         rec = pd.Series(pd.NA, index=df.columns)
 
         should_resample = False
-        if df[(df[Internal.datetime_column] == start_utc)].empty:
+        if df[(df[data_spec.datetime_column] == start_utc)].empty:
             # append record with start_utc time
-            rec[Internal.datetime_column] = start_utc
+            rec[data_spec.datetime_column] = start_utc
             df = df.append(rec, ignore_index=True).sort_values(
-                Internal.datetime_column
+                data_spec.datetime_column
             )
             should_resample = True
 
-        if df[(df[Internal.datetime_column] == end_utc)].empty:
+        if df[(df[data_spec.datetime_column] == end_utc)].empty:
             # append record with end_utc time
-            rec[Internal.datetime_column] = end_utc
+            rec[data_spec.datetime_column] = end_utc
             df = df.append(rec, ignore_index=True).sort_values(
-                Internal.datetime_column
+                data_spec.datetime_column
             )
             should_resample = True
 
@@ -328,14 +370,14 @@ class DataClient:
             )
 
             # resampling
-            df = df.set_index(Internal.datetime_column)
+            df = df.set_index(data_spec.datetime_column)
             df = df.resample(resample_freq).asfreq()
             df = df.reset_index()
 
         # adding a null record breaks categorical dtypes
         # convert back to categories
         for state in df.columns:
-            if Internal.full.spec[state]["dtype"] == "category":
+            if data_spec.full.spec[state]["dtype"] == "category":
                 df[state] = df[state].astype("category")
 
         return df
@@ -400,7 +442,7 @@ class DataClient:
 
     @staticmethod
     def get_full_data_periods(
-        full_data, expected_period="5M", min_sim_period="7D"
+        full_data, data_spec, expected_period="5M", min_sim_period="7D"
     ):
         """Get full data periods. These are the periods for which there is data
         on all channels. Preliminary forward filling of the data is used to
@@ -420,8 +462,8 @@ class DataClient:
 
         # compute time deltas between records
         diffs = full_data.dropna(
-            axis="rows", subset=Internal.full.null_check_columns
-        )[Internal.datetime_column].diff()
+            axis="rows", subset=data_spec.full.null_check_columns
+        )[data_spec.datetime_column].diff()
 
         # seperate periods by missing data
         periods_df = diffs[
@@ -430,7 +472,7 @@ class DataClient:
 
         # make df of periods
         periods_df["start"] = full_data.loc[
-            periods_df["index"], Internal.datetime_column
+            periods_df["index"], data_spec.datetime_column
         ].reset_index(drop=True)
 
         periods_df["end"] = periods_df["start"] - periods_df[1]
@@ -440,10 +482,12 @@ class DataClient:
         # append start and end datetimes from full_data
         periods_df.loc[len(periods_df)] = [
             pd.NA,
-            full_data.loc[len(full_data) - 1, Internal.datetime_column],
+            full_data.loc[len(full_data) - 1, data_spec.datetime_column],
         ]
         periods_df["start"] = periods_df["start"].shift(1)
-        periods_df.loc[0, "start"] = full_data.loc[0, Internal.datetime_column]
+        periods_df.loc[0, "start"] = full_data.loc[
+            0, data_spec.datetime_column
+        ]
 
         # only include full_data_periods that are geq min_sim_period
         # convert all np.arrays to lists for ease of use
@@ -460,6 +504,7 @@ class DataClient:
     @staticmethod
     def fill_missing_data(
         full_data,
+        data_spec,
         expected_period,
         limit=3,
         method="ffill",
@@ -478,14 +523,14 @@ class DataClient:
             expected_period[0:-1] + _str_format_dict[expected_period[-1]]
         )
         # resample to add any timesteps that are fully missing
-        full_data = full_data.set_index(Internal.datetime_column)
+        full_data = full_data.set_index(data_spec.datetime_column)
         full_data = full_data.resample(resample_freq).asfreq()
         full_data = full_data.reset_index()
 
         # compute timesteps between steps of data
         diffs = full_data.dropna(
-            axis="rows", subset=Internal.full.null_check_columns
-        )[Internal.datetime_column].diff()
+            axis="rows", subset=data_spec.full.null_check_columns
+        )[data_spec.datetime_column].diff()
 
         fill_start_df = (
             (
@@ -531,7 +576,8 @@ class DataClient:
 
         if column_names:
             full_input.columns = [
-                Internal.full.spec[_col]["name"] for _col in full_input.columns
+                self.internal_spec.full.spec[_col]["name"]
+                for _col in full_input.columns
             ]
 
         return full_input

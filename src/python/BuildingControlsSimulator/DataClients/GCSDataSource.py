@@ -1,82 +1,57 @@
 # created by Tom Stesco tom.s@ecobee.com
 
 import logging
-
+import os
 from abc import ABC, abstractmethod
 
 import attr
 import pandas as pd
 import numpy as np
+import gcsfs
+from google.cloud import storage, exceptions
 
 from BuildingControlsSimulator.DataClients.DataSource import DataSource
-from BuildingControlsSimulator.DataClients.DataSpec import Internal
+from BuildingControlsSimulator.DataClients.DataSpec import (
+    Internal,
+    convert_spec,
+)
 from BuildingControlsSimulator.DataClients.DataStates import CHANNELS
 
 logger = logging.getLogger(__name__)
+gcsfs_logger = logging.getLogger("gcsfs")
+gcsfs_logger.setLevel(logging.WARN)
 
 
 @attr.s(kw_only=True)
 class GCSDataSource(DataSource, ABC):
 
     # TODO: add validators
-    gcs_cache = attr.ib(default=None)
     gcp_project = attr.ib(default=None)
     gcs_uri_base = attr.ib(default=None)
+    gcs_token = attr.ib(
+        default=os.environ.get("GOOGLE_APPLICATION_CREDENTIALS")
+    )
 
     def get_data(self, sim_config):
-
         # first check if file in local cache
-        local_cache_path = self.get_local_cache_path(sim_config["identifier"])
-        cache_df = self.get_local_cache(local_cache_path)
-        if cache_df.empty:
-            cache_df = self.get_gcs_cache(sim_config)
-            if not cache_df.empty:
-                # if downloaded the data file put it in local cache
-                self.put_cache(cache_df, local_cache_path)
-
-        # check cache contains all expected columns
-        missing_cols = [
-            c for c in self.data_spec.full.columns if c not in cache_df.columns
-        ]
-        if missing_cols:
-            logging.error(
-                "tstat: {} has _missing_ columns: {}".format(
-                    sim_config["identifier"], missing_cols
-                )
-            )
-            logging.error(
-                "tstat: {} has columns: {}".format(
-                    sim_config["identifier"], cache_df.columns
-                )
-            )
-
-        # drop all null remote sensor columns
-        _all_null_columns = [
-            _col
-            for _col in cache_df.columns
-            if (
-                cache_df[_col].isnull().all()
-                and self.data_spec.full.spec[_col]["channel"]
-                == CHANNELS.REMOTE_SENSOR
-            )
-        ]
-        cache_df = cache_df.drop(axis="columns", columns=_all_null_columns)
-        # convert to input format spec
-        # do dtype conversion after read, it sometimes fails on read
-        cache_df = cache_df.astype(
-            self.data_spec.full.get_dtype_mapper(cache_df.columns)
+        local_cache_file = self.get_local_cache_file(
+            identifier=sim_config["identifier"]
         )
-
-        # convert to internal spec
-        cache_df = Internal.convert_to_internal(cache_df, self.data_spec.full)
-        return cache_df
+        _data = self.get_local_cache(local_cache_file)
+        if _data.empty:
+            _data = self.get_gcs_cache(sim_config, local_cache_file)
+        _data = self.drop_unused_columns(_data=_data)
+        _data = convert_spec(
+            df=_data, src_spec=self.data_spec, dest_spec=Internal()
+        )
+        return _data
 
     @abstractmethod
     def get_gcs_uri(self, sim_config):
         """This is implemented in the specialized source class"""
         pass
 
-    def get_gcs_cache(self, sim_config):
+    def get_gcs_cache(self, sim_config, local_cache_file):
         if not self.gcs_uri_base:
             raise ValueError(
                 f"gcs_uri_base={self.gcs_uri_base} is unset. "
@@ -89,19 +64,48 @@ class GCSDataSource(DataSource, ABC):
             )
 
         gcs_uri = self.get_gcs_uri(sim_config)
-        try:
-            _df = pd.read_csv(
-                gcs_uri,
-                usecols=self.data_spec.full.columns,
-            )
-        except FileNotFoundError:
-            # file not found in DYD
-            logging.error(
-                (
-                    f"File: {gcs_uri}",
-                    " not found in gcs cache dataset.",
+        if local_cache_file:
+            if os.path.isdir(os.path.dirname(local_cache_file)):
+                client = storage.Client(project=self.gcp_project)
+                with open(local_cache_file, "wb") as _file:
+                    try:
+                        client.download_blob_to_file(gcs_uri, _file)
+                    except exceptions.NotFound:
+                        # file not found in DYD
+                        logger.error(
+                            (
+                                f"File: {gcs_uri}",
+                                " not found in gcs cache dataset.",
+                            )
+                        )
+                        return self.get_empty_df()
+                _df = self.read_data_by_extension(local_cache_file)
+            else:
+                raise ValueError(
+                    "GCSDataSource received invalid directory: "
+                    + f"local_cache={self.local_cache}"
                 )
+        else:
+            logger.info(
+                "GCSDataSource received no local_cache. Proceeding without caching."
             )
-            _df = self.get_empty_df()
+            _fs = gcsfs.GCSFileSystem(
+                project=self.gcp_project,
+                token=self.gcs_token,
+                access="read_only",
+            )
+            try:
+                with _fs.open(gcs_uri) as _file:
+                    _df = self.read_data_by_extension(_file)
+
+            except FileNotFoundError:
+                # file not found in DYD
+                logger.error(
+                    (
+                        f"File: {gcs_uri}",
+                        " not found in gcs cache dataset.",
+                    )
+                )
+                _df = self.get_empty_df()
 
         return _df

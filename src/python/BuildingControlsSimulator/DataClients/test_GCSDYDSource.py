@@ -10,8 +10,12 @@ import pytz
 from BuildingControlsSimulator.Simulator.Config import Config
 from BuildingControlsSimulator.DataClients.DataClient import DataClient
 from BuildingControlsSimulator.DataClients.GCSDYDSource import GCSDYDSource
+from BuildingControlsSimulator.DataClients.DataSpec import DonateYourDataSpec
 from BuildingControlsSimulator.DataClients.DataSpec import EnergyPlusWeather
 from BuildingControlsSimulator.DataClients.DataStates import STATES
+from BuildingControlsSimulator.DataClients.LocalDestination import (
+    LocalDestination,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -44,10 +48,17 @@ class TestGCSDYDSource:
         )
 
         cls.data_clients = []
+
+        # set local_cache=None to test connection with GCS
         cls.data_client = DataClient(
             source=GCSDYDSource(
                 gcp_project=os.environ.get("DYD_GOOGLE_CLOUD_PROJECT"),
                 gcs_uri_base=os.environ.get("DYD_GCS_URI_BASE"),
+                local_cache=None,
+            ),
+            destination=LocalDestination(
+                local_cache=os.environ.get("LOCAL_CACHE_DIR"),
+                data_spec=DonateYourDataSpec(),
             ),
             nrel_dev_api_key=os.environ.get("NREL_DEV_API_KEY"),
             nrel_dev_email=os.environ.get("NREL_DEV_EMAIL"),
@@ -76,7 +87,7 @@ class TestGCSDYDSource:
     def test_get_data(self):
         # test HVAC data returns dict of non-empty pd.DataFrame
         for dc in self.data_clients:
-            assert isinstance(dc.datetime.data, pd.Series)
+            assert isinstance(dc.datetime.data, pd.DataFrame)
             assert isinstance(dc.thermostat.data, pd.DataFrame)
             assert isinstance(dc.equipment.data, pd.DataFrame)
             assert isinstance(dc.sensors.data, pd.DataFrame)
@@ -100,7 +111,7 @@ class TestGCSDYDSource:
         for dc in self.data_clients:
             if not dc.datetime.data.empty:
                 assert (
-                    dc.datetime.data[dc.datetime.spec.datetime_column].tz
+                    dc.datetime.data[dc.datetime.spec.datetime_column].dtype.tz
                     == pytz.utc
                 )
 
@@ -117,13 +128,13 @@ class TestGCSDYDSource:
                     == dc.thermostat.data.iloc[
                         dc.datetime.data[
                             (
-                                dc.datetime.data
+                                dc.datetime.data[STATES.DATE_TIME]
                                 >= pd.Timestamp(
                                     "2018-05-15 16:30:00", tz="utc"
                                 )
                             )
                             & (
-                                dc.datetime.data
+                                dc.datetime.data[STATES.DATE_TIME]
                                 <= pd.Timestamp(
                                     "2018-05-15 17:30:00", tz="utc"
                                 )

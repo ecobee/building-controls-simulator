@@ -3,6 +3,8 @@
 import os
 import logging
 import copy
+from datetime import datetime
+import uuid
 
 import pandas as pd
 import numpy as np
@@ -15,9 +17,13 @@ from BuildingControlsSimulator.BuildingModels.BuildingModel import (
 from BuildingControlsSimulator.BuildingModels.EnergyPlusBuildingModel import (
     EnergyPlusBuildingModel,
 )
-
+from BuildingControlsSimulator.BuildingModels.IDFPreprocessor import (
+    IDFPreprocessor,
+)
 from BuildingControlsSimulator.ControlModels.ControlModel import ControlModel
 from BuildingControlsSimulator.DataClients.DataClient import DataClient
+from BuildingControlsSimulator.ControlModels.FMIController import FMIController
+from BuildingControlsSimulator.ControlModels.Deadband import Deadband
 from BuildingControlsSimulator.OutputAnalysis.OutputAnalysis import (
     OutputAnalysis,
 )
@@ -27,8 +33,7 @@ logger = logging.getLogger(__name__)
 
 @attr.s(kw_only=True)
 class Simulator:
-    """Creates list of lazy init simulations with same building model and controller model
-    """
+    """Creates list of lazy init simulations with same building model and controller model"""
 
     sim_config = attr.ib()
     data_client = attr.ib(validator=attr.validators.instance_of(DataClient))
@@ -53,16 +58,29 @@ class Simulator:
         default=os.path.join(os.environ.get("OUTPUT_DIR"), "plot")
     )
 
+    sim_run_identifier = attr.ib()
+
+    @sim_run_identifier.default
+    def get_sim_run_identifier(self):
+        # use current UTC time as human readable identifier
+        # use last 6 chars of hex coded uuid to disambiguate in unlikely case
+        # of multiple simulations occuring in same second
+        return (
+            datetime.utcnow().strftime("%Y_%m_%d_%H_%M_%S")
+            + uuid.uuid4().hex[-6:]
+        )
+
     def __attrs_post_init__(self):
-        """Lazy init of all simulations
-        """
+        """Lazy init of all simulations"""
         # simulation for each permutation: data, building, and controller
+        logger.info(f"Initializing simulation run: {self.sim_run_identifier}")
         for _idx, _sim_config in self.sim_config.iterrows():
 
             # the data client is copied once per sim_config so that permutations
             # of building and controller models can reuse data where possible
             dc = copy.deepcopy(self.data_client)
             dc.sim_config = _sim_config.to_dict()
+
             for b in self.building_models:
                 for c in self.controller_models:
 
@@ -75,6 +93,7 @@ class Simulator:
                             data_client=dc,
                             building_model=copy.deepcopy(b),
                             controller_model=copy.deepcopy(c),
+                            sim_run_identifier=self.sim_run_identifier,
                         )
                     )
 

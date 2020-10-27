@@ -18,7 +18,9 @@ from BuildingControlsSimulator.BuildingModels.EnergyPlusBuildingModel import (
     EnergyPlusBuildingModel,
 )
 from BuildingControlsSimulator.DataClients.DataStates import STATES
-
+from BuildingControlsSimulator.DataClients.DataSpec import (
+    Internal,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -193,6 +195,8 @@ class TestEnergyPlusBuildingModel:
             t_start=t_start,
             t_end=t_end - t_step,
             t_step=t_step,
+            data_spec=Internal(),
+            categories_dict={},
         )
 
         step_control_input = {

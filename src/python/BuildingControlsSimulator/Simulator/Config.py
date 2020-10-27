@@ -15,11 +15,11 @@ class Config:
         start_utc,
         end_utc,
         min_sim_period,
-        min_chunk_period,
         step_size_minutes,
+        min_chunk_period="30D",
     ):
-        # first make sure identifier has a len()
-        if not isinstance(identifier, Iterable):
+        # first make sure identifier is iterable and wrapped if a str
+        if not isinstance(identifier, Iterable) or isinstance(identifier, str):
             identifier = [identifier]
 
         # broadcast single values to lists of len(identifier)
@@ -29,8 +29,8 @@ class Config:
             start_utc,
             end_utc,
             min_sim_period,
-            min_chunk_period,
             step_size_minutes,
+            min_chunk_period,
         ) = [
             [v] * len(identifier)
             if (not isinstance(v, Iterable) or isinstance(v, str))
@@ -41,8 +41,8 @@ class Config:
                 start_utc,
                 end_utc,
                 min_sim_period,
-                min_chunk_period,
                 step_size_minutes,
+                min_chunk_period,
             ]
         ]
 
@@ -100,4 +100,3 @@ class Config:
         )
 
         return _df
-

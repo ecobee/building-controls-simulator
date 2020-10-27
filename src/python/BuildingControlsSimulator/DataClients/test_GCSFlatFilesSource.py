@@ -13,6 +13,10 @@ from BuildingControlsSimulator.DataClients.DataClient import DataClient
 from BuildingControlsSimulator.DataClients.GCSFlatFilesSource import (
     GCSFlatFilesSource,
 )
+from BuildingControlsSimulator.DataClients.DataSpec import FlatFilesSpec
+from BuildingControlsSimulator.DataClients.LocalDestination import (
+    LocalDestination,
+)
 from BuildingControlsSimulator.DataClients.DataSpec import EnergyPlusWeather
 from BuildingControlsSimulator.DataClients.DataStates import STATES
 
@@ -39,10 +43,17 @@ class TestGCSFlatFilesSource:
         )
 
         cls.data_clients = []
+
+        # set local_cache=None to test connection with GCS
         cls.data_client = DataClient(
             source=GCSFlatFilesSource(
                 gcp_project=os.environ.get("FLATFILE_GOOGLE_CLOUD_PROJECT"),
                 gcs_uri_base=os.environ.get("FLATFILES_GCS_URI_BASE"),
+                local_cache=None,
+            ),
+            destination=LocalDestination(
+                local_cache=os.environ.get("LOCAL_CACHE_DIR"),
+                data_spec=FlatFilesSpec,
             ),
             nrel_dev_api_key=os.environ.get("NREL_DEV_API_KEY"),
             nrel_dev_email=os.environ.get("NREL_DEV_EMAIL"),
@@ -70,7 +81,7 @@ class TestGCSFlatFilesSource:
     def test_get_data(self):
         # test HVAC data returns dict of non-empty pd.DataFrame
         for dc in self.data_clients:
-            assert isinstance(dc.datetime.data, pd.Series)
+            assert isinstance(dc.datetime.data, pd.DataFrame)
             assert isinstance(dc.thermostat.data, pd.DataFrame)
             assert isinstance(dc.equipment.data, pd.DataFrame)
             assert isinstance(dc.sensors.data, pd.DataFrame)
@@ -94,7 +105,7 @@ class TestGCSFlatFilesSource:
         for dc in self.data_clients:
             if not dc.datetime.data.empty:
                 assert (
-                    dc.datetime.data[dc.datetime.spec.datetime_column].tz
+                    dc.datetime.data[dc.datetime.spec.datetime_column].dtype.tz
                     == pytz.utc
                 )
 
@@ -110,13 +121,13 @@ class TestGCSFlatFilesSource:
                     == dc.thermostat.data.iloc[
                         dc.datetime.data[
                             (
-                                dc.datetime.data
+                                dc.datetime.data[STATES.DATE_TIME]
                                 >= pd.Timestamp(
                                     "2018-06-18 22:10:00", tz="utc"
                                 )
                             )
                             & (
-                                dc.datetime.data
+                                dc.datetime.data[STATES.DATE_TIME]
                                 <= pd.Timestamp(
                                     "2018-06-18 22:50:00", tz="utc"
                                 )

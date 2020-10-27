@@ -21,7 +21,9 @@ class ControlModel(ABC):
     settings = attr.ib(factory=dict)
 
     @abstractmethod
-    def initialize(self, start_utc, t_start, t_end, ts, categories_dict):
+    def initialize(
+        self, start_utc, t_start, t_end, t_step, data_spec, categories_dict
+    ):
         """Run on first setup and not again."""
         pass
 
@@ -35,6 +37,11 @@ class ControlModel(ABC):
         """Change persistent internal settings to model."""
         pass
 
+    @abstractmethod
+    def get_model_name(self):
+        """Defines human readable uniquely identifing name"""
+        pass
+
     def update_settings(
         self,
         change_points_schedule,
@@ -43,6 +50,18 @@ class ControlModel(ABC):
         init=False,
     ):
         """Ensure settings are correct for given time step."""
+        if not change_points_comfort_prefs:
+            logging.error(
+                "change_points_comfort_prefs is empty. update_settings will not work."
+            )
+            return
+
+        if not change_points_schedule:
+            logging.error(
+                "change_points_schedule is empty. update_settings will not work."
+            )
+            return
+
         _init_time_schedule = min(change_points_schedule.keys())
         _init_schedule_names = set(
             [
@@ -81,7 +100,6 @@ class ControlModel(ABC):
                 self.settings["setpoints"][
                     _name
                 ] = change_points_comfort_prefs[_init_time_setpoint][_name]
-
         elif time_utc:
             settings_updated = False
             # must observe new schedule at or before setpoint change

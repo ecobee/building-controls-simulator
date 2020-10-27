@@ -17,7 +17,13 @@ from BuildingControlsSimulator.BuildingModels.IDFPreprocessor import (
 from BuildingControlsSimulator.BuildingModels.EnergyPlusBuildingModel import (
     EnergyPlusBuildingModel,
 )
-
+from BuildingControlsSimulator.DataClients.LocalDestination import (
+    LocalDestination,
+)
+from BuildingControlsSimulator.DataClients.DataSpec import (
+    DonateYourDataSpec,
+    Internal,
+)
 from BuildingControlsSimulator.ControlModels.FMIController import FMIController
 from BuildingControlsSimulator.ControlModels.Deadband import Deadband
 from BuildingControlsSimulator.DataClients.DataStates import STATES
@@ -56,6 +62,11 @@ class TestSimulator:
             source=GCSDYDSource(
                 gcp_project=os.environ.get("GOOGLE_CLOUD_PROJECT"),
                 gcs_uri_base=os.environ.get("DYD_GCS_URI_BASE"),
+                local_cache=os.environ.get("LOCAL_CACHE_DIR"),
+            ),
+            destination=LocalDestination(
+                local_cache=os.environ.get("LOCAL_CACHE_DIR"),
+                data_spec=Internal(),
             ),
             nrel_dev_api_key=os.environ.get("NREL_DEV_API_KEY"),
             nrel_dev_email=os.environ.get("NREL_DEV_EMAIL"),
@@ -103,12 +114,31 @@ class TestSimulator:
         )
         master.simulate(local=True, preprocess_check=True)
         assert (
-            pytest.approx(27.380976, 0.1)
+            pytest.approx(27.360288, 0.1)
             == master.simulations[0]
             .output[STATES.THERMOSTAT_TEMPERATURE]
             .mean()
         )
         assert (
-            pytest.approx(18.139503, 0.1)
+            pytest.approx(18.139530, 0.1)
             == master.simulations[0].output[STATES.THERMOSTAT_HUMIDITY].mean()
+        )
+
+        # read back stored output and check it
+        sim_name = master.simulations[0].sim_name
+        _fpath = os.path.join(
+            master.simulations[0].data_client.destination.local_cache,
+            master.simulations[0].data_client.destination.operator_name,
+            sim_name
+            + "."
+            + master.simulations[0].data_client.destination.file_extension,
+        )
+        r_df = pd.read_parquet(_fpath)
+
+        assert (
+            pytest.approx(27.360288, 0.1)
+            == r_df["thermostat_temperature"].mean()
+        )
+        assert (
+            pytest.approx(18.139530, 0.1) == r_df["thermostat_humidity"].mean()
         )

@@ -121,9 +121,9 @@ class IDFPreprocessor:
         if not self.check_valid_idf(self.idf_file):
             raise ValueError(f"""{self.idf_file} is not a valid IDF file.""")
 
-        # logger.info(
-        #     "IDFPreprocessor loading .idf file: {}".format(self.idf_file)
-        # )
+        logger.info(
+            "IDFPreprocessor loading .idf file: {}".format(self.idf_file)
+        )
         self.ep_idf = IDF(self.idf_file)
         # select .idf output type
         self.ep_idf.outputtype = "standard"
@@ -272,7 +272,7 @@ class IDFPreprocessor:
         ]
 
         if any([z not in self.conditioned_zones for z in self.occupied_zones]):
-            info.error(
+            logger.error(
                 f"IDF file: {self.idf_file} contains occupied zones that"
                 " do not appear to be conditioned."
             )

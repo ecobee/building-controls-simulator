@@ -22,7 +22,9 @@ class BuildingModel(ABC):
     output_states = attr.ib()
 
     @abstractmethod
-    def initialize(self, start_utc, t_start, t_end, ts, categories_dict):
+    def initialize(
+        self, start_utc, t_start, t_end, t_step, data_spec, categories_dict
+    ):
         pass
 
     @abstractmethod
@@ -30,4 +32,9 @@ class BuildingModel(ABC):
         """
         Defines sequence of step internals.
         """
+        pass
+
+    @abstractmethod
+    def get_model_name(self):
+        """Defines human readable uniquely identifing name"""
         pass
