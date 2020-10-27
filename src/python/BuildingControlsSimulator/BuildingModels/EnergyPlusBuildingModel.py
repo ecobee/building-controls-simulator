@@ -13,7 +13,6 @@ import numpy as np
 import pyfmi
 
 from BuildingControlsSimulator.DataClients.DataStates import STATES
-from BuildingControlsSimulator.DataClients.DataSpec import Internal
 from BuildingControlsSimulator.BuildingModels.BuildingModel import (
     BuildingModel,
 )
@@ -91,6 +90,11 @@ class EnergyPlusBuildingModel(BuildingModel):
 
     def __attrs_post_init__(self):
         pass
+
+    def get_model_name(self):
+        # only need the idf file name because the weather is determined from
+        # the combination of idf file and data_source-identifier
+        return f"EnergyPlus_{self.idf.idf_name.rstrip('.idf')}"
 
     @property
     def init_temperature(self):
@@ -184,11 +188,19 @@ class EnergyPlusBuildingModel(BuildingModel):
         return self.fmu_path
 
     def initialize(
-        self, start_utc, t_start, t_end, t_step, categories_dict={}
+        self,
+        start_utc,
+        t_start,
+        t_end,
+        t_step,
+        data_spec,
+        categories_dict,
     ):
         """"""
         logger.info(f"Initializing EnergyPlusBuildingModel: {self.fmu_path}")
-        self.allocate_output_memory(t_start, t_end, t_step, categories_dict)
+        self.allocate_output_memory(
+            t_start, t_end, t_step, data_spec, categories_dict
+        )
         self.init_step_output()
         self.fmu = pyfmi.load_fmu(fmu=self.fmu_path)
         # initialize for extra step to keep whole days for final period at 23:55
@@ -206,7 +218,9 @@ class EnergyPlusBuildingModel(BuildingModel):
         self.step_output[STATES.THERMOSTAT_HUMIDITY] = self.init_humidity
         self.step_output[STATES.THERMOSTAT_MOTION] = False
 
-    def allocate_output_memory(self, t_start, t_end, t_step, categories_dict):
+    def allocate_output_memory(
+        self, t_start, t_end, t_step, data_spec, categories_dict
+    ):
         """preallocate output memory as numpy arrays to speed up simulation"""
         # reset output memory
         self.output = {}
@@ -221,7 +235,7 @@ class EnergyPlusBuildingModel(BuildingModel):
 
         # add output state variables
         for state in self.output_states:
-            if Internal.full.spec[state]["dtype"] == "category":
+            if data_spec.full.spec[state]["dtype"] == "category":
                 self.output[state] = pd.Series(
                     pd.Categorical(
                         pd.Series(index=np.arange(n_s)),
@@ -233,7 +247,7 @@ class EnergyPlusBuildingModel(BuildingModel):
                     np_default_value,
                     np_dtype,
                 ) = Conversions.numpy_down_cast_default_value_dtype(
-                    Internal.full.spec[state]["dtype"]
+                    data_spec.full.spec[state]["dtype"]
                 )
                 self.output[state] = np.full(
                     n_s,

@@ -10,8 +10,12 @@ import pytz
 from BuildingControlsSimulator.Simulator.Config import Config
 from BuildingControlsSimulator.DataClients.DataClient import DataClient
 from BuildingControlsSimulator.DataClients.GCSDYDSource import GCSDYDSource
+from BuildingControlsSimulator.DataClients.DataSpec import DonateYourDataSpec
 from BuildingControlsSimulator.DataClients.DataSpec import EnergyPlusWeather
 from BuildingControlsSimulator.DataClients.DataStates import STATES
+from BuildingControlsSimulator.DataClients.LocalDestination import (
+    LocalDestination,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -51,6 +55,10 @@ class TestGCSDYDSource:
                 gcp_project=os.environ.get("DYD_GOOGLE_CLOUD_PROJECT"),
                 gcs_uri_base=os.environ.get("DYD_GCS_URI_BASE"),
                 local_cache=None,
+            ),
+            destination=LocalDestination(
+                local_cache=os.environ.get("LOCAL_CACHE_DIR"),
+                data_spec=DonateYourDataSpec(),
             ),
             nrel_dev_api_key=os.environ.get("NREL_DEV_API_KEY"),
             nrel_dev_email=os.environ.get("NREL_DEV_EMAIL"),

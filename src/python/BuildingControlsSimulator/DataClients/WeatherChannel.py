@@ -236,7 +236,7 @@ class WeatherChannel(DataChannel):
             )
             df = pd.read_csv(cache_path)
             if df.empty:
-                logging.error("Cached TMY weather geojson is empty.")
+                logger.error("Cached TMY weather geojson is empty.")
         else:
             logger.info(
                 f"Downloading TMY weather geojson from: {eplus_github_weather_geojson_url}"
@@ -277,7 +277,7 @@ class WeatherChannel(DataChannel):
                 fpath = os.path.join(self.ep_tmy3_cache_dir, fname)
                 # if already downloaded return name and path to cache
                 if not os.path.exists(fpath):
-                    logging.info(
+                    logger.info(
                         f"Downloading TMY weather data from: {epw_url}"
                     )
                     res = requests.get(epw_url, allow_redirects=True)

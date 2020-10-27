@@ -24,6 +24,7 @@ class Simulation:
     controller_model = attr.ib()
     data_client = attr.ib()
     config = attr.ib()
+    sim_run_identifier = attr.ib()
     output_data_dir = attr.ib(
         default=os.path.join(os.environ.get("OUTPUT_DIR"), "data")
     )
@@ -126,13 +127,33 @@ class Simulation:
     def building_model_output_keys(self):
         return self.building_model.fmu.get_model_variables().keys()
 
+    @property
+    def sim_name(self):
+        _prefix = "sim"
+        _sim_run_identifier = self.sim_run_identifier
+        _data_source = self.data_client.source.source_name
+        _identifier = self.data_client.sim_config["identifier"]
+        _building_model_name = self.building_model.get_model_name()
+        _controller_model_name = self.controller_model.get_model_name()
+
+        return "_".join(
+            [
+                _prefix,
+                _sim_run_identifier,
+                _data_source,
+                _identifier,
+                _building_model_name,
+                _controller_model_name,
+            ]
+        )
+
     def create_models(self, preprocess_check=False):
         return self.building_model.create_model_fmu(
             epw_path=self.data_client.weather.epw_path,
             preprocess_check=preprocess_check,
         )
 
-    def initialize(self):
+    def initialize(self, data_spec):
         """initialize sub-system models and memory for simulation"""
         # get simulation time from data client
         self.start_utc = self.data_client.start_utc
@@ -149,6 +170,7 @@ class Simulation:
             t_start=self.start_time_seconds,
             t_end=self.final_time_seconds,
             t_step=self.step_size_seconds,
+            data_spec=data_spec,
             categories_dict=self.data_client.thermostat.get_categories_dict(),
         )
 
@@ -162,6 +184,7 @@ class Simulation:
             t_start=self.start_time_seconds,
             t_end=self.final_time_seconds,
             t_step=self.step_size_seconds,
+            data_spec=data_spec,
             categories_dict=self.data_client.thermostat.get_categories_dict(),
         )
 
@@ -179,7 +202,7 @@ class Simulation:
     def run(self, local=True):
         """Main co-simulation loop"""
         logger.info("Initializing co-simulation models")
-        self.initialize()
+        self.initialize(data_spec=self.data_client.internal_spec)
 
         logger.info(
             f"Running co-simulation from {self.start_utc} to {self.end_utc}"
@@ -250,10 +273,13 @@ class Simulation:
 
         self.full_input = self.data_client.get_full_input()[_mask]
 
+        # save ouput
+        self.data_client.store_output(
+            output=self.output,
+            sim_name=self.sim_name,
+            src_spec=self.data_client.internal_spec,
+        )
+
     def show_plots(self):
         output_analysis = OutputAnalysis(df=self.output_df)
-        # output_analysis.postprocess()
         output_analysis.diagnostic_plot(show=True)
-        # output_analysis.thermal_plot(show=True)
-        # output_analysis.power_plot(show=True)
-        # output_analysis.control_actuation_plot(show=True)

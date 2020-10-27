@@ -13,6 +13,10 @@ from BuildingControlsSimulator.DataClients.DataClient import DataClient
 from BuildingControlsSimulator.DataClients.GCSFlatFilesSource import (
     GCSFlatFilesSource,
 )
+from BuildingControlsSimulator.DataClients.DataSpec import FlatFilesSpec
+from BuildingControlsSimulator.DataClients.LocalDestination import (
+    LocalDestination,
+)
 from BuildingControlsSimulator.DataClients.DataSpec import EnergyPlusWeather
 from BuildingControlsSimulator.DataClients.DataStates import STATES
 
@@ -46,6 +50,10 @@ class TestGCSFlatFilesSource:
                 gcp_project=os.environ.get("FLATFILE_GOOGLE_CLOUD_PROJECT"),
                 gcs_uri_base=os.environ.get("FLATFILES_GCS_URI_BASE"),
                 local_cache=None,
+            ),
+            destination=LocalDestination(
+                local_cache=os.environ.get("LOCAL_CACHE_DIR"),
+                data_spec=FlatFilesSpec,
             ),
             nrel_dev_api_key=os.environ.get("NREL_DEV_API_KEY"),
             nrel_dev_email=os.environ.get("NREL_DEV_EMAIL"),

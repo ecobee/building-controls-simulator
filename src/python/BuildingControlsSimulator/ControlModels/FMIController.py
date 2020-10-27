@@ -2,6 +2,7 @@
 
 from abc import ABC, abstractmethod
 import logging
+import os
 
 import attr
 import pyfmi
@@ -24,3 +25,7 @@ class FMIController(ControlModel):
 
     current_t_idx = attr.ib(default=None)
     step_size_seconds = attr.ib()
+
+    def get_model_name(self):
+        fmu_name = os.path.basename(self.fmu_path)
+        return f"FMU_{fmu_name}"

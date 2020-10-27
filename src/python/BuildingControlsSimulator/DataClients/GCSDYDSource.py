@@ -5,9 +5,15 @@ import logging
 import attr
 import pandas as pd
 import numpy as np
+import gcsfs
 
 from BuildingControlsSimulator.DataClients.GCSDataSource import GCSDataSource
 from BuildingControlsSimulator.DataClients.DataSpec import DonateYourDataSpec
+
+
+logger = logging.getLogger(__name__)
+gcsfs_logger = logging.getLogger("gcsfs")
+gcsfs_logger.setLevel(logging.WARN)
 
 
 @attr.s(kw_only=True)
@@ -16,6 +22,22 @@ class GCSDYDSource(GCSDataSource):
     data_spec = attr.ib(factory=DonateYourDataSpec)
     file_extension = attr.ib(default="csv.zip")
     source_name = attr.ib(default="GCSDYD")
+    meta_gcs_uri = attr.ib(default=None)
+
+    def get_metadata(self):
+        if self.meta_gcs_uri:
+            _fs = gcsfs.GCSFileSystem(
+                project=self.gcp_project,
+                token=self.gcs_token,
+                access="read_only",
+            )
+            with _fs.open(self.meta_gcs_uri) as _file:
+                _df = pd.read_csv(_file).drop_duplicates(subset=["Identifier"])
+
+        else:
+            raise ValueError("Must supply `meta_gs_uri` to dataclient.")
+
+        return _df
 
     def get_gcs_uri(self, sim_config):
         # first cast to utc timestamp

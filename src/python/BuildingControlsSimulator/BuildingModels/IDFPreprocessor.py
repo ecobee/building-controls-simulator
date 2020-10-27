@@ -121,9 +121,9 @@ class IDFPreprocessor:
         if not self.check_valid_idf(self.idf_file):
             raise ValueError(f"""{self.idf_file} is not a valid IDF file.""")
 
-        # logger.info(
-        #     "IDFPreprocessor loading .idf file: {}".format(self.idf_file)
-        # )
+        logger.info(
+            "IDFPreprocessor loading .idf file: {}".format(self.idf_file)
+        )
         self.ep_idf = IDF(self.idf_file)
         # select .idf output type
         self.ep_idf.outputtype = "standard"

@@ -247,7 +247,9 @@ class ThermostatChannel(DataChannel):
                             + _before_chg_time.minute
                         )
 
-                        left_chgs = merged[merged["_merge"] == "left_only"]
+                        left_chgs = merged[
+                            merged["_merge"] == "left_only"
+                        ].copy(deep=True)
                         left_chgs["min_of_week"] = (
                             left_chgs["day_of_week"] * 24 * 60
                             + left_chgs["minute_of_day"]

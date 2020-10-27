@@ -13,6 +13,9 @@ from BuildingControlsSimulator.DataClients.DataClient import DataClient
 from BuildingControlsSimulator.DataClients.LocalSource import (
     LocalSource,
 )
+from BuildingControlsSimulator.DataClients.LocalDestination import (
+    LocalDestination,
+)
 from BuildingControlsSimulator.DataClients.DataSpec import EnergyPlusWeather
 from BuildingControlsSimulator.DataClients.DataStates import STATES
 
@@ -44,7 +47,11 @@ class TestLocalSource:
         cls.data_client = DataClient(
             source=LocalSource(
                 local_cache=os.environ.get("LOCAL_CACHE_DIR"),
-                data_spec=DonateYourDataSpec,
+                data_spec=DonateYourDataSpec(),
+            ),
+            destination=LocalDestination(
+                local_cache=os.environ.get("LOCAL_CACHE_DIR"),
+                data_spec=DonateYourDataSpec(),
             ),
             nrel_dev_api_key=os.environ.get("NREL_DEV_API_KEY"),
             nrel_dev_email=os.environ.get("NREL_DEV_EMAIL"),

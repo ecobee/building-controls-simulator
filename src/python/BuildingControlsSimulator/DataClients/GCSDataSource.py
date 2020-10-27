@@ -2,27 +2,30 @@
 
 import logging
 import os
-import tempfile
 from abc import ABC, abstractmethod
 
 import attr
 import pandas as pd
 import numpy as np
 import gcsfs
-from google.cloud import storage
+from google.cloud import storage, exceptions
 
 from BuildingControlsSimulator.DataClients.DataSource import DataSource
-from BuildingControlsSimulator.DataClients.DataSpec import Internal
+from BuildingControlsSimulator.DataClients.DataSpec import (
+    Internal,
+    convert_spec,
+)
 from BuildingControlsSimulator.DataClients.DataStates import CHANNELS
 
 logger = logging.getLogger(__name__)
+gcsfs_logger = logging.getLogger("gcsfs")
+gcsfs_logger.setLevel(logging.WARN)
 
 
 @attr.s(kw_only=True)
 class GCSDataSource(DataSource, ABC):
 
     # TODO: add validators
-    gcs_cache = attr.ib(default=None)
     gcp_project = attr.ib(default=None)
     gcs_uri_base = attr.ib(default=None)
     gcs_token = attr.ib(
@@ -30,14 +33,17 @@ class GCSDataSource(DataSource, ABC):
     )
 
     def get_data(self, sim_config):
-
         # first check if file in local cache
-        local_cache_path = self.get_local_cache_path(sim_config["identifier"])
-        _data = self.get_local_cache(local_cache_path)
+        local_cache_file = self.get_local_cache_file(
+            identifier=sim_config["identifier"]
+        )
+        _data = self.get_local_cache(local_cache_file)
         if _data.empty:
-            _data = self.get_gcs_cache(sim_config, local_cache_path)
-
-        _data = self.convert_to_internal(_data=_data)
+            _data = self.get_gcs_cache(sim_config, local_cache_file)
+        _data = self.drop_unused_columns(_data=_data)
+        _data = convert_spec(
+            df=_data, src_spec=self.data_spec, dest_spec=Internal()
+        )
         return _data
 
     @abstractmethod
@@ -45,7 +51,7 @@ class GCSDataSource(DataSource, ABC):
         """This is implemented in the specialized source class"""
         pass
 
-    def get_gcs_cache(self, sim_config, local_cache_path):
+    def get_gcs_cache(self, sim_config, local_cache_file):
         if not self.gcs_uri_base:
             raise ValueError(
                 f"gcs_uri_base={self.gcs_uri_base} is unset. "
@@ -58,26 +64,24 @@ class GCSDataSource(DataSource, ABC):
             )
 
         gcs_uri = self.get_gcs_uri(sim_config)
-
-        if local_cache_path:
-            if os.path.isdir(os.path.dirname(local_cache_path)):
+        if local_cache_file:
+            if os.path.isdir(os.path.dirname(local_cache_file)):
                 client = storage.Client(project=self.gcp_project)
-                with open(local_cache_path) as _file:
+                with open(local_cache_file, "wb") as _file:
                     try:
                         client.download_blob_to_file(gcs_uri, _file)
-                        _df = self.read_data_by_extension(_file)
-
-                    except FileNotFoundError:
+                    except exceptions.NotFound:
                         # file not found in DYD
-                        logging.error(
+                        logger.error(
                             (
                                 f"File: {gcs_uri}",
                                 " not found in gcs cache dataset.",
                             )
                         )
-                        _df = self.get_empty_df()
+                        return self.get_empty_df()
+                _df = self.read_data_by_extension(local_cache_file)
             else:
-                logger.error(
+                raise ValueError(
                     "GCSDataSource received invalid directory: "
                     + f"local_cache={self.local_cache}"
                 )
@@ -96,7 +100,7 @@ class GCSDataSource(DataSource, ABC):
 
             except FileNotFoundError:
                 # file not found in DYD
-                logging.error(
+                logger.error(
                     (
                         f"File: {gcs_uri}",
                         " not found in gcs cache dataset.",

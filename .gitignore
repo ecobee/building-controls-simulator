@@ -32,3 +32,4 @@ docs/source/generated/
 .test.env
 docker-compose.yml
 build/
+notebooks/test_*

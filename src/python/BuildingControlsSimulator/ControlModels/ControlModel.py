@@ -21,7 +21,9 @@ class ControlModel(ABC):
     settings = attr.ib(factory=dict)
 
     @abstractmethod
-    def initialize(self, start_utc, t_start, t_end, ts, categories_dict):
+    def initialize(
+        self, start_utc, t_start, t_end, t_step, data_spec, categories_dict
+    ):
         """Run on first setup and not again."""
         pass
 
@@ -33,6 +35,11 @@ class ControlModel(ABC):
     @abstractmethod
     def change_settings(self, new_settings):
         """Change persistent internal settings to model."""
+        pass
+
+    @abstractmethod
+    def get_model_name(self):
+        """Defines human readable uniquely identifing name"""
         pass
 
     def update_settings(

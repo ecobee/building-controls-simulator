@@ -11,8 +11,12 @@ import pytz
 from BuildingControlsSimulator.Simulator.Config import Config
 from BuildingControlsSimulator.DataClients.DataClient import DataClient
 from BuildingControlsSimulator.DataClients.GCSDYDSource import GCSDYDSource
+from BuildingControlsSimulator.DataClients.DataSpec import DonateYourDataSpec
 from BuildingControlsSimulator.DataClients.DataSpec import EnergyPlusWeather
 from BuildingControlsSimulator.DataClients.DataStates import STATES
+from BuildingControlsSimulator.DataClients.LocalDestination import (
+    LocalDestination,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -22,10 +26,7 @@ class TestGCSDYDSource:
     def setup_class(cls):
         # initialize with data to avoid pulling multiple times
         cls.sim_config = Config.make_sim_config(
-            identifier=[
-                "9958f46d13419344ec0c21fb60f9b0b3990ac0ef"
-                # "bea5a8c53bd186378b40983b53f5f3d8ad76c97b",  # many custom schedules
-            ],
+            identifier=["9958f46d13419344ec0c21fb60f9b0b3990ac0ef"],
             latitude=33.481136,
             longitude=-112.078232,
             start_utc=[
@@ -44,6 +45,10 @@ class TestGCSDYDSource:
             source=GCSDYDSource(
                 gcp_project=os.environ.get("DYD_GOOGLE_CLOUD_PROJECT"),
                 gcs_uri_base=os.environ.get("DYD_GCS_URI_BASE"),
+            ),
+            destination=LocalDestination(
+                local_cache=os.environ.get("LOCAL_CACHE_DIR"),
+                data_spec=DonateYourDataSpec(),
             ),
             meta_gs_uri=os.environ.get("DYD_METADATA_URI"),
             nrel_dev_api_key=os.environ.get("NREL_DEV_API_KEY"),
