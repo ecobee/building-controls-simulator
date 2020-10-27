@@ -121,7 +121,14 @@ if [ "${PIPENV_ACTIVE:-0}" = "0" ]; then
    # if not in pipenv shell setup environment
     cat << EndOfMessage
 ================================================================================
-Building Controls Simulator
+                        ██████╗   ██████╗ ███████╗
+                        ██╔══██╗ ██╔════╝ ██╔════╝
+                        ██████╔╝ ██║      ███████╗
+                        ██╔══██╗ ██║      ╚════██║
+                        ██████╔╝ ╚██████╗ ███████║
+                        ╚═════╝   ╚═════╝ ╚══════╝
+                    
+---------Welcome to the Building Controls Simulator interactive shell!----------
 ================================================================================
 running configurable setting up commands in ${HOME}/.bashrc ...
 EndOfMessage

@@ -116,7 +116,7 @@ class ThermostatChannel(DataChannel):
 
         if schedule_chgs.empty:
             # extract only schedule and return
-            first_rec = schedule_data[STATES.DATE_TIME].iloc[0]
+            first_rec = schedule_data.iloc[0]
             schedule_chg_pts = {
                 first_rec[STATES.DATE_TIME]: {
                     "name": first_rec[STATES.SCHEDULE],
@@ -247,7 +247,9 @@ class ThermostatChannel(DataChannel):
                             + _before_chg_time.minute
                         )
 
-                        left_chgs = merged[merged["_merge"] == "left_only"]
+                        left_chgs = merged[
+                            merged["_merge"] == "left_only"
+                        ].copy(deep=True)
                         left_chgs["min_of_week"] = (
                             left_chgs["day_of_week"] * 24 * 60
                             + left_chgs["minute_of_day"]
@@ -375,7 +377,6 @@ class ThermostatChannel(DataChannel):
 
     @staticmethod
     def get_comfort_change_points(data, step_size_minutes):
-
         if data.empty:
             return {}
 
@@ -402,6 +403,14 @@ class ThermostatChannel(DataChannel):
                 STATES.TEMPERATURE_STP_HEAT,
             ]
         ]
+
+        if filtered_df.empty:
+            # there is no unambiguous way to extract setpoints
+            # TODO: do something less abrupt and log error.
+            raise ValueError(
+                "There is no unambiguous way to extract setpoints."
+                + "Do not use this input data file for this time period."
+            )
 
         # clean up columns
         data = data.drop(

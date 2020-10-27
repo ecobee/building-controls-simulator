@@ -73,18 +73,19 @@ RUN sudo apt-get update && sudo apt-get upgrade -y \
 # install FMUComplianceChecker
 # install EnergyPlusToFMU
 # download and extract PyFMI release
-# clean up
+# note: PyFMI 2.7.4 is latest release that doesnt require Assimulo which is unnecessary
+# because we dont use builtin PyFMI ODE simulation capabilities
 RUN curl -sL https://deb.nodesource.com/setup_12.x | sudo bash - \
     && sudo apt-get install -y nodejs \
     && curl --silent https://bootstrap.pypa.io/get-pip.py | python3 \
     && curl https://pyenv.run | bash \
-    && pyenv update && pyenv install 3.7.6 \
+    && pyenv update && pyenv install 3.8.6 \
     && pip3 install pipenv \
     && mkdir "${LIB_DIR}" && mkdir "${EXT_DIR}" \
     && cd "${EXT_DIR}" \
-    && wget https://github.com/modelon-community/fmi-library/archive/2.2.zip \
-    && unzip 2.2.zip && mv fmi-library-2.2 FMIL \
-    && rm -rf 2.2.zip \
+    && wget https://github.com/modelon-community/fmi-library/archive/2.2.3.zip \
+    && unzip 2.2.3.zip && mv fmi-library-2.2.3 FMIL \
+    && rm -rf 2.2.3.zip \
     && cd FMIL \
     && mkdir build-fmil; cd build-fmil \
     && cmake -DFMILIB_INSTALL_PREFIX=./ ../ \
@@ -127,7 +128,7 @@ RUN sudo chown -R "${USER_NAME}" "${PACKAGE_DIR}" \
 # if jupyter lab build fails with webpack optimization, set --minimize=False
 RUN cd "${PACKAGE_DIR}" \
     && . ${HOME}/.local/share/virtualenvs/$( ls "${HOME}/.local/share/virtualenvs/" | grep "${PACKAGE_NAME}" )/bin/activate \
-    && export NODE_OPTIONS=--max-old-space-size=8192 \
+    && export NODE_OPTIONS="--max-old-space-size=8192" \
     && jupyter labextension install @jupyter-widgets/jupyterlab-manager@2 --no-build \
     && jupyter labextension install jupyterlab-plotly --no-build \
     && jupyter labextension install plotlywidget@1.5.0 --no-build \

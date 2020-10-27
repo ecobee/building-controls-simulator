@@ -8,7 +8,7 @@ A bash CLI script to toggle between EnergyPlus versions.
 
 usage: . epvm.sh <ENERGYPLUS-VERSION-NUMBER>
 
-Supported versions: {8-9-0, 9-0-1, 9-1-0, 9-2-0, 9-3-0}
+Supported versions: {8-9-0, 9-0-1, 9-1-0, 9-2-0, 9-3-0, 9-4-0}
 
 for example: . epvm.sh 8-9-0
 ================================================================================
@@ -21,7 +21,7 @@ if [[ -z "${TO_SET_VERSION}" ]]; then
   printUsage
 elif [[ "${TO_SET_VERSION}" == "-h" ]]; then
   printUsage
-elif [[ "${TO_SET_VERSION}" =~ ^("8-9-0"|"9-0-1"|"9-1-0"|"9-2-0"|"9-3-0")$ ]]; then
+elif [[ "${TO_SET_VERSION}" =~ ^("8-9-0"|"9-0-1"|"9-1-0"|"9-2-0"|"9-3-0"|"9-4-0")$ ]]; then
   
   # set -u
   _NEW_EPLUS_NAME="EnergyPlus-${TO_SET_VERSION}"

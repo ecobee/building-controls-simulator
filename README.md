@@ -176,7 +176,9 @@ Some issues that have occurred on different machines are:
 errors when access is attempted within docker container.
     - on Mac OS permissions for Full Disk Access must be given to Docker App. 
     This is found in Settings > Security & Privacy > Full Disk Access. See answer 1 in https://stackoverflow.com/questions/64319987/docker-compose-volume-started-acting-weird-no-permissions-on-files-after-switch
-
+2. After making any changes to docker, restart the docker desktop daemon.
+3. Even if you didn't make an changes, stopping your container, restarting your terminal,
+    and restarting the docker daemon, then restarting the container can alleviate issues.
 
 ## Usage
 
