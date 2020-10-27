@@ -50,7 +50,6 @@ class TestGCSDYDSource:
                 local_cache=os.environ.get("LOCAL_CACHE_DIR"),
                 data_spec=DonateYourDataSpec(),
             ),
-            meta_gs_uri=os.environ.get("DYD_METADATA_URI"),
             nrel_dev_api_key=os.environ.get("NREL_DEV_API_KEY"),
             nrel_dev_email=os.environ.get("NREL_DEV_EMAIL"),
             archive_tmy3_dir=os.environ.get("ARCHIVE_TMY3_DIR"),

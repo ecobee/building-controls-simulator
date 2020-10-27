@@ -35,7 +35,7 @@ class GCSDYDSource(GCSDataSource):
                 _df = pd.read_csv(_file).drop_duplicates(subset=["Identifier"])
 
         else:
-            raise ValueError("Must supply `meta_gs_uri` to dataclient.")
+            raise ValueError("Must supply `meta_gcs_uri` to dataclient.")
 
         return _df
 
