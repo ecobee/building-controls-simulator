@@ -10,6 +10,7 @@ import numpy as np
 
 from BuildingControlsSimulator.DataClients.DataSpec import (
     convert_spec,
+    get_dtype_mapper,
 )
 from BuildingControlsSimulator.DataClients.DataStates import CHANNELS
 
@@ -84,27 +85,55 @@ class DataSource(ABC):
             extension = self.file_extension
 
         if extension.startswith("parquet"):
+            # read_parquet does not take dtype info
             _df = pd.read_parquet(
                 filepath_or_buffer,
                 columns=self.data_spec.full.columns,
             )
         elif extension == "csv":
+            # pandas cannot currently parse datetimes in read_csv
+            # need to first remove from dtype map
+            # see: https://github.com/pandas-dev/pandas/issues/26934
             _df = pd.read_csv(
                 filepath_or_buffer,
                 compression=None,
                 usecols=self.data_spec.full.columns,
+                dtype=get_dtype_mapper(
+                    [
+                        _col
+                        for _col in self.data_spec.full.columns
+                        if _col != self.data_spec.datetime_column
+                    ],
+                    self.data_spec,
+                ),
             )
         elif extension == "csv.zip":
             _df = pd.read_csv(
                 filepath_or_buffer,
                 compression="zip",
                 usecols=self.data_spec.full.columns,
+                dtype=get_dtype_mapper(
+                    [
+                        _col
+                        for _col in self.data_spec.full.columns
+                        if _col != self.data_spec.datetime_column
+                    ],
+                    self.data_spec,
+                ),
             )
         elif extension in ["csv.gzip", "csv.gz"]:
             _df = pd.read_csv(
                 filepath_or_buffer,
                 compression="gzip",
                 usecols=self.data_spec.full.columns,
+                dtype=get_dtype_mapper(
+                    [
+                        _col
+                        for _col in self.data_spec.full.columns
+                        if _col != self.data_spec.datetime_column
+                    ],
+                    self.data_spec,
+                ),
             )
         else:
             _df = self.get_empty_df()

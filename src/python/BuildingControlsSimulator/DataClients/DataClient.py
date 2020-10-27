@@ -209,7 +209,11 @@ class DataClient:
             )
 
         self.datetime = DateTimeChannel(
-            data=_data[self.internal_spec.datetime_column],
+            data=_data[
+                self.internal_spec.intersect_columns(
+                    _data.columns, self.internal_spec.datetime.spec
+                )
+            ],
             spec=self.internal_spec.datetime,
             latitude=self.sim_config["latitude"],
             longitude=self.sim_config["longitude"],

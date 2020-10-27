@@ -87,7 +87,7 @@ class TestGCSDYDSource:
     def test_get_data(self):
         # test HVAC data returns dict of non-empty pd.DataFrame
         for dc in self.data_clients:
-            assert isinstance(dc.datetime.data, pd.Series)
+            assert isinstance(dc.datetime.data, pd.DataFrame)
             assert isinstance(dc.thermostat.data, pd.DataFrame)
             assert isinstance(dc.equipment.data, pd.DataFrame)
             assert isinstance(dc.sensors.data, pd.DataFrame)
@@ -111,7 +111,7 @@ class TestGCSDYDSource:
         for dc in self.data_clients:
             if not dc.datetime.data.empty:
                 assert (
-                    dc.datetime.data[dc.datetime.spec.datetime_column].tz
+                    dc.datetime.data[dc.datetime.spec.datetime_column].dtype.tz
                     == pytz.utc
                 )
 
@@ -128,13 +128,13 @@ class TestGCSDYDSource:
                     == dc.thermostat.data.iloc[
                         dc.datetime.data[
                             (
-                                dc.datetime.data
+                                dc.datetime.data[STATES.DATE_TIME]
                                 >= pd.Timestamp(
                                     "2018-05-15 16:30:00", tz="utc"
                                 )
                             )
                             & (
-                                dc.datetime.data
+                                dc.datetime.data[STATES.DATE_TIME]
                                 <= pd.Timestamp(
                                     "2018-05-15 17:30:00", tz="utc"
                                 )

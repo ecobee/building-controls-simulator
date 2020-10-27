@@ -377,7 +377,6 @@ class ThermostatChannel(DataChannel):
 
     @staticmethod
     def get_comfort_change_points(data, step_size_minutes):
-
         if data.empty:
             return {}
 
@@ -404,6 +403,14 @@ class ThermostatChannel(DataChannel):
                 STATES.TEMPERATURE_STP_HEAT,
             ]
         ]
+
+        if filtered_df.empty:
+            # there is no unambiguous way to extract setpoints
+            # TODO: do something less abrupt and log error.
+            raise ValueError(
+                "There is no unambiguous way to extract setpoints."
+                + "Do not use this input data file for this time period."
+            )
 
         # clean up columns
         data = data.drop(

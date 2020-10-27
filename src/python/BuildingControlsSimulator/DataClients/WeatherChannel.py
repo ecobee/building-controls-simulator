@@ -44,7 +44,10 @@ class WeatherChannel(DataChannel):
 
     def make_epw_file(self, sim_config, datetime):
         # add datetime column for epw usage
-        self.data = pd.concat([datetime.data, self.data], axis="columns")
+        self.data = pd.concat(
+            [datetime.data[datetime.spec.datetime_column], self.data],
+            axis="columns",
+        )
         _epw_path = None
         # attempt to get .epw data from NREL
         fill_epw_path, fill_epw_fname = self.get_tmy_epw(

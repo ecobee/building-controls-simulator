@@ -272,7 +272,7 @@ class IDFPreprocessor:
         ]
 
         if any([z not in self.conditioned_zones for z in self.occupied_zones]):
-            info.error(
+            logger.error(
                 f"IDF file: {self.idf_file} contains occupied zones that"
                 " do not appear to be conditioned."
             )

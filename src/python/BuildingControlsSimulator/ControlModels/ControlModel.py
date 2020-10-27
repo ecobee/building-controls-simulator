@@ -50,6 +50,18 @@ class ControlModel(ABC):
         init=False,
     ):
         """Ensure settings are correct for given time step."""
+        if not change_points_comfort_prefs:
+            logging.error(
+                "change_points_comfort_prefs is empty. update_settings will not work."
+            )
+            return
+
+        if not change_points_schedule:
+            logging.error(
+                "change_points_schedule is empty. update_settings will not work."
+            )
+            return
+
         _init_time_schedule = min(change_points_schedule.keys())
         _init_schedule_names = set(
             [
@@ -88,7 +100,6 @@ class ControlModel(ABC):
                 self.settings["setpoints"][
                     _name
                 ] = change_points_comfort_prefs[_init_time_setpoint][_name]
-
         elif time_utc:
             settings_updated = False
             # must observe new schedule at or before setpoint change

@@ -59,7 +59,6 @@ def spec_unit_conversion(df, src_spec, dest_spec):
                 ):
                     df[k] = Conversions.C2F(df[k]) * 10.0
                 else:
-                    breakpoint()
                     logger.error(
                         "Unsupported conversion: {} to {}".format(
                             src_unit,

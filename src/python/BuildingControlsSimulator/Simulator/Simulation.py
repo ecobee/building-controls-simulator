@@ -173,7 +173,6 @@ class Simulation:
             data_spec=data_spec,
             categories_dict=self.data_client.thermostat.get_categories_dict(),
         )
-
         self.controller_model.update_settings(
             change_points_schedule=self.data_client.thermostat.change_points_schedule,
             change_points_comfort_prefs=self.data_client.thermostat.change_points_comfort_prefs,
@@ -216,11 +215,12 @@ class Simulation:
             dtype="int64",
         )
         for i in range(0, len(_sim_time)):
-
             self.controller_model.update_settings(
                 change_points_schedule=self.data_client.thermostat.change_points_schedule,
                 change_points_comfort_prefs=self.data_client.thermostat.change_points_comfort_prefs,
-                time_utc=self.data_client.datetime.data.iloc[i],
+                time_utc=self.data_client.datetime.data.iloc[i][
+                    STATES.DATE_TIME
+                ],
             )
 
             self.controller_model.do_step(
