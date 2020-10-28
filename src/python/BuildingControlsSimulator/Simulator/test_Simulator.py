@@ -24,9 +24,14 @@ from BuildingControlsSimulator.DataClients.DataSpec import (
     DonateYourDataSpec,
     Internal,
 )
-from BuildingControlsSimulator.ControlModels.FMIController import FMIController
-from BuildingControlsSimulator.ControlModels.Deadband import Deadband
+from BuildingControlsSimulator.ControllerModels.FMIController import (
+    FMIController,
+)
+from BuildingControlsSimulator.ControllerModels.Deadband import Deadband
 from BuildingControlsSimulator.DataClients.DataStates import STATES
+from BuildingControlsSimulator.StateEstimatorModels.LowPassFilter import (
+    LowPassFilter,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -110,6 +115,9 @@ class TestSimulator:
             ],
             controller_models=[
                 Deadband(deadband=1.0),
+            ],
+            state_estimator_models=[
+                LowPassFilter(alpha_temperature=0.9, alpha_humidity=0.9)
             ],
         )
         master.simulate(local=True, preprocess_check=True)

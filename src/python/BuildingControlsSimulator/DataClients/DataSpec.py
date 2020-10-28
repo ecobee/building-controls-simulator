@@ -407,8 +407,20 @@ class Internal:
                     "channel": CHANNELS.THERMOSTAT_SENSOR,
                     "unit": UNITS.CELSIUS,
                 },
+                STATES.THERMOSTAT_TEMPERATURE_ESTIMATE: {
+                    "name": "thermostat_temperature_estimate",
+                    "dtype": "Float32",
+                    "channel": CHANNELS.THERMOSTAT_SENSOR,
+                    "unit": UNITS.CELSIUS,
+                },
                 STATES.THERMOSTAT_HUMIDITY: {
                     "name": "thermostat_humidity",
+                    "dtype": "Float32",
+                    "channel": CHANNELS.THERMOSTAT_SENSOR,
+                    "unit": UNITS.RELATIVE_HUMIDITY,
+                },
+                STATES.THERMOSTAT_HUMIDITY_ESTIMATE: {
+                    "name": "thermostat_humidity_estimate",
                     "dtype": "Float32",
                     "channel": CHANNELS.THERMOSTAT_SENSOR,
                     "unit": UNITS.RELATIVE_HUMIDITY,
@@ -422,6 +434,15 @@ class Internal:
                 **{
                     STATES["RS{}_TEMPERATURE".format(i)]: {
                         "name": "rs{}_temperature".format(i),
+                        "dtype": "Float32",
+                        "channel": CHANNELS.REMOTE_SENSOR,
+                        "unit": UNITS.CELSIUS,
+                    }
+                    for i in range(1, self.N_ROOM_SENSORS)
+                },
+                **{
+                    STATES["RS{}_TEMPERATURE_ESTIMATE".format(i)]: {
+                        "name": "rs{}_temperature_estimate".format(i),
                         "dtype": "Float32",
                         "channel": CHANNELS.REMOTE_SENSOR,
                         "unit": UNITS.CELSIUS,
