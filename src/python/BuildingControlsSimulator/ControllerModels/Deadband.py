@@ -138,35 +138,47 @@ class Deadband(ControllerModel):
         """Simulate controller time step."""
         t_ctrl = self.calc_t_control(step_sensor_input)
         self.step_output[STATES.TEMPERATURE_CTRL] = t_ctrl
-        self.step_output[STATES.TEMPERATURE_STP_COOL] = step_thermostat_input[
-            STATES.TEMPERATURE_STP_COOL
-        ]
-        self.step_output[STATES.TEMPERATURE_STP_HEAT] = step_thermostat_input[
-            STATES.TEMPERATURE_STP_HEAT
-        ]
+
+        # stop overlap of heating and cooling set points
+        self.step_output[STATES.TEMPERATURE_STP_COOL] = max(
+            step_thermostat_input[STATES.TEMPERATURE_STP_COOL],
+            step_thermostat_input[STATES.TEMPERATURE_STP_HEAT] + self.deadband,
+        )
+        self.step_output[STATES.TEMPERATURE_STP_HEAT] = min(
+            step_thermostat_input[STATES.TEMPERATURE_STP_COOL] - self.deadband,
+            step_thermostat_input[STATES.TEMPERATURE_STP_HEAT],
+        )
 
         if t_ctrl < (
-            step_thermostat_input[STATES.TEMPERATURE_STP_HEAT] - self.deadband
+            self.step_output[STATES.TEMPERATURE_STP_HEAT] - self.deadband
         ):
             # turn on heat
-            # turn off cool
             self.step_output[STATES.AUXHEAT1] = self.step_size_seconds
             self.step_output[STATES.FAN_STAGE_ONE] = self.step_size_seconds
+            # turn off cool
             self.step_output[STATES.COMPCOOL1] = 0
         elif t_ctrl > (
-            step_thermostat_input[STATES.TEMPERATURE_STP_COOL] + self.deadband
+            self.step_output[STATES.TEMPERATURE_STP_HEAT] + self.deadband
+        ):
+            # turn off heat
+            self.step_output[STATES.FAN_STAGE_ONE] = 0
+            self.step_output[STATES.AUXHEAT1] = 0
+
+        # cooling mode
+        if t_ctrl > (
+            self.step_output[STATES.TEMPERATURE_STP_COOL] + self.deadband
         ):
             # turn on cool
-            # turn off heat
             self.step_output[STATES.COMPCOOL1] = self.step_size_seconds
             self.step_output[STATES.FAN_STAGE_ONE] = self.step_size_seconds
-            self.step_output[STATES.AUXHEAT1] = 0
-        else:
             # turn off heat
-            # turn off cool
             self.step_output[STATES.AUXHEAT1] = 0
-            self.step_output[STATES.COMPCOOL1] = 0
+        elif t_ctrl < (
+            self.step_output[STATES.TEMPERATURE_STP_COOL] - self.deadband
+        ):
+            # turn off cool
             self.step_output[STATES.FAN_STAGE_ONE] = 0
+            self.step_output[STATES.COMPCOOL1] = 0
 
         self.add_step_to_output(self.step_output)
         self.current_t_idx += 1
