@@ -117,18 +117,18 @@ class TestSimulator:
                 Deadband(deadband=1.0),
             ],
             state_estimator_models=[
-                LowPassFilter(alpha_temperature=0.9, alpha_humidity=0.9)
+                LowPassFilter(alpha_temperature=0.3, alpha_humidity=0.3)
             ],
         )
         master.simulate(local=True, preprocess_check=True)
         assert (
-            pytest.approx(27.360288, 0.1)
+            pytest.approx(26.66449546813965)
             == master.simulations[0]
             .output[STATES.THERMOSTAT_TEMPERATURE]
             .mean()
         )
         assert (
-            pytest.approx(18.139530, 0.1)
+            pytest.approx(18.17778778076172)
             == master.simulations[0].output[STATES.THERMOSTAT_HUMIDITY].mean()
         )
 
@@ -144,9 +144,10 @@ class TestSimulator:
         r_df = pd.read_parquet(_fpath)
 
         assert (
-            pytest.approx(27.360288, 0.1)
+            pytest.approx(26.66449546813965)
             == r_df["thermostat_temperature"].mean()
         )
         assert (
-            pytest.approx(18.139530, 0.1) == r_df["thermostat_humidity"].mean()
+            pytest.approx(18.17778778076172)
+            == r_df["thermostat_humidity"].mean()
         )
