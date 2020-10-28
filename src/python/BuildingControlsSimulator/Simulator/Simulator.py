@@ -20,10 +20,17 @@ from BuildingControlsSimulator.BuildingModels.EnergyPlusBuildingModel import (
 from BuildingControlsSimulator.BuildingModels.IDFPreprocessor import (
     IDFPreprocessor,
 )
-from BuildingControlsSimulator.ControlModels.ControlModel import ControlModel
+from BuildingControlsSimulator.ControllerModels.ControllerModel import (
+    ControllerModel,
+)
 from BuildingControlsSimulator.DataClients.DataClient import DataClient
-from BuildingControlsSimulator.ControlModels.FMIController import FMIController
-from BuildingControlsSimulator.ControlModels.Deadband import Deadband
+from BuildingControlsSimulator.ControllerModels.FMIController import (
+    FMIController,
+)
+from BuildingControlsSimulator.ControllerModels.Deadband import Deadband
+from BuildingControlsSimulator.StateEstimatorModels.StateEstimatorModel import (
+    StateEstimatorModel,
+)
 from BuildingControlsSimulator.OutputAnalysis.OutputAnalysis import (
     OutputAnalysis,
 )
@@ -45,10 +52,17 @@ class Simulator:
     )
     controller_models = attr.ib(
         validator=attr.validators.deep_iterable(
-            member_validator=attr.validators.instance_of(ControlModel),
+            member_validator=attr.validators.instance_of(ControllerModel),
             iterable_validator=attr.validators.instance_of(list),
         )
     )
+    state_estimator_models = attr.ib(
+        validator=attr.validators.deep_iterable(
+            member_validator=attr.validators.instance_of(StateEstimatorModel),
+            iterable_validator=attr.validators.instance_of(list),
+        )
+    )
+
     simulations = attr.ib(factory=list)
 
     output_data_dir = attr.ib(
@@ -81,21 +95,23 @@ class Simulator:
             dc = copy.deepcopy(self.data_client)
             dc.sim_config = _sim_config.to_dict()
 
-            for b in self.building_models:
-                for c in self.controller_models:
+            for _b in self.building_models:
+                for _c in self.controller_models:
+                    for _e in self.state_estimator_models:
 
-                    # lazy init of simulation model
-                    # deep copies are used so that models can be in user code
-                    # and then be fully initialized lazily per simulation
-                    self.simulations.append(
-                        Simulation(
-                            config=_sim_config,
-                            data_client=dc,
-                            building_model=copy.deepcopy(b),
-                            controller_model=copy.deepcopy(c),
-                            sim_run_identifier=self.sim_run_identifier,
+                        # lazy init of simulation model
+                        # deep copies are used so that models can be in user code
+                        # and then be fully initialized lazily per simulation
+                        self.simulations.append(
+                            Simulation(
+                                config=_sim_config,
+                                data_client=dc,
+                                building_model=copy.deepcopy(_b),
+                                controller_model=copy.deepcopy(_c),
+                                state_estimator_model=copy.deepcopy(_e),
+                                sim_run_identifier=self.sim_run_identifier,
+                            )
                         )
-                    )
 
     def simulate(self, local=True, preprocess_check=False):
         """Run all simulations locally or in cloud.

@@ -21,6 +21,7 @@ class Simulation:
     """Converts IDFs (Input Data Files) for EnergyPlus into working IDFs."""
 
     building_model = attr.ib()
+    state_estimator_model = attr.ib()
     controller_model = attr.ib()
     data_client = attr.ib()
     config = attr.ib()
@@ -63,11 +64,25 @@ class Simulation:
             for k, v in self.data_client.source.data_spec.weather.spec.items()
         ]
 
+        missing_state_estimator_output_states = [
+            k
+            for k in self.controller_model.input_states
+            if k
+            not in self.state_estimator_model.output_states
+            + available_data_states
+        ]
+        if any(missing_state_estimator_output_states):
+            raise ValueError(
+                f"type(state_estimator_model)={type(self.state_estimator_model)}\n",
+                f"Missing state_estimator output keys: {missing_state_estimator_output_states}\n",
+            )
+
         missing_controller_output_states = [
             k
-            for k in self.building_model.input_states
+            for k in self.controller_model.input_states
             if k
-            not in self.controller_model.output_states + available_data_states
+            not in self.state_estimator_model.output_states
+            + available_data_states
         ]
         if any(missing_controller_output_states):
             raise ValueError(
@@ -77,7 +92,7 @@ class Simulation:
 
         missing_building_output_keys = [
             k
-            for k in self.controller_model.input_states
+            for k in self.state_estimator_model.input_states
             if k
             not in self.building_model.output_states + available_data_states
         ]
@@ -148,6 +163,8 @@ class Simulation:
         )
 
     def create_models(self, preprocess_check=False):
+        # TODO: only have the building model that requires dynamic building
+        # when other models exist that must be created generalize this interface
         return self.building_model.create_model_fmu(
             epw_path=self.data_client.weather.epw_path,
             preprocess_check=preprocess_check,
@@ -165,7 +182,7 @@ class Simulation:
         if not self.end_utc:
             raise ValueError("end_utc is None.")
 
-        self.building_model.initialize(
+        self.state_estimator_model.initialize(
             start_utc=self.start_utc,
             t_start=self.start_time_seconds,
             t_end=self.final_time_seconds,
@@ -179,6 +196,15 @@ class Simulation:
             init=True,
         )
         self.controller_model.initialize(
+            start_utc=self.start_utc,
+            t_start=self.start_time_seconds,
+            t_end=self.final_time_seconds,
+            t_step=self.step_size_seconds,
+            data_spec=data_spec,
+            categories_dict=self.data_client.thermostat.get_categories_dict(),
+        )
+
+        self.building_model.initialize(
             start_utc=self.start_utc,
             t_start=self.start_time_seconds,
             t_end=self.final_time_seconds,
@@ -223,11 +249,17 @@ class Simulation:
                 ],
             )
 
+            self.state_estimator_model.do_step(
+                t_start=_sim_time[i],
+                t_step=self.step_size_seconds,
+                step_sensor_input=self.building_model.step_output,
+            )
+
             self.controller_model.do_step(
                 t_start=_sim_time[i],
                 t_step=self.step_size_seconds,
                 step_thermostat_input=self.data_client.thermostat.data.iloc[i],
-                step_sensor_input=self.building_model.step_output,
+                step_sensor_input=self.state_estimator_model.step_output,
                 step_weather_input=self.data_client.weather.data.iloc[i],
             )
             self.building_model.do_step(

@@ -18,7 +18,9 @@ from BuildingControlsSimulator.BuildingModels.BuildingModel import (
 )
 
 
-from BuildingControlsSimulator.ControlModels.ControlModel import ControlModel
+from BuildingControlsSimulator.ControllerModels.ControllerModel import (
+    ControllerModel,
+)
 from BuildingControlsSimulator.Conversions.Conversions import Conversions
 
 
@@ -87,9 +89,6 @@ class EnergyPlusBuildingModel(BuildingModel):
             STATES.THERMOSTAT_HUMIDITY,
             STATES.THERMOSTAT_MOTION,
         ]
-
-    def __attrs_post_init__(self):
-        pass
 
     def get_model_name(self):
         # only need the idf file name because the weather is determined from
