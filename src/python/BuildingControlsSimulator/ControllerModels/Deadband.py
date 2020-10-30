@@ -1,4 +1,6 @@
 # created by Tom Stesco tom.s@ecobee.com
+# NOTE: this controller is an over simplified example and does not represent
+# anything related to the HVAC control work used or developed at ecobee.
 
 import attr
 import pandas as pd

@@ -39,7 +39,8 @@ class TestGCSFlatFilesSource:
             end_utc="2018-12-31 00:00:00",
             min_sim_period="7D",
             min_chunk_period="30D",
-            step_size_minutes=5,
+            sim_step_size_seconds=300,
+            output_step_size_seconds=300,
         )
 
         cls.data_clients = []

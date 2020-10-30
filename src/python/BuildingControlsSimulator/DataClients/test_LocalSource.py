@@ -40,7 +40,8 @@ class TestLocalSource:
             ],
             min_sim_period="3D",
             min_chunk_period="30D",
-            step_size_minutes=5,
+            sim_step_size_seconds=300,
+            output_step_size_seconds=300,
         )
 
         cls.data_clients = []

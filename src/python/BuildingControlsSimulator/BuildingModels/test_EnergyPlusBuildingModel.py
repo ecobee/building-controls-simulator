@@ -63,10 +63,10 @@ class TestEnergyPlusBuildingModel:
                 init_temperature=20.0,
             ),
             epw_path=cls.dummy_epw_path,
-            timesteps_per_hour=12,
+            step_size_seconds=300,
         )
 
-        cls.step_size = int(3600.0 / cls.building_model.timesteps_per_hour)
+        cls.step_size = 300
 
     @classmethod
     def teardown_class(cls):
