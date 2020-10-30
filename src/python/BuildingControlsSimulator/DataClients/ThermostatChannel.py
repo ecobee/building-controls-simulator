@@ -83,7 +83,7 @@ class ThermostatChannel(DataChannel):
         return periods
 
     @staticmethod
-    def get_schedule_change_points(data, step_size_minutes):
+    def get_schedule_change_points(data, sim_step_size_seconds):
         # drop rows where schedule is missing so previous schedule is not null
         # and calculate diffs correctly
         if data.empty:
@@ -110,7 +110,7 @@ class ThermostatChannel(DataChannel):
             & (~schedule_data["prev_schedule"].isnull())
             & (
                 schedule_data["diff"]
-                == pd.Timedelta(minutes=step_size_minutes)
+                == pd.Timedelta(seconds=sim_step_size_seconds)
             )
         ][[STATES.DATE_TIME, STATES.SCHEDULE]]
 
@@ -376,7 +376,7 @@ class ThermostatChannel(DataChannel):
         return schedule_chg_pts
 
     @staticmethod
-    def get_comfort_change_points(data, step_size_minutes):
+    def get_comfort_change_points(data, sim_step_size_seconds):
         if data.empty:
             return {}
 
@@ -532,7 +532,7 @@ class ThermostatChannel(DataChannel):
         return None
 
     @staticmethod
-    def get_settings_change_points(data, step_size_minutes):
+    def get_settings_change_points(data, sim_step_size_seconds):
         """get setting change points:
         - schedules
         - comfort preferences
@@ -545,10 +545,10 @@ class ThermostatChannel(DataChannel):
 
         data = data.sort_values(STATES.DATE_TIME).reset_index(drop=True)
         schedule_chg_pts = ThermostatChannel.get_schedule_change_points(
-            data, step_size_minutes
+            data, sim_step_size_seconds
         )
         comfort_chg_pts = ThermostatChannel.get_comfort_change_points(
-            data, step_size_minutes
+            data, sim_step_size_seconds
         )
 
         return schedule_chg_pts, comfort_chg_pts

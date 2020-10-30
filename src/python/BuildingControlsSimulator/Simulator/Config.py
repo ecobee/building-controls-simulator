@@ -15,7 +15,8 @@ class Config:
         start_utc,
         end_utc,
         min_sim_period,
-        step_size_minutes,
+        sim_step_size_seconds,
+        output_step_size_seconds,
         min_chunk_period="30D",
     ):
         # first make sure identifier is iterable and wrapped if a str
@@ -29,7 +30,8 @@ class Config:
             start_utc,
             end_utc,
             min_sim_period,
-            step_size_minutes,
+            sim_step_size_seconds,
+            output_step_size_seconds,
             min_chunk_period,
         ) = [
             [v] * len(identifier)
@@ -41,7 +43,8 @@ class Config:
                 start_utc,
                 end_utc,
                 min_sim_period,
-                step_size_minutes,
+                sim_step_size_seconds,
+                output_step_size_seconds,
                 min_chunk_period,
             ]
         ]
@@ -95,7 +98,8 @@ class Config:
                 "end_utc": end_utc,
                 "min_sim_period": min_sim_period,
                 "min_chunk_period": min_chunk_period,
-                "step_size_minutes": step_size_minutes,
+                "sim_step_size_seconds": sim_step_size_seconds,
+                "output_step_size_seconds": output_step_size_seconds,
             }
         )
 

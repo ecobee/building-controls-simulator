@@ -103,12 +103,12 @@ class Simulation:
             )
 
     @property
-    def steps_per_hour(self):
-        return int(60 / self.config.step_size_minutes)
+    def step_size_seconds(self):
+        return int(self.config["sim_step_size_seconds"])
 
     @property
-    def step_size_seconds(self):
-        return int(self.config.step_size_minutes * 60)
+    def output_step_size_seconds(self):
+        return int(self.config["output_step_size_seconds"])
 
     @property
     def start_time_seconds(self):
@@ -165,7 +165,8 @@ class Simulation:
     def create_models(self, preprocess_check=False):
         # TODO: only have the building model that requires dynamic building
         # when other models exist that must be created generalize this interface
-        return self.building_model.create_model_fmu(
+        self.building_model.step_size_seconds = self.step_size_seconds
+        self.building_model.create_model_fmu(
             epw_path=self.data_client.weather.epw_path,
             preprocess_check=preprocess_check,
         )
@@ -262,6 +263,7 @@ class Simulation:
                 step_sensor_input=self.state_estimator_model.step_output,
                 step_weather_input=self.data_client.weather.data.iloc[i],
             )
+
             self.building_model.do_step(
                 t_start=_sim_time[i],
                 t_step=self.step_size_seconds,
@@ -293,17 +295,25 @@ class Simulation:
                 **self.building_model.output,
             }
         )
+        # aggregate data in fine grain time steps to output step size
+        self.output = self.data_client.integrate_to_step_size(
+            df=self.output,
+            step_size_seconds=self.output_step_size_seconds,
+            data_spec=self.data_client.internal_spec,
+        )
 
-        # only consider data within data periods as output
+        self.full_input = self.data_client.get_full_input()
+
+        # create initial mask against index (should be all False)
         _mask = self.output[STATES.DATE_TIME].isnull()
+        # only consider data within data periods as output
         for dp_start, dp_end in self.data_client.full_data_periods:
             _mask = _mask | (self.output[STATES.DATE_TIME] >= dp_start) & (
                 self.output[STATES.DATE_TIME] < dp_end
             )
 
         self.output = self.output[_mask]
-
-        self.full_input = self.data_client.get_full_input()[_mask]
+        self.full_input = self.full_input[_mask]
 
         # save ouput
         self.data_client.store_output(

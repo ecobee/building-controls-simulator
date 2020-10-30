@@ -80,6 +80,7 @@ class STATES(enum.IntEnum):
     # state estimates
     THERMOSTAT_TEMPERATURE_ESTIMATE = enum.auto()
     THERMOSTAT_HUMIDITY_ESTIMATE = enum.auto()
+    THERMOSTAT_MOTION_ESTIMATE = enum.auto()
     RS1_TEMPERATURE_ESTIMATE = enum.auto()
     RS2_TEMPERATURE_ESTIMATE = enum.auto()
     RS3_TEMPERATURE_ESTIMATE = enum.auto()

@@ -137,6 +137,9 @@ class DataClient:
         ]:
             _data[_cat_col].cat.remove_unused_categories(inplace=True)
 
+        # internal_sim_step_size_seconds = int(
+        #     self.internal_spec.data_period_seconds / 60
+        # )
         # run settings change point detection before filling missing data
         # the fill data would create false positive change points
         # the change points can also be used to correctly fill the schedule
@@ -145,10 +148,10 @@ class DataClient:
             _change_points_schedule,
             _change_points_comfort_prefs,
         ) = ThermostatChannel.get_settings_change_points(
-            _data, self.sim_config["step_size_minutes"]
+            _data, self.internal_spec.data_period_seconds
         )
 
-        _expected_period = f"{self.sim_config['step_size_minutes']}M"
+        _expected_period = f"{self.internal_spec.data_period_seconds}S"
         # ffill first 15 minutes of missing data periods
         _data = DataClient.fill_missing_data(
             full_data=_data,
@@ -196,6 +199,13 @@ class DataClient:
             )
             _data = _data.fillna(method="bfill", limit=None)
 
+            _data = DataClient.interpolate_to_step_size(
+                df=_data,
+                step_size_seconds=self.sim_config["sim_step_size_seconds"],
+                data_spec=self.internal_spec,
+            )
+
+            # we can replace na_code_name now that filling is complete
             _data.loc[
                 _data[STATES.CALENDAR_EVENT] == na_code_name,
                 [STATES.CALENDAR_EVENT],
@@ -363,6 +373,7 @@ class DataClient:
             # frequency rules have different str format
             _str_format_dict = {
                 "M": "T",  # covert minutes formats
+                "S": "S",
             }
             # replace last char using format conversion dict
             resample_freq = (
@@ -442,7 +453,7 @@ class DataClient:
 
     @staticmethod
     def get_full_data_periods(
-        full_data, data_spec, expected_period="5M", min_sim_period="7D"
+        full_data, data_spec, expected_period="300S", min_sim_period="7D"
     ):
         """Get full data periods. These are the periods for which there is data
         on all channels. Preliminary forward filling of the data is used to
@@ -517,6 +528,7 @@ class DataClient:
         # frequency rules have different str format
         _str_format_dict = {
             "M": "T",  # covert minutes formats
+            "S": "S",
         }
         # replace last char using format conversion dict
         resample_freq = (
@@ -574,6 +586,13 @@ class DataClient:
         # drop duplicated datetime columns
         full_input = full_input.loc[:, ~full_input.columns.duplicated()]
 
+        # resample to output step size
+        full_input = DataClient.integrate_to_step_size(
+            df=full_input,
+            step_size_seconds=self.sim_config["output_step_size_seconds"],
+            data_spec=self.internal_spec,
+        )
+
         if column_names:
             full_input.columns = [
                 self.internal_spec.full.spec[_col]["name"]
@@ -581,3 +600,96 @@ class DataClient:
             ]
 
         return full_input
+
+    @staticmethod
+    def interpolate_to_step_size(df, step_size_seconds, data_spec):
+        """This function contains the rules for resampling data of all
+        types into smaller time steps"""
+        # resample to desired frequency
+        _resample_period = f"{step_size_seconds}S"
+        # we need to set a datetime index to resample
+        df = df.set_index(data_spec.datetime_column)
+        df = df.resample(_resample_period).asfreq()
+        # the datetime index can be reset back to a column
+        # this is actually required due to an issue in the interpolate method
+        df = df.reset_index()
+
+        # linear interpolation
+        linear_columns = [
+            _state
+            for _state, _v in data_spec.full.spec.items()
+            if (
+                _v["unit"] in [UNITS.CELSIUS, UNITS.RELATIVE_HUMIDITY]
+                and _state in df.columns
+            )
+        ]
+        df.loc[:, linear_columns] = df.loc[:, linear_columns].interpolate(
+            axis="rows", method="linear"
+        )
+
+        # ffill interpolation
+        ffill_columns = [
+            _state
+            for _state, _v in data_spec.full.spec.items()
+            if (_v["unit"] == UNITS.OTHER and _state in df.columns)
+        ]
+        df.loc[:, ffill_columns] = df.loc[:, ffill_columns].interpolate(
+            axis="rows", method="ffill"
+        )
+
+        # runtime_columns can be filled with zeros because they are not used
+        # as inputs and will just be re-aggregated into output
+        zero_fill_columns = [
+            _state
+            for _state, _v in data_spec.full.spec.items()
+            if (_v["unit"] == UNITS.SECONDS and _state in df.columns)
+        ]
+        df.loc[:, zero_fill_columns] = df.loc[:, zero_fill_columns].fillna(0)
+
+        return df
+
+    @staticmethod
+    def integrate_to_step_size(df, step_size_seconds, data_spec):
+        """This function contains the rules for integrating data of all
+        types into larger time steps"""
+
+        # resample to desired frequency
+        _resample_period = f"{step_size_seconds}S"
+        # we need to set a datetime index to resample
+        df = df.set_index(data_spec.datetime_column)
+
+        # set result df with new frequency
+        # each group of columns must be filled in separately
+        res_df = df.resample(_resample_period).asfreq()
+        # df = df.reset_index()
+
+        # mean integration
+        mean_columns = [
+            _state
+            for _state, _v in data_spec.full.spec.items()
+            if (
+                _v["unit"] in [UNITS.CELSIUS, UNITS.RELATIVE_HUMIDITY]
+                and _state in df.columns
+            )
+        ]
+        res_df.loc[:, mean_columns] = (
+            df.loc[:, mean_columns].resample(_resample_period).mean()
+        )
+
+        # mode interpolation
+        # columns that were ffilled and represent current states will
+        # be filled with the most recent value as the default resample().asfreq()
+
+        # sum integration
+        sum_columns = [
+            _state
+            for _state, _v in data_spec.full.spec.items()
+            if (_v["unit"] == UNITS.SECONDS and _state in df.columns)
+        ]
+        res_df.loc[:, sum_columns] = (
+            df.loc[:, sum_columns].resample(_resample_period).sum()
+        )
+
+        # the datetime index can be reset back to a column
+        res_df = res_df.reset_index()
+        return res_df
