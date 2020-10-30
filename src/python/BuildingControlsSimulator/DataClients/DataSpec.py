@@ -215,6 +215,7 @@ class Internal:
 
     N_ROOM_SENSORS = 10
     datetime_column = STATES.DATE_TIME
+    data_period_seconds = 300
 
     def __init__(self):
 
@@ -431,6 +432,12 @@ class Internal:
                     "channel": CHANNELS.THERMOSTAT_SENSOR,
                     "unit": UNITS.OTHER,
                 },
+                STATES.THERMOSTAT_MOTION_ESTIMATE: {
+                    "name": "thermostat_motion_estimate",
+                    "dtype": "boolean",
+                    "channel": CHANNELS.THERMOSTAT_SENSOR,
+                    "unit": UNITS.OTHER,
+                },
                 **{
                     STATES["RS{}_TEMPERATURE".format(i)]: {
                         "name": "rs{}_temperature".format(i),
@@ -534,6 +541,7 @@ class FlatFilesSpec:
     datetime_format = "utc"
     datetime_column = "date_time"
     N_ROOM_SENSORS = 10
+    data_period_seconds = 300
 
     def __init__(self):
         self.datetime = Spec(
@@ -788,6 +796,7 @@ class DonateYourDataSpec:
     datetime_format = "utc"
     datetime_column = "DateTime"
     N_ROOM_SENSORS = 10
+    data_period_seconds = 300
 
     def __init__(self):
         self.datetime = Spec(

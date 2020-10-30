@@ -36,6 +36,7 @@ class TestLowPassFilter:
 
         test_temperature = np.arange(-40, 60, 0.05)
         test_humidity = np.linspace(0, 100, len(test_temperature))
+        test_motion = np.full(len(test_temperature), False)
         test_sim_time = np.arange(
             0,
             len(test_temperature) * self.step_size_seconds,
@@ -47,6 +48,7 @@ class TestLowPassFilter:
             {
                 STATES.THERMOSTAT_TEMPERATURE: test_temperature,
                 STATES.THERMOSTAT_HUMIDITY: test_humidity,
+                STATES.THERMOSTAT_MOTION: test_humidity,
             }
         )
 

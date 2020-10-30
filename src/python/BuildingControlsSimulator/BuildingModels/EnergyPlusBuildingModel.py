@@ -51,6 +51,7 @@ class EnergyPlusBuildingModel(BuildingModel):
     # user must supply a weather file as either 1) full path, or 2) a file in self.idf_dir
     epw_path = attr.ib(default=None)
     fmi_version = attr.ib(type=float, default=1.0)
+    step_size_seconds = attr.ib(default=300)
     timesteps_per_hour = attr.ib(default=12)
     fmu_dir = attr.ib(default=os.environ.get("FMU_DIR"))
     eplustofmu_path = attr.ib(default=os.environ.get("ENERGYPLUSTOFMUSCRIPT"))
@@ -94,6 +95,10 @@ class EnergyPlusBuildingModel(BuildingModel):
         # only need the idf file name because the weather is determined from
         # the combination of idf file and data_source-identifier
         return f"EnergyPlus_{self.idf.idf_name.rstrip('.idf')}"
+
+    @property
+    def timesteps_per_hour(self):
+        return int(3600 / self.step_size_seconds)
 
     @property
     def init_temperature(self):
@@ -161,6 +166,7 @@ class EnergyPlusBuildingModel(BuildingModel):
             raise ValueError(
                 f"Must supply valid weather file, epw_path={self.epw_path}"
             )
+
         self.idf.timesteps_per_hour = self.timesteps_per_hour
         self.idf.init_temperature = self.init_temperature
         self.idf.init_humidity = self.init_humidity
@@ -202,14 +208,14 @@ class EnergyPlusBuildingModel(BuildingModel):
         )
         self.init_step_output()
         self.fmu = pyfmi.load_fmu(fmu=self.fmu_path)
-        # initialize for extra step to keep whole days for final period at 23:55
-        self.fmu.initialize(t_start, t_end + t_step)
+        # initialize with extra period to keep whole days for final period at 23:55
+        self.fmu.initialize(t_start, t_end + data_spec.data_period_seconds)
 
     def tear_down(self):
         """tear down FMU"""
         # Note: calling fmu.terminate() and fmu.free_instance() should not be needed
         # this causes segfault sometimes
-        # energyplus FMU should take care of its own destruction
+        # energyplus FMU should take care of its own tear down
         pass
 
     def init_step_output(self):

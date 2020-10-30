@@ -34,6 +34,7 @@ class LowPassFilter(StateEstimatorModel):
         return [
             STATES.THERMOSTAT_TEMPERATURE,
             STATES.THERMOSTAT_HUMIDITY,
+            STATES.THERMOSTAT_MOTION,
         ]
 
     @output_states.default
@@ -41,6 +42,7 @@ class LowPassFilter(StateEstimatorModel):
         return [
             STATES.THERMOSTAT_TEMPERATURE_ESTIMATE,
             STATES.THERMOSTAT_HUMIDITY_ESTIMATE,
+            STATES.THERMOSTAT_MOTION_ESTIMATE,
         ]
 
     def get_model_name(self):
@@ -117,6 +119,18 @@ class LowPassFilter(StateEstimatorModel):
         t_ctrl = step_sensor_input[STATES.THERMOSTAT_TEMPERATURE]
         return t_ctrl
 
+    @staticmethod
+    def filter(state, prev_state_estimate, alpha):
+        if prev_state_estimate:
+            # y[i] := y[i-1] + α * (x[i] - y[i-1])
+            state_estimate = prev_state_estimate + alpha * (
+                state - prev_state_estimate
+            )
+        else:
+            # cold start
+            state_estimate = state
+        return state_estimate
+
     def do_step(
         self,
         t_start,
@@ -126,37 +140,30 @@ class LowPassFilter(StateEstimatorModel):
         """Simulate controller time step."""
         self.step_output[STATES.STEP_STATUS] = 1
 
-        if self.step_output[STATES.THERMOSTAT_TEMPERATURE_ESTIMATE]:
-            # y[i] := y[i-1] + α * (x[i] - y[i-1])
-            self.step_output[
+        self.step_output[
+            STATES.THERMOSTAT_TEMPERATURE_ESTIMATE
+        ] = LowPassFilter.filter(
+            state=step_sensor_input[STATES.THERMOSTAT_TEMPERATURE],
+            prev_state_estimate=self.step_output[
                 STATES.THERMOSTAT_TEMPERATURE_ESTIMATE
-            ] = self.step_output[
-                STATES.THERMOSTAT_TEMPERATURE_ESTIMATE
-            ] + self.alpha_temperature * (
-                step_sensor_input[STATES.THERMOSTAT_TEMPERATURE]
-                - self.step_output[STATES.THERMOSTAT_TEMPERATURE_ESTIMATE]
-            )
-        else:
-            # cold start
-            self.step_output[
-                STATES.THERMOSTAT_TEMPERATURE_ESTIMATE
-            ] = step_sensor_input[STATES.THERMOSTAT_TEMPERATURE]
+            ],
+            alpha=self.alpha_temperature,
+        )
 
-        if self.step_output[STATES.THERMOSTAT_HUMIDITY_ESTIMATE]:
-            # y[i] := y[i-1] + α * (x[i] - y[i-1])
-            self.step_output[
+        self.step_output[
+            STATES.THERMOSTAT_HUMIDITY_ESTIMATE
+        ] = LowPassFilter.filter(
+            state=step_sensor_input[STATES.THERMOSTAT_HUMIDITY],
+            prev_state_estimate=self.step_output[
                 STATES.THERMOSTAT_HUMIDITY_ESTIMATE
-            ] = self.step_output[
-                STATES.THERMOSTAT_HUMIDITY_ESTIMATE
-            ] + self.alpha_humidity * (
-                step_sensor_input[STATES.THERMOSTAT_HUMIDITY]
-                - self.step_output[STATES.THERMOSTAT_HUMIDITY_ESTIMATE]
-            )
-        else:
-            # cold start
-            self.step_output[
-                STATES.THERMOSTAT_HUMIDITY_ESTIMATE
-            ] = step_sensor_input[STATES.THERMOSTAT_HUMIDITY]
+            ],
+            alpha=self.alpha_temperature,
+        )
+
+        # non filtered states
+        self.step_output[
+            STATES.THERMOSTAT_MOTION_ESTIMATE
+        ] = step_sensor_input[STATES.THERMOSTAT_MOTION]
 
         self.step_output[STATES.STEP_STATUS] = 0
         self.add_step_to_output(self.step_output)
