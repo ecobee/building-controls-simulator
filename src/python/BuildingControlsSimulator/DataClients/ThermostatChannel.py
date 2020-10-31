@@ -404,13 +404,42 @@ class ThermostatChannel(DataChannel):
             ]
         ]
 
+        comfort_chg_pts = {}
+
         if filtered_df.empty:
-            # there is no unambiguous way to extract setpoints
-            # TODO: do something less abrupt and log error.
-            raise ValueError(
-                "There is no unambiguous way to extract setpoints."
-                + "Do not use this input data file for this time period."
-            )
+            # check for all holds
+            # use schedule column as check for record not being entirely null
+            _hold_names = ["hold", "Hold", "auto", "HKhold"]
+            if all(
+                [
+                    _cat
+                    for _cat in data[~data[STATES.SCHEDULE].isnull()][
+                        STATES.CALENDAR_EVENT
+                    ].unique()
+                    if _cat in _hold_names
+                ]
+            ):
+                # entirely holds, set dummy comfort settings with mode
+                for _schedule in data[STATES.SCHEDULE].cat.categories:
+                    comfort_chg_pts[_schedule] = {
+                        STATES.TEMPERATURE_STP_COOL: data[
+                            STATES.TEMPERATURE_STP_COOL
+                        ]
+                        .mode()
+                        .values[0],
+                        STATES.TEMPERATURE_STP_HEAT: data[
+                            STATES.TEMPERATURE_STP_HEAT
+                        ]
+                        .mode()
+                        .values[0],
+                    }
+            else:
+                # there is no unambiguous way to extract setpoints
+                # TODO: do something less abrupt and log error.
+                raise ValueError(
+                    "There is no unambiguous way to extract setpoints."
+                    + "Do not use this input data file for this time period."
+                )
 
         # clean up columns
         data = data.drop(
@@ -423,7 +452,6 @@ class ThermostatChannel(DataChannel):
             ],
         )
 
-        comfort_chg_pts = {}
         # iterate over each schedule specifically and collect comfort changes
         for _schedule in filtered_df[STATES.SCHEDULE].cat.categories:
             schedule_spt_df = filtered_df[
