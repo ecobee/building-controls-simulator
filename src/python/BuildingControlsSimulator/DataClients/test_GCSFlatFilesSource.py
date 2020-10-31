@@ -54,7 +54,7 @@ class TestGCSFlatFilesSource:
             ),
             destination=LocalDestination(
                 local_cache=os.environ.get("LOCAL_CACHE_DIR"),
-                data_spec=FlatFilesSpec,
+                data_spec=FlatFilesSpec(),
             ),
             nrel_dev_api_key=os.environ.get("NREL_DEV_API_KEY"),
             nrel_dev_email=os.environ.get("NREL_DEV_EMAIL"),

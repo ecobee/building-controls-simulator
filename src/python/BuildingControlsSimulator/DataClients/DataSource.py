@@ -33,7 +33,9 @@ class DataSource(ABC):
     def local_cache_source(self):
         if self.local_cache:
             return os.path.join(
-                self.local_cache, self.operator_name, self.source_name
+                self.local_cache,
+                self.operator_name,
+                self.source_name,
             )
         else:
             return None
