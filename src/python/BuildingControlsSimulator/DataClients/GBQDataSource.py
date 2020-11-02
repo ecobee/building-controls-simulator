@@ -65,7 +65,11 @@ class GBQDataSource(DataSource, ABC):
             )
 
         columns_str = ", ".join(self.data_spec.full.columns)
-        query_str = f"SELECT {columns_str} FROM `{self.gbq_table}` where Identifier = '{sim_config['identifier']}'"
+        query_str = f"SELECT {columns_str}\n"
+        query_str += f"FROM `{self.gbq_table}`\n"
+        query_str += f"WHERE Identifier = '{sim_config['identifier']}'\n"
+        query_str += f"AND {self.data_spec.datetime_column} >= '{sim_config['start_utc']}'\n"
+        query_str += f"AND {self.data_spec.datetime_column} <= '{sim_config['end_utc']}'"
 
         # we will use pandas-gbq to read data to df
         # https://pandas-gbq.readthedocs.io/en/latest/
@@ -73,9 +77,10 @@ class GBQDataSource(DataSource, ABC):
         # BigQuery Storage API allows downloading large (>125 MB) query results
         # more quickly at an increased cost. We are querying once per ID, which
         # should be no more than 1 MB.
-        # max_results=100000
-        # use max_results as guard to query being badly wrong
-        # there should never be that many results for a single identifier
+        # max_results=1,000,000
+        # 8760 * 12 = 105120 records per thermostat-year
+        # use max_results as guard to query accidentaly getting multiple datasets
+        # there should never be 1,000,000 results for a single identifier
 
         _df = pandas_gbq.read_gbq(
             query=query_str,
@@ -84,7 +89,7 @@ class GBQDataSource(DataSource, ABC):
             col_order=self.data_spec.full.columns,
             reauth=True,
             dialect="standard",
-            max_results=100000,
+            max_results=1000000,
             use_bqstorage_api=False,
             dtypes={
                 k: v["dtype"] for k, v in self.data_spec.full.spec.items()
