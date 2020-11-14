@@ -18,18 +18,26 @@ class DateTimeChannel(DataChannel):
 
     latitude = attr.ib()
     longitude = attr.ib()
-    timezone = attr.ib(default=None)
+    internal_timezone = attr.ib(default=None)
 
-    def __attrs_post_init__(self):
-        self.timezone = self.get_timezone()
+    @property
+    def timezone(self):
+        if not self.internal_timezone and (self.latitude and self.longitude):
+            # only call _get_timezone once if needed
+            self.internal_timezone = DateTimeChannel.get_timezone(
+                self.latitude, self.longitude
+            )
 
-    def get_timezone(self):
+        return self.internal_timezone
+
+    @staticmethod
+    def get_timezone(latitude, longitude):
         """Get pytz timezone object given latitude and longitude."""
         tzw = tzwhere.tzwhere(forceTZ=True)
         return pytz.timezone(
             tzw.tzNameAt(
-                latitude=self.latitude,
-                longitude=self.longitude,
+                latitude=latitude,
+                longitude=longitude,
                 forceTZ=True,
             )
         )

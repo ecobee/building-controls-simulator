@@ -6,6 +6,7 @@ import subprocess
 import shlex
 import shutil
 from enum import IntEnum
+import math
 
 import pandas as pd
 import attr
@@ -47,21 +48,22 @@ class EnergyPlusBuildingModel(BuildingModel):
     """Abstract Base Class for building models"""
 
     idf = attr.ib()
-    weather_dir = attr.ib(default=os.environ.get("WEATHER_DIR"))
     # user must supply a weather file as either 1) full path, or 2) a file in self.idf_dir
     epw_path = attr.ib(default=None)
+    fill_epw_path = attr.ib(default=None)
     fmi_version = attr.ib(type=float, default=1.0)
     step_size_seconds = attr.ib(default=300)
     timesteps_per_hour = attr.ib(default=12)
-    fmu_dir = attr.ib(default=os.environ.get("FMU_DIR"))
-    eplustofmu_path = attr.ib(default=os.environ.get("ENERGYPLUSTOFMUSCRIPT"))
-    ext_dir = attr.ib(default=os.environ.get("EXT_DIR"))
     fmu_output = attr.ib(factory=dict)
     output = attr.ib(factory=dict)
     step_output = attr.ib(factory=dict)
     init_humidity = attr.ib(default=50.0)
     init_temperature = attr.ib(default=21.0)
     fmu = attr.ib(default=None)
+    time_zone = attr.ib(default=None)
+    eplustofmu_path = attr.ib(default=os.environ.get("ENERGYPLUSTOFMUSCRIPT"))
+    weather_dir = attr.ib(default=os.environ.get("WEATHER_DIR"))
+    fmu_dir = attr.ib(default=os.environ.get("FMU_DIR"))
 
     # for reference on how attr defaults wor for mutable types (e.g. list) see:
     # https://www.attrs.org/en/stable/init.html#defaults
@@ -152,26 +154,43 @@ class EnergyPlusBuildingModel(BuildingModel):
     def fmu_path(self):
         return os.path.join(self.fmu_dir, self.fmu_name)
 
-    def create_model_fmu(self, epw_path=None, preprocess_check=False):
+    def create_model_fmu(
+        self,
+        sim_config,
+        weather_channel,
+        datetime_channel,
+        preprocess_check=False,
+    ):
         """make the fmu
 
         Calls FMU model generation script from https://github.com/lbl-srg/EnergyPlusToFMU.
         This script litters temporary files of fixed names which get clobbered
         if running in parallel. Need to fix scripts to be able to run in parallel.
         """
-        if epw_path:
-            self.epw_path = epw_path
+        # pre-processing of weather data for EnergyPlus usage
 
-        elif not self.epw_path:
-            raise ValueError(
-                f"Must supply valid weather file, epw_path={self.epw_path}"
-            )
+        self.epw_path = weather_channel.make_epw_file(
+            sim_config=sim_config,
+            datetime_channel=datetime_channel,
+            fill_epw_path=self.fill_epw_path,
+        )
+        # this holds the local timezone
+        self.time_zone = weather_channel.time_zone
 
         self.idf.timesteps_per_hour = self.timesteps_per_hour
         self.idf.init_temperature = self.init_temperature
         self.idf.init_humidity = self.init_humidity
-        self.idf.preprocess(preprocess_check=preprocess_check)
+        self.idf.preprocess(
+            sim_config,
+            time_zone=self.time_zone,
+            preprocess_check=preprocess_check,
+        )
 
+        self.call_energy_plus_to_fmu()
+
+        return self.fmu_path
+
+    def call_energy_plus_to_fmu(self):
         cmd = f"python2.7 {self.eplustofmu_path}"
         cmd += f" -i {self.idf.idd_path}"
         cmd += f" -w {self.epw_path}"
@@ -190,8 +209,6 @@ class EnergyPlusBuildingModel(BuildingModel):
             self.fmu_path,
         )
 
-        return self.fmu_path
-
     def initialize(
         self,
         start_utc,
@@ -208,8 +225,12 @@ class EnergyPlusBuildingModel(BuildingModel):
         )
         self.init_step_output()
         self.fmu = pyfmi.load_fmu(fmu=self.fmu_path)
-        # initialize with extra period to keep whole days for final period at 23:55
-        self.fmu.initialize(t_start, t_end + data_spec.data_period_seconds)
+        # EnergyPlusToFMU requires that FMU is initialized for multiples of
+        # 86400 seconds (1 day), with t_start being the time in seconds
+        # since the start of the year. t_end can be rounded up as needed and
+        # simulation can be shutdown before reaching t_end.
+        t_end = t_start + math.ceil((t_end - t_start) / 86400.0) * 86400
+        self.fmu.initialize(t_start, t_end)
 
     def tear_down(self):
         """tear down FMU"""
@@ -307,7 +328,6 @@ class EnergyPlusBuildingModel(BuildingModel):
 
     def update_output(self, status, step_sensor_input):
         """Update internal output obj for current_t_idx with fmu output."""
-
         self.fmu_output[STATES.STEP_STATUS][self.current_t_idx] = status
 
         # get fmi zone output

@@ -118,12 +118,15 @@ class ThermostatChannel(DataChannel):
             # extract only schedule and return
             first_rec = schedule_data.iloc[0]
             schedule_chg_pts = {
-                first_rec[STATES.DATE_TIME]: {
-                    "name": first_rec[STATES.SCHEDULE],
-                    "minute_of_day": 0,
-                    "on_day_of_week": [True] * 7,
-                }
+                first_rec[STATES.DATE_TIME]: [
+                    {
+                        "name": first_rec[STATES.SCHEDULE],
+                        "minute_of_day": 0,
+                        "on_day_of_week": [True] * 7,
+                    }
+                ]
             }
+
             return schedule_chg_pts
 
         schedule_chgs["day_of_week"] = schedule_chgs[

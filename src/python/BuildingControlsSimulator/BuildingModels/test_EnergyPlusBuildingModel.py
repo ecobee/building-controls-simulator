@@ -21,6 +21,13 @@ from BuildingControlsSimulator.DataClients.DataStates import STATES
 from BuildingControlsSimulator.DataClients.DataSpec import (
     Internal,
 )
+from BuildingControlsSimulator.Simulator.Config import Config
+from BuildingControlsSimulator.DataClients.DataClient import DataClient
+from BuildingControlsSimulator.DataClients.LocalSource import LocalSource
+from BuildingControlsSimulator.DataClients.LocalDestination import (
+    LocalDestination,
+)
+from BuildingControlsSimulator.DataClients.DataSpec import DonateYourDataSpec
 
 logger = logging.getLogger(__name__)
 
@@ -28,45 +35,94 @@ logger = logging.getLogger(__name__)
 class TestEnergyPlusBuildingModel:
     @classmethod
     def setup_class(cls):
+        cls.eplus_version = os.environ["ENERGYPLUS_INSTALL_VERSION"]
+
         # basic IDF file found in all EnergyPlus installations
-        cls.dummy_idf_name = "Furnace.idf"
+        # cls.dummy_idf_name = "Furnace.idf"
 
-        cls.dummy_epw_name = "USA_IL_Chicago-OHare.Intl.AP.725300_TMY3.epw"
-
-        # if dummy files don't exist copy them from E+ installations
-        cls.dummy_epw_path = os.path.join(
-            os.environ.get("WEATHER_DIR"), cls.dummy_epw_name
-        )
-        if not os.path.isfile(cls.dummy_epw_path):
-            _fpath = os.path.join(
-                os.environ.get("EPLUS_DIR"),
-                "WeatherData",
-                cls.dummy_epw_name,
-            )
-            shutil.copyfile(_fpath, cls.dummy_epw_path)
-
-        # if dummy files don't exist copy them from E+ installations
-        cls.dummy_idf_path = os.path.join(
-            os.environ.get("IDF_DIR"), cls.dummy_idf_name
-        )
-        if not os.path.isfile(cls.dummy_idf_path):
-            _fpath = os.path.join(
-                os.environ.get("EPLUS_DIR"), "ExampleFiles", cls.dummy_idf_name
-            )
-            shutil.copyfile(_fpath, cls.dummy_idf_path)
+        # cls.dummy_epw_name = "USA_IL_Chicago-OHare.Intl.AP.725300_TMY3.epw"
 
         # make test/ dirs
         EnergyPlusBuildingModel.make_directories()
-        cls.building_model = EnergyPlusBuildingModel(
+        # cls.building_model = EnergyPlusBuildingModel(
+        #     idf=IDFPreprocessor(
+        #         idf_file=cls.dummy_idf_path,
+        #         init_temperature=20.0,
+        #     ),
+        #     epw_path=cls.dummy_epw_path,
+        #     step_size_seconds=300,
+        # )
+
+        cls.step_size = 300
+
+    # @pytest.mark.parametrize(
+    #     "dummy_idf_name, dummy_epw_path",
+    #     [("Furnace.idf", "USA_IL_Chicago-OHare.Intl.AP.725300_TMY3.epw")],
+    # )
+    # pytest requires the obj containing the params to be called "request"
+    @pytest.fixture(
+        params=[
+            (
+                "Furnace.idf",
+                "USA_IL_Chicago-OHare.Intl.AP.725300_TMY3.epw",
+            ),
+            # (
+            #     "IL_Chicago_gasfurnace_heatedbsmt_IECC_2018.idf.idf",
+            #     "USA_IL_Chicago-OHare.Intl.AP.725300_TMY3.epw",
+            # ),
+        ]
+    )
+    def building_model(self, request):
+        # if dummy files don't exist copy them from E+ installations
+        dummy_epw_name = request.param[1]
+        dummy_epw_path = os.path.join(
+            os.environ.get("WEATHER_DIR"), dummy_epw_name
+        )
+        if not os.path.isfile(dummy_epw_path):
+            _fpath = os.path.join(
+                os.environ.get("EPLUS_DIR"),
+                "WeatherData",
+                dummy_epw_name,
+            )
+            shutil.copyfile(_fpath, dummy_epw_path)
+
+        # if dummy files don't exist copy them from E+ installations
+        dummy_idf_name = request.param[0]
+        dummy_idf_path = os.path.join(
+            os.environ.get("IDF_DIR"), dummy_idf_name
+        )
+        if not os.path.isfile(dummy_idf_path):
+            _fpath = os.path.join(
+                os.environ.get("EPLUS_DIR"), "ExampleFiles", dummy_idf_name
+            )
+            shutil.copyfile(_fpath, dummy_idf_path)
+        return EnergyPlusBuildingModel(
             idf=IDFPreprocessor(
-                idf_file=cls.dummy_idf_path,
+                idf_file=dummy_idf_path,
                 init_temperature=20.0,
             ),
-            epw_path=cls.dummy_epw_path,
+            epw_path=dummy_epw_path,
             step_size_seconds=300,
         )
 
-        cls.step_size = 300
+    @pytest.fixture
+    def test_sim_config(self):
+        return (
+            Config.make_sim_config(
+                identifier=[
+                    "DYD_dummy_data",  # has full data periods
+                ],
+                latitude=41.8781,
+                longitude=-87.6298,
+                start_utc="2018-01-01",
+                end_utc="2018-01-04",
+                min_sim_period="1D",
+                sim_step_size_seconds=300,
+                output_step_size_seconds=300,
+            )
+            .iloc[0]
+            .to_dict()
+        )
 
     @classmethod
     def teardown_class(cls):
@@ -79,38 +135,70 @@ class TestEnergyPlusBuildingModel:
         """test that energyplus version is test version and is accessible"""
         cmd = "energyplus -v"
         out = subprocess.run(cmd, shell=True, capture_output=True, text=True)
-        assert out.stdout == "EnergyPlus, Version 8.9.0-40101eaafd\n"
+        if self.eplus_version == "8-9-0":
+            assert out.stdout == "EnergyPlus, Version 8.9.0-40101eaafd\n"
+        elif self.eplus_version == "9-4-0":
+            assert out.stdout == "EnergyPlus, Version 9.4.0-998c4b761e\n"
+        else:
+            raise ValueError(
+                f"Untested version of energyplus: {self.eplus_version}"
+            )
 
-    def test_preprocess(self):
+    @pytest.mark.usefixtures("building_model")
+    def test_preprocess(self, test_sim_config, building_model):
         """test that preprocessing produces output file"""
-        prep_idf = self.building_model.idf.preprocess(preprocess_check=False)
+        prep_idf = building_model.idf.preprocess(
+            sim_config=test_sim_config, preprocess_check=False
+        )
         assert os.path.exists(prep_idf)
 
         # test that preprocessing produces valid IDF output file
-        assert self.building_model.idf.check_valid_idf(prep_idf) is True
+        assert building_model.idf.check_valid_idf(prep_idf) is True
 
-    def test_make_fmu(self):
+    @pytest.mark.skip(reason="Redundant with test_simulator.py")
+    @pytest.mark.usefixtures("building_model")
+    def test_make_fmu(self, test_sim_config, building_model):
         """test that make_fmu produces fmu file"""
-        fmu = self.building_model.create_model_fmu(
-            epw_path=self.building_model.epw_path, preprocess_check=False
+        dc = DataClient(
+            source=LocalSource(
+                local_cache=os.environ.get("LOCAL_CACHE_DIR"),
+                data_spec=DonateYourDataSpec(),
+            ),
+            destination=LocalDestination(
+                local_cache=os.environ.get("LOCAL_CACHE_DIR"),
+                data_spec=DonateYourDataSpec(),
+            ),
+            nrel_dev_api_key=os.environ.get("NREL_DEV_API_KEY"),
+            nrel_dev_email=os.environ.get("NREL_DEV_EMAIL"),
+            archive_tmy3_meta=os.environ.get("ARCHIVE_TMY3_META"),
+            archive_tmy3_data_dir=os.environ.get("ARCHIVE_TMY3_DATA_DIR"),
+            ep_tmy3_cache_dir=os.environ.get("EP_TMY3_CACHE_DIR"),
+            simulation_epw_dir=os.environ.get("SIMULATION_EPW_DIR"),
+        )
+        dc.sim_config = test_sim_config
+        dc.get_data()
+
+        fmu = building_model.create_model_fmu(
+            sim_config=test_sim_config,
+            weather_channel=dc.weather,
+            datetime_channel=dc.datetime,
         )
         assert os.path.exists(fmu)
 
-    def test_fmu_compliance(self):
-        """test that fmu file is compliant with FMI.
-
-        Note: if this test fails check ./Output_EPExport_Slave/Furnace_prep.err
-        """
+        # @pytest.mark.usefixtures("building_model")
+        # def test_fmu_compliance(self, building_model):
+        """test that fmu file is compliant with FMI."""
         output_path = os.path.join(
             os.environ.get("OUTPUT_DIR"), "compliance_check_output.csv"
         )
         # use `bash expect` to run non-interactive
+        # Note: if this test fails check ./Output_EPExport_Slave/Furnace_prep.err
         cmd = (
             "expect 'Press enter to continue.' {{ send '\r' }} |"
             f' {os.environ.get("EXT_DIR")}/FMUComplianceChecker/fmuCheck.linux64'
             f" -h {self.step_size}"
             " -s 172800"
-            f" -o {output_path} {self.building_model.fmu_path}"
+            f" -o {output_path} {building_model.fmu_path}"
         )
         logger.info("FMU compliance checker command:")
         logger.info(cmd)
@@ -121,29 +209,32 @@ class TestEnergyPlusBuildingModel:
 
         assert out.returncode == 0
 
-    def test_pyfmi_load_fmu(self):
+    @pytest.mark.skip(reason="Redundant with test_simulator.py.")
+    @pytest.mark.usefixtures("building_model")
+    def test_pyfmi_load_fmu(self, building_model):
         """test that fmu can be loaded with pyfmi"""
-        fmu = pyfmi.load_fmu(self.building_model.fmu_path)
+        fmu = pyfmi.load_fmu(building_model.fmu_path)
         assert fmu.get_version() == "1.0"
 
-    def test_simulate_fmu(self):
+    @pytest.mark.skip(reason="Redundant with test_simulator.py")
+    @pytest.mark.usefixtures("building_model")
+    def test_simulate_fmu(self, building_model):
         """test that fmu can be simulated with pyfmi
 
         Note: if this test fails check ./Output_EPExport_Slave/Furnace_prep.err
         """
-        fmu = pyfmi.load_fmu(self.building_model.fmu_path)
+        fmu = pyfmi.load_fmu(building_model.fmu_path)
         opts = fmu.simulate_options()
+        t_start = 0.0
         t_end = 86400.0
         opts["ncp"] = int(t_end / self.step_size)
 
-        res = fmu.simulate(final_time=t_end, options=opts)
+        res = fmu.simulate(start_time=t_start, final_time=t_end, options=opts)
 
         output = res.result_data.get_data_matrix()
 
         assert output.shape == (30, opts["ncp"] + 1)
 
-    # note: this test is redundant to next test that uses the full
-    # EnergyPlusBuildingModel class
     @pytest.mark.skip(
         reason="Segfaults when run without PDB breakpoint. Tried fmu.free_instance(), fmu.terminate()"
     )
@@ -175,7 +266,9 @@ class TestEnergyPlusBuildingModel:
         # see: https://github.com/modelon-community/PyFMI/blob/PyFMI-2.7.4/src/pyfmi/fmil_import.pxd
         assert all(status == 0)
 
-    def test_step_model(self):
+    @pytest.mark.skip(reason="Redundant with test_simulator.py.")
+    @pytest.mark.usefixtures("building_model")
+    def test_step_model(self, test_sim_config, building_model):
         """test that fmu can be simulated with pyfmi
 
         Note: if this test fails check ./Output_EPExport_Slave/Furnace_prep.err
@@ -186,11 +279,13 @@ class TestEnergyPlusBuildingModel:
         t_end = 86400.0
         ns = int(t_end / t_step)
 
-        self.building_model.create_model_fmu(
-            epw_path=self.building_model.epw_path, preprocess_check=False
+        building_model.create_model_fmu(
+            sim_config=test_sim_config,
+            epw_path=building_model.epw_path,
+            preprocess_check=False,
         )
         # need to recude t_end because of non-inclusion of last time step
-        self.building_model.initialize(
+        building_model.initialize(
             start_utc=start_utc,
             t_start=t_start,
             t_end=t_end - t_step,
@@ -215,8 +310,8 @@ class TestEnergyPlusBuildingModel:
         step_sensor_input = {STATES.THERMOSTAT_MOTION: False}
 
         for i in range(ns):
-            self.building_model.do_step(
-                t_start=self.building_model.output[STATES.SIMULATION_TIME][i],
+            building_model.do_step(
+                t_start=building_model.output[STATES.SIMULATION_TIME][i],
                 t_step=t_step,
                 step_control_input=step_control_input,
                 step_sensor_input=step_sensor_input,
@@ -224,7 +319,7 @@ class TestEnergyPlusBuildingModel:
             )
         assert (
             pytest.approx(33.394825, 0.01)
-            == self.building_model.fmu_output[
+            == building_model.fmu_output[
                 "EAST_ZONE_zone_air_temperature"
             ].mean()
         )

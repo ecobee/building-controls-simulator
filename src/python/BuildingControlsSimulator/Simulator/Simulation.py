@@ -167,7 +167,10 @@ class Simulation:
         # when other models exist that must be created generalize this interface
         self.building_model.step_size_seconds = self.step_size_seconds
         self.building_model.create_model_fmu(
-            epw_path=self.data_client.weather.epw_path,
+            sim_config=self.config,
+            weather_channel=self.data_client.weather,
+            datetime_channel=self.data_client.datetime,
+            # fill_epw_path=self.data_client.weather.epw_path,
             preprocess_check=preprocess_check,
         )
 
@@ -231,7 +234,7 @@ class Simulation:
         self.initialize(data_spec=self.data_client.internal_spec)
 
         logger.info(
-            f"Running co-simulation from {self.start_utc} to {self.end_utc}"
+            f"Running co-simulation from {self.start_utc} to {self.end_utc} UTC"
         )
         _sim_start_wall_time = time.perf_counter()
         _sim_start_proc_time = time.process_time()
@@ -295,8 +298,8 @@ class Simulation:
                 **self.building_model.output,
             }
         )
-        # aggregate data in fine grain time steps to output step size
-        self.output = self.data_client.integrate_to_step_size(
+        # resample output time steps to output step size frequency
+        self.output = self.data_client.resample_to_step_size(
             df=self.output,
             step_size_seconds=self.output_step_size_seconds,
             data_spec=self.data_client.internal_spec,
