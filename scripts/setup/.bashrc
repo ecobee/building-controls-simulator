@@ -135,9 +135,9 @@ EndOfMessage
     if [ -d "${PACKAGE_DIR:?}" ]; then
         cd "${PACKAGE_DIR:?}"
         echo "Set this to desired versions using ${PACKAGE_DIR:?}/scripts/epvm.sh"
-        echo "Setting EnergyPlus version to default: 8-9-0"
+        echo "Setting EnergyPlus version to default: 9-4-0"
         echo "Configure this default in ${PACKAGE_DIR:?}/scripts/.bashrc"
-        . "${PACKAGE_DIR:?}/scripts/epvm.sh" "8-9-0"
+        . "${PACKAGE_DIR:?}/scripts/epvm.sh" "9-4-0"
     else
         echo "PACKAGE_DIR=${PACKAGE_DIR} does not exist. PACKAGE_DIR env var may be incorrect."
         echo "Default value for PACKAGE_DIR is /home/bcs/lib/building-controls-simulator"

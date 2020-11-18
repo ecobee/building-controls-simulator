@@ -12,6 +12,8 @@ import numpy as np
 
 from eppy.modeleditor import IDF
 
+from BuildingControlsSimulator.DataClients.DataStates import STATES
+
 logger = logging.getLogger(__name__)
 
 
@@ -148,6 +150,8 @@ class IDFPreprocessor:
 
     def preprocess(
         self,
+        sim_config,
+        datetime_channel,
         init_temperature=21.0,
         preprocess_check=False,
     ):
@@ -168,11 +172,14 @@ class IDFPreprocessor:
             logger.info(f"IDF version: {self.ep_version}")
         else:
             logger.info(f"Making new preprocessed IDF: {self.idf_prep_path}")
-            self.prep_ep_version(self.ep_version)
             self.get_zone_info()
+            # prepare idf file
+            self.prep_ep_version(self.ep_version)
             self.prep_simulation_control()
+            self.prep_runperiod(sim_config, datetime_channel)
             self.prep_timesteps(self.timesteps_per_hour)
-            self.prep_runtime()
+            self.prep_ground_boundary_temp()
+            self.prep_remove_unused_objects()
             self.prep_ext_int()
 
             # set the intial temperature via the initial setpoint which will be tracked
@@ -218,11 +225,11 @@ class IDFPreprocessor:
             if zone_name in v:
                 return k
 
-    def expand_zones(self, zone_list):
-        if zone_list in self.zone_lists.keys():
-            return self.zone_lists[zone_list]
+    def expand_zones(self, zone_or_zone_list):
+        if zone_or_zone_list in self.zone_lists.keys():
+            return self.zone_lists[zone_or_zone_list]
         else:
-            return zone_list
+            return [zone_or_zone_list]
 
     def get_tstat_zone(self):
         tstats = self.ep_idf.idfobjects["zonecontrol:thermostat"]
@@ -243,18 +250,21 @@ class IDFPreprocessor:
         3. sizing:Zone
         """
         equip_conn_zones = [
-            self.expand_zones(obj.Zone_Name)
+            _zone
             for obj in self.ep_idf.idfobjects["ZoneHVAC:EquipmentConnections"]
+            for _zone in self.expand_zones(obj.Zone_Name)
         ]
 
         vent_design_zones = [
-            self.expand_zones(obj.Zone_or_ZoneList_Name)
+            _zone
             for obj in self.ep_idf.idfobjects["ZoneVentilation:DesignFlowRate"]
+            for _zone in self.expand_zones(obj.Zone_or_ZoneList_Name)
         ]
 
         sizing_zones = [
-            self.expand_zones(obj.Zone_or_ZoneList_Name)
+            _zone
             for obj in self.ep_idf.idfobjects["sizing:Zone"]
+            for _zone in self.expand_zones(obj.Zone_or_ZoneList_Name)
         ]
 
         self.conditioned_zones = list(
@@ -266,9 +276,11 @@ class IDFPreprocessor:
         conditioned zones are defined in IDF by:
         1. people
         """
+
         self.occupied_zones = [
-            self.expand_zones(obj.Zone_or_ZoneList_Name)
+            _zone
             for obj in self.ep_idf.idfobjects["people"]
+            for _zone in self.expand_zones(obj.Zone_or_ZoneList_Name)
         ]
 
         if any([z not in self.conditioned_zones for z in self.occupied_zones]):
@@ -277,20 +289,8 @@ class IDFPreprocessor:
                 " do not appear to be conditioned."
             )
 
-    def prep_runtime(self):
-        """
-        Set runtime one full year without repeating.
-        """
-        self.popallidfobjects("RUNPERIOD")
-        # if self.ep_version == "8-9-0":
-        self.ep_idf.newidfobject(
-            "RUNPERIOD",
-            Name="FULLYEAR",
-            Begin_Month=1,
-            Begin_Day_of_Month=2,
-            End_Month=12,
-            End_Day_of_Month=31,
-        )
+    def prep_remove_unused_objects(self):
+        self.popallidfobjects("Site:Location")
 
     def prep_simulation_control(self):
         """
@@ -302,12 +302,73 @@ class IDFPreprocessor:
             "SimulationControl",
             Do_Zone_Sizing_Calculation="Yes",
             Do_System_Sizing_Calculation="Yes",
-            Do_Plant_Sizing_Calculation="No",
+            Do_Plant_Sizing_Calculation="Yes",
             Run_Simulation_for_Sizing_Periods="Yes",
             Run_Simulation_for_Weather_File_Run_Periods="Yes",
             Do_HVAC_Sizing_Simulation_for_Sizing_Periods="No",
-            Maximum_Number_of_HVAC_Sizing_Simulation_Passes=1,
+            Maximum_Number_of_HVAC_Sizing_Simulation_Passes=2,
         )
+
+    def prep_runperiod(self, sim_config, datetime_channel):
+        """This is not used for FMU export of energyplus
+        https://simulationresearch.lbl.gov/fmu/EnergyPlus/export/userGuide/usage.html
+        """
+        # When using EnergyPlusToFMU the start and end day of RUNPERIOD
+        # object is ignored and replaced by the start and stop time
+        # provided by the master algorithm which imports the EnergyPlus FMU.
+        # However, the entry Day of Week for Start Day will be used.
+
+        # To best make use of this the RUNPERIOD will be set appropriately in
+        # coordination with the available data, simulation control, 
+        # and weather file.
+        self.popallidfobjects("RunPeriod")
+        # convert to local time for setting RunPeriod
+        start_utc = min(datetime_channel.data[STATES.DATE_TIME]).tz_convert(
+            datetime_channel.timezone
+        )
+        end_utc = max(datetime_channel.data[STATES.DATE_TIME]).tz_convert(
+            datetime_channel.timezone
+        )
+        if start_utc.year != end_utc.year:
+            # EnergyPlusToFMU seems to have a bug that cause .idf file to be read
+            # into eplus with the start of the year as the beginning of the RunPeriod
+            raise NotImplementedError(
+                "Simulations crossing yearline are not fully supported."
+            )
+
+        if self.ep_version in ["8-9-0", "9-0-1", "9-1-0"]:
+            self.ep_idf.newidfobject(
+                "RunPeriod",
+                Name="simulation_runperiod",
+                Begin_Month=start_utc.month,
+                Begin_Day_of_Month=start_utc.day,
+                End_Month=end_utc.month,
+                End_Day_of_Month=end_utc.day,
+                Day_of_Week_for_Start_Day=start_utc.day_name(),
+                Use_Weather_File_Holidays_and_Special_Days="Yes",
+                Use_Weather_File_Daylight_Saving_Period="No",
+                Apply_Weekend_Holiday_Rule="No",
+                Use_Weather_File_Rain_Indicators="Yes",
+                Use_Weather_File_Snow_Indicators="Yes",
+            )
+        elif self.ep_version in ["9-2-0", "9-3-0", "9-4-0"]:
+            self.ep_idf.newidfobject(
+                "RunPeriod",
+                Name="simulation_runperiod",
+                Begin_Month=start_utc.month,
+                Begin_Day_of_Month=start_utc.day,
+                Begin_Year=start_utc.year,
+                End_Month=end_utc.month,
+                End_Day_of_Month=end_utc.day,
+                End_Year=end_utc.year,
+                Day_of_Week_for_Start_Day=start_utc.day_name(),
+                Use_Weather_File_Holidays_and_Special_Days="Yes",
+                Use_Weather_File_Daylight_Saving_Period="No",
+                Apply_Weekend_Holiday_Rule="No",
+                Use_Weather_File_Rain_Indicators="Yes",
+                Use_Weather_File_Snow_Indicators="Yes",
+                Treat_Weather_as_Actual="Yes",
+            )
 
     def prep_timesteps(self, timesteps_per_hour):
         """
@@ -336,6 +397,7 @@ class IDFPreprocessor:
             "9-0-0": "Transition-V9-0-0-to-V9-1-0",
             "9-1-0": "Transition-V9-1-0-to-V9-2-0",
             "9-2-0": "Transition-V9-2-0-to-V9-3-0",
+            "9-3-0": "Transition-V9-3-0-to-V9-4-0",
         }
 
         cur_version = self.get_idf_version(self.ep_idf)
@@ -427,6 +489,34 @@ class IDFPreprocessor:
         # make transition call
         subprocess.call(shlex.split(cmd), stdout=subprocess.PIPE)
         os.chdir(original_wd)
+
+    def prep_ground_boundary_temp(self):
+        obj_name = "surfPropOthSdCoefGroundBoundaryTemp"
+        self.ep_idf.newidfobject(
+            "SurfaceProperty:OtherSideCoefficients",
+            Name=obj_name,
+            Combined_ConvectiveRadiative_Film_Coefficient=0.0,
+            Constant_Temperature=0.0,
+            Constant_Temperature_Coefficient=0.0,
+            External_DryBulb_Temperature_Coefficient=0.0,
+            Ground_Temperature_Coefficient=0.2,
+            Wind_Speed_Coefficient=0.0,
+            Zone_Air_Temperature_Coefficient=0.8,
+            Sinusoidal_Variation_of_Constant_Temperature_Coefficient="No",
+            Period_of_Sinusoidal_Variation=24,
+            Previous_Other_Side_Temperature_Coefficient=0.0,
+            # Minimum_Other_Side_Temperature_Limit=None,
+            # Maximum_Other_Side_Temperature_Limit=None,
+        )
+
+        # self.ep_idf.newidfobject(
+        #     "Schedule:Compact",
+        #     Name="scheduleGroundBoundaryTemp",
+        #     Lower_Limit_Value=-100.0,
+        #     Upper_Limit_Value=200.0,
+        #     Numeric_Type="CONTINUOUS",
+        #     Unit_Type="Temperature",
+        # )
 
     def prep_onoff_setpt_control(
         self,
@@ -588,6 +678,14 @@ class IDFPreprocessor:
             "EXTERNALINTERFACE:FUNCTIONALMOCKUPUNITEXPORT:FROM:VARIABLE"
         )
 
+        # add diagnostics
+        self.popallidfobjects("Output:Diagnostics")
+        self.ep_idf.newidfobject(
+            "Output:Diagnostics",
+            Key_1="DisplayAllWarnings",
+            Key_2="DisplayExtrawarnings",
+        )
+
         # add building_outputs as flattened dict of variable meta data
         for ek, ev in self.building_output_spec.items():
             for ok, ov in ev.items():
@@ -681,7 +779,6 @@ class IDFPreprocessor:
             # any text file can be read by eppy and produce a garbage model
             if IDF.getiddname() == None:
                 IDF.setiddname(self.idd_path)
-
             ep_model = IDF(idf_path)
             # check version to see if valid .idf, eppy returns empty list if obj not found
             version = self.get_idf_version(ep_model)

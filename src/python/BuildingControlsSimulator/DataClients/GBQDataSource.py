@@ -64,12 +64,14 @@ class GBQDataSource(DataSource, ABC):
                 f"Invalid sim_config: sim_config[identifier]={sim_config['identifier']}"
             )
 
+        # query will get data for entire data set per ID so that the cache can
+        # be built up correctly.
         columns_str = ", ".join(self.data_spec.full.columns)
         query_str = f"SELECT {columns_str}\n"
         query_str += f"FROM `{self.gbq_table}`\n"
         query_str += f"WHERE Identifier = '{sim_config['identifier']}'\n"
-        query_str += f"AND {self.data_spec.datetime_column} >= '{sim_config['start_utc']}'\n"
-        query_str += f"AND {self.data_spec.datetime_column} <= '{sim_config['end_utc']}'"
+        # query_str += f"AND {self.data_spec.datetime_column} >= '{sim_config['start_utc']}'\n"
+        # query_str += f"AND {self.data_spec.datetime_column} <= '{sim_config['end_utc']}'"
 
         # we will use pandas-gbq to read data to df
         # https://pandas-gbq.readthedocs.io/en/latest/

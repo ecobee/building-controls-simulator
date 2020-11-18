@@ -1,18 +1,19 @@
 # created by Tom Stesco tom.s@ecobee.com
+
 import logging
-import os
 import copy
 
 import pytest
 import pandas as pd
 import pytz
+import os
 
 from BuildingControlsSimulator.Simulator.Config import Config
-from BuildingControlsSimulator.DataClients.DataSpec import DonateYourDataSpec
 from BuildingControlsSimulator.DataClients.DataClient import DataClient
-from BuildingControlsSimulator.DataClients.LocalSource import (
-    LocalSource,
+from BuildingControlsSimulator.DataClients.GBQDataSource import (
+    GBQDataSource,
 )
+from BuildingControlsSimulator.DataClients.DataSpec import FlatFilesSpec
 from BuildingControlsSimulator.DataClients.LocalDestination import (
     LocalDestination,
 )
@@ -22,37 +23,39 @@ from BuildingControlsSimulator.DataClients.DataStates import STATES
 logger = logging.getLogger(__name__)
 
 
-class TestLocalSource:
+class TestGBQFlatFilesSource:
     @classmethod
     def setup_class(cls):
         # initialize with data to avoid pulling multiple times
         cls.sim_config = Config.make_sim_config(
             identifier=[
-                "DYD_dummy_data",  # test file
+                os.environ.get(
+                    "TEST_FLATFILES_GBQ_IDENTIFIER"
+                ),  # has all holds
+                "9999999",  # file not found
             ],
             latitude=33.481136,
             longitude=-112.078232,
-            start_utc=[
-                "2018-01-01 00:00:00",
-            ],
-            end_utc=[
-                "2018-12-31 23:55:00",
-            ],
+            start_utc="2019-01-02 00:00:00",
+            end_utc="2019-02-01 00:00:00",
             min_sim_period="3D",
-            min_chunk_period="30D",
             sim_step_size_seconds=300,
             output_step_size_seconds=300,
         )
 
         cls.data_clients = []
+
+        # set local_cache=None to test connection with GCS
         cls.data_client = DataClient(
-            source=LocalSource(
-                local_cache=os.environ.get("LOCAL_CACHE_DIR"),
-                data_spec=DonateYourDataSpec(),
+            source=GBQDataSource(
+                gcp_project=os.environ.get("FLATFILE_GOOGLE_CLOUD_PROJECT"),
+                gbq_table=os.environ.get("FLATFILES_GBQ_TABLE"),
+                data_spec=FlatFilesSpec(),
+                local_cache=None,
             ),
             destination=LocalDestination(
                 local_cache=os.environ.get("LOCAL_CACHE_DIR"),
-                data_spec=DonateYourDataSpec(),
+                data_spec=FlatFilesSpec(),
             ),
             nrel_dev_api_key=os.environ.get("NREL_DEV_API_KEY"),
             nrel_dev_email=os.environ.get("NREL_DEV_EMAIL"),
@@ -62,7 +65,6 @@ class TestLocalSource:
             ep_tmy3_cache_dir=os.environ.get("EP_TMY3_CACHE_DIR"),
             simulation_epw_dir=os.environ.get("SIMULATION_EPW_DIR"),
         )
-
         for _idx, _sim_config in cls.sim_config.iterrows():
             dc = copy.deepcopy(cls.data_client)
             dc.sim_config = _sim_config
@@ -110,26 +112,28 @@ class TestLocalSource:
     def test_fill_missing_data(self):
         """Check that filled data exists and doesnt over fill"""
         for dc in self.data_clients:
-            if dc.sim_config["identifier"] == "DYD_dummy_data":
+            if dc.sim_config["identifier"] == os.environ.get(
+                "TEST_FLATFILES_GBQ_IDENTIFIER"
+            ):
                 # verify that data bfill works with full_data_periods
                 assert (
-                    pytest.approx(21.6666316986084)
+                    pytest.approx(24.69999885559082)
                     == dc.thermostat.data.iloc[
                         dc.datetime.data[
                             (
                                 dc.datetime.data[STATES.DATE_TIME]
-                                >= pd.Timestamp("2018-06-21 16:55", tz="utc")
+                                >= pd.Timestamp("2019-01-07 11:20", tz="utc")
                             )
                             & (
                                 dc.datetime.data[STATES.DATE_TIME]
                                 <= pd.Timestamp(
-                                    "2018-06-22 17:00:00", tz="utc"
+                                    "2019-01-07 11:40:00", tz="utc"
                                 )
                             )
                         ].index,
                     ][STATES.TEMPERATURE_CTRL].mean()
                 )
                 assert dc.full_data_periods[0] == [
-                    pd.Timestamp("2018-03-25 17:00:00", tz="utc"),
-                    pd.Timestamp("2018-06-21 16:55:00", tz="utc"),
+                    pd.to_datetime("2019-01-02 00:00:00", utc=True),
+                    pd.to_datetime("2019-01-07 11:20:00", utc=True),
                 ]

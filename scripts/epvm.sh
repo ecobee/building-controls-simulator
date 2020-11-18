@@ -43,21 +43,19 @@ elif [[ "${TO_SET_VERSION}" =~ ^("8-9-0"|"9-0-1"|"9-1-0"|"9-2-0"|"9-3-0"|"9-4-0"
   if [[ -d "${_EPLUS_DIR}" ]]; then
     export ENERGYPLUS_INSTALL_VERSION="${TO_SET_VERSION}"
 
-    # setup idf dirs
-    mkdir -p "${PACKAGE_DIR}/idf"  # make dir if it does not exist
-    export IDF_DIR="${PACKAGE_DIR}/idf/v${ENERGYPLUS_INSTALL_VERSION}"
+    # setup eplus version specific env vars
+    if [[ -z "${TEST_DIR}" ]]; then
+      export IDF_DIR="${PACKAGE_DIR}/idf/v${ENERGYPLUS_INSTALL_VERSION}"
+      export IDF_PREPROCESSED_DIR="${PACKAGE_DIR}/idf/v${ENERGYPLUS_INSTALL_VERSION}/preprocessed"
+      export FMU_DIR="${PACKAGE_DIR}/fmu/v${ENERGYPLUS_INSTALL_VERSION}"
+    else
+      export IDF_DIR="${TEST_DIR}/idf/v${ENERGYPLUS_INSTALL_VERSION}"
+      export IDF_PREPROCESSED_DIR="${TEST_DIR}/idf/v${ENERGYPLUS_INSTALL_VERSION}/preprocessed"
+      export FMU_DIR="${TEST_DIR}/fmu/v${ENERGYPLUS_INSTALL_VERSION}"
+    fi
     mkdir -p "${IDF_DIR}"
-    export IDF_PREPROCESSED_DIR="${PACKAGE_DIR}/idf/v${ENERGYPLUS_INSTALL_VERSION}/preprocessed"
     mkdir -p "${IDF_PREPROCESSED_DIR}"
-
-    # setup fmu dirs
-    mkdir -p "${PACKAGE_DIR}/fmu"
-    export FMU_DIR="${PACKAGE_DIR}/fmu/v${ENERGYPLUS_INSTALL_VERSION}"
     mkdir -p "${FMU_DIR}"
-
-    # setup weather dir
-    export WEATHER_DIR="${PACKAGE_DIR}/weather"
-    mkdir -p "${WEATHER_DIR}"
     
     # handle packaging for 9-0-1 being slightly different
     if [[ "${TO_SET_VERSION}" == "9-0-1" ]]; then
