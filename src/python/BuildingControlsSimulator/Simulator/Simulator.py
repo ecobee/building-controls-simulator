@@ -65,13 +65,6 @@ class Simulator:
 
     simulations = attr.ib(factory=list)
 
-    output_data_dir = attr.ib(
-        default=os.path.join(os.environ.get("OUTPUT_DIR"), "data")
-    )
-    output_plot_dir = attr.ib(
-        default=os.path.join(os.environ.get("OUTPUT_DIR"), "plot")
-    )
-
     sim_run_identifier = attr.ib()
 
     @sim_run_identifier.default

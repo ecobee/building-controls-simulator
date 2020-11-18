@@ -5,6 +5,7 @@ import logging
 import re
 from datetime import datetime
 import math
+import copy
 
 import pandas as pd
 import numpy as np
@@ -84,17 +85,20 @@ class WeatherChannel(DataChannel):
             )
 
         # lat/lon time zone is the time zone we localize with
-        self.time_zone = datetime_channel.timezone
-        if self.time_zone:
-            _hour_offset = (
-                self.time_zone.utcoffset(datetime.utcnow()).total_seconds()
-                / 3600
+        # the datetime_channel timezone is free to be changed later
+        # self.time_zone = copy.deepcopy(datetime_channel.timezone)
+        # if self.time_zone:
+        _hour_offset = (
+            datetime_channel.timezone.utcoffset(
+                datetime.utcnow()
+            ).total_seconds()
+            / 3600
+        )
+        if self.epw_meta["TZ"] != _hour_offset:
+            logger.warn(
+                "Timezones from longitude and latitude and given epw do not match."
             )
-            if self.epw_meta["TZ"] != _hour_offset:
-                logger.warn(
-                    "Timezones from longitude and latitude and given epw do not match."
-                )
-                self.epw_meta["TZ"] = _hour_offset
+            self.epw_meta["TZ"] = _hour_offset
 
         _epw_path = None
         if not fill_epw_data.empty:
@@ -138,6 +142,7 @@ class WeatherChannel(DataChannel):
         # see https://bigladdersoftware.com/epx/docs/9-4/auxiliary-programs/energyplus-weather-file-epw-data-dictionary.html
         _starting_timestamp = min(epw_data[self.datetime_column])
         _ending_timestamp = max(epw_data[self.datetime_column])
+
         # these are the fields required in DATA PERIODS
         _num_data_periods = 1
         _records_per_hour = int(3600 / sim_config["sim_step_size_seconds"])
@@ -597,9 +602,13 @@ class WeatherChannel(DataChannel):
             epw_data_full["temp_air"], epw_data_full["relative_humidity"]
         )
 
-        # convert to local time
-        tz_offset_seconds = self.time_zone.utcoffset(
-            datetime(min(epw_data_full[self.datetime_column]).year, 1, 10)
+        # convert to local time INVARIANT to DST changes
+        # .epw will have wrong hour columns if DST shift occurs during simulation
+        # need a standard UTC offset for entire simulation period
+        # no time zone shift occurs on or within 1 week of January 17th
+        # use this for tz standard UTC offset
+        tz_offset_seconds = datetime_channel.timezone.utcoffset(
+            datetime(min(epw_data_full[self.datetime_column]).year, 1, 17)
         ).total_seconds()
 
         epw_data_full[self.datetime_column] = epw_data_full[
@@ -623,7 +632,9 @@ class WeatherChannel(DataChannel):
         epw_data_full = epw_data_full.resample(
             f"{sim_config['sim_step_size_seconds']}S"
         ).asfreq()
+        # first ffill then bfill will fill both sides padding data
         epw_data_full = epw_data_full.fillna(method="ffill")
+        epw_data_full = epw_data_full.fillna(method="bfill")
         epw_data_full = epw_data_full.reset_index()
 
         epw_data_full["year"] = epw_data_full[self.datetime_column].dt.year

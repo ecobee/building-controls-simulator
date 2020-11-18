@@ -139,9 +139,6 @@ class DataClient:
         ]:
             _data[_cat_col].cat.remove_unused_categories(inplace=True)
 
-        # internal_sim_step_size_seconds = int(
-        #     self.internal_spec.data_period_seconds / 60
-        # )
         # run settings change point detection before filling missing data
         # the fill data would create false positive change points
         # the change points can also be used to correctly fill the schedule
@@ -149,6 +146,7 @@ class DataClient:
         (
             _change_points_schedule,
             _change_points_comfort_prefs,
+            _change_points_hvac_mode,
         ) = ThermostatChannel.get_settings_change_points(
             _data, self.internal_spec.data_period_seconds
         )
@@ -254,6 +252,7 @@ class DataClient:
             spec=self.internal_spec.thermostat,
             change_points_schedule=_change_points_schedule,
             change_points_comfort_prefs=_change_points_comfort_prefs,
+            change_points_hvac_mode=_change_points_hvac_mode,
         )
 
         self.equipment = EquipmentChannel(

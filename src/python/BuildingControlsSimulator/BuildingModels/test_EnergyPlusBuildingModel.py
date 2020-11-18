@@ -5,6 +5,7 @@ import subprocess
 import os
 import shutil
 import logging
+import pytz
 
 import pytest
 import pyfmi
@@ -144,11 +145,16 @@ class TestEnergyPlusBuildingModel:
                 f"Untested version of energyplus: {self.eplus_version}"
             )
 
+    @pytest.mark.skip(reason="Redundant with test_simulator.py")
     @pytest.mark.usefixtures("building_model")
     def test_preprocess(self, test_sim_config, building_model):
         """test that preprocessing produces output file"""
+        # datetime_channel=
+
         prep_idf = building_model.idf.preprocess(
-            sim_config=test_sim_config, preprocess_check=False
+            sim_config=test_sim_config,
+            preprocess_check=False,
+            datetime_channel=datetime_channel,
         )
         assert os.path.exists(prep_idf)
 

@@ -26,12 +26,6 @@ class Simulation:
     data_client = attr.ib()
     config = attr.ib()
     sim_run_identifier = attr.ib()
-    output_data_dir = attr.ib(
-        default=os.path.join(os.environ.get("OUTPUT_DIR"), "data")
-    )
-    output_plot_dir = attr.ib(
-        default=os.path.join(os.environ.get("OUTPUT_DIR"), "plot")
-    )
     start_utc = attr.ib(default=None)
     end_utc = attr.ib(default=None)
     output = attr.ib(default=None)
@@ -197,6 +191,7 @@ class Simulation:
         self.controller_model.update_settings(
             change_points_schedule=self.data_client.thermostat.change_points_schedule,
             change_points_comfort_prefs=self.data_client.thermostat.change_points_comfort_prefs,
+            change_points_hvac_mode=self.data_client.thermostat.change_points_hvac_mode,
             init=True,
         )
         self.controller_model.initialize(
@@ -248,6 +243,7 @@ class Simulation:
             self.controller_model.update_settings(
                 change_points_schedule=self.data_client.thermostat.change_points_schedule,
                 change_points_comfort_prefs=self.data_client.thermostat.change_points_comfort_prefs,
+                change_points_hvac_mode=self.data_client.thermostat.change_points_hvac_mode,
                 time_utc=self.data_client.datetime.data.iloc[i][
                     STATES.DATE_TIME
                 ],
@@ -293,7 +289,9 @@ class Simulation:
         # convert output to dataframe
         self.output = pd.DataFrame.from_dict(
             {
-                STATES.DATE_TIME: self.data_client.datetime.data,
+                STATES.DATE_TIME: self.data_client.datetime.data[
+                    STATES.DATE_TIME
+                ],
                 **self.controller_model.output,
                 **self.building_model.output,
             }

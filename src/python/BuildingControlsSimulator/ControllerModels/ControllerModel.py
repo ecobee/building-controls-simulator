@@ -46,7 +46,8 @@ class ControllerModel(ABC):
         self,
         change_points_schedule,
         change_points_comfort_prefs,
-        time_utc=False,
+        change_points_hvac_mode,
+        time_utc=None,
         init=False,
     ):
         """Ensure settings are correct for given time step."""
@@ -55,34 +56,48 @@ class ControllerModel(ABC):
                 "change_points_comfort_prefs is empty. update_settings will not work."
             )
             return
-
-        if not change_points_schedule:
+        elif not change_points_schedule:
             logging.error(
                 "change_points_schedule is empty. update_settings will not work."
             )
             return
+        elif not change_points_hvac_mode:
+            logging.error(
+                "change_points_hvac_mode is empty. update_settings will not work."
+            )
+            return
+
+        _init_time_hvac_mode = min(change_points_hvac_mode.keys())
 
         _init_time_schedule = min(change_points_schedule.keys())
+
         _init_schedule_names = set(
             [
                 sch["name"]
                 for sch in change_points_schedule[_init_time_schedule]
             ]
         )
+
         _init_time_setpoints = []
         for _name in _init_schedule_names:
-            _init_time_setpoints.append(
-                min(
-                    [
-                        k
-                        for k, v in change_points_comfort_prefs.items()
-                        if _name in v.keys()
-                    ]
+            _schedule_change_times = [
+                k
+                for k, v in change_points_comfort_prefs.items()
+                if _name in v.keys()
+            ]
+            if _schedule_change_times:
+                _init_time_setpoints.append(min(_schedule_change_times))
+            else:
+                # TODO: can make some assumption about set points
+                raise ValueError(
+                    f"Setpoints could not be detected for: {_name} schedule."
                 )
-            )
+
         if init:
             self.settings = {}
-
+            self.settings["hvac_mode"] = change_points_hvac_mode[
+                _init_time_hvac_mode
+            ]
             self.settings["schedules"] = change_points_schedule[
                 _init_time_schedule
             ]
@@ -90,18 +105,28 @@ class ControllerModel(ABC):
             # need to update setpoints per schedule
             self.settings["setpoints"] = {}
             for _name in _init_schedule_names:
-                _init_time_setpoint = min(
-                    [
-                        k
-                        for k, v in change_points_comfort_prefs.items()
-                        if _name in v.keys()
-                    ]
-                )
+                _schedule_change_times = [
+                    k
+                    for k, v in change_points_comfort_prefs.items()
+                    if _name in v.keys()
+                ]
                 self.settings["setpoints"][
                     _name
-                ] = change_points_comfort_prefs[_init_time_setpoint][_name]
+                ] = change_points_comfort_prefs[min(_schedule_change_times)][
+                    _name
+                ]
+
         elif time_utc:
             settings_updated = False
+
+            if (
+                time_utc in change_points_hvac_mode.keys()
+                and time_utc != _init_time_hvac_mode
+            ):
+                # check that this is not init time for hvac_mode
+                self.settings["hvac_mode"] = change_points_hvac_mode[time_utc]
+                settings_updated = True
+
             # must observe new schedule at or before setpoint change
             if (
                 time_utc in change_points_schedule.keys()

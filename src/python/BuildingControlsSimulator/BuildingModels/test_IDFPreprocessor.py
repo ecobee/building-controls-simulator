@@ -85,6 +85,7 @@ class TestIDFPreprocessor:
         """
         pass
 
+    @pytest.mark.skip(reason="Redundant with test_simulator.py")
     def test_preprocess(self):
         """
         test that preprocessing produces output file
@@ -92,7 +93,7 @@ class TestIDFPreprocessor:
 
         prep_idf = self.idf.preprocess(
             sim_config=self.test_sim_config,
-            time_zone=pytz.timezone("US/Arizona"),
+            datetime_channel=datetime_channel,
             preprocess_check=False,
         )
         assert os.path.exists(prep_idf)

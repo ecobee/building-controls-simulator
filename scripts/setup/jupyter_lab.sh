@@ -15,13 +15,14 @@ else
     echo "If jupyter server is inaccessible without password delete this file and re-run."
 fi
 
+# set energyplus env variables, this is not built into the container and can
+# be modified more readily than .bashrc
+. "${PACKAGE_DIR:?}/scripts/epvm.sh" "9-4-0"
+
 if [ ! -d "${JUPYTER_LOG_DIR}" ]; then mkdir "${JUPYTER_LOG_DIR}"; fi
-cat << EndOfMessage
-================================================================================
-jupyter-lab accessable at: http://localhost:8888/lab
-jupyter-lab logs are being stored in: ${JUPYTER_LOG_DIR}/${FNAME}
-================================================================================
-EndOfMessage
+echo "jupyter-lab accessable at: http://localhost:8888/lab"
+echo "jupyter-lab logs are being stored in: ${JUPYTER_LOG_DIR}/${FNAME}"
+
 pipenv run jupyter-lab --ip="0.0.0.0" --no-browser > "${JUPYTER_LOG_DIR}/${FNAME}"
 echo "$!" > "${JUPYTER_LOG_DIR}/JUPYTER_SERVER_PID.txt"
 

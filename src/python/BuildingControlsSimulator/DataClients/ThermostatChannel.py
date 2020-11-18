@@ -16,6 +16,7 @@ class ThermostatChannel(DataChannel):
 
     change_points_schedule = attr.ib()
     change_points_comfort_prefs = attr.ib()
+    change_points_hvac_mode = attr.ib()
 
     @staticmethod
     def extract_schedule_periods(chgs):
@@ -423,8 +424,11 @@ class ThermostatChannel(DataChannel):
                 ]
             ):
                 # entirely holds, set dummy comfort settings with mode
+                comfort_chg_pts[data.iloc[0][STATES.DATE_TIME]] = {}
                 for _schedule in data[STATES.SCHEDULE].cat.categories:
-                    comfort_chg_pts[_schedule] = {
+                    comfort_chg_pts[data.iloc[0][STATES.DATE_TIME]][
+                        _schedule
+                    ] = {
                         STATES.TEMPERATURE_STP_COOL: data[
                             STATES.TEMPERATURE_STP_COOL
                         ]
@@ -563,10 +567,36 @@ class ThermostatChannel(DataChannel):
         return None
 
     @staticmethod
+    def get_hvac_mode_change_points(data):
+        """"""
+        if data.empty:
+            return {}
+
+        _hvac_mode_chg_pts = data[
+            ~data[STATES.HVAC_MODE].isnull()
+            & ~data[STATES.HVAC_MODE].shift(1).isnull()
+            & (data[STATES.HVAC_MODE] != data[STATES.HVAC_MODE].shift(1))
+        ]
+        _init_hvac_mode_pt = data[~data[STATES.HVAC_MODE].isnull()].iloc[0]
+        hvac_mode_chg_pts = {
+            _init_hvac_mode_pt[STATES.DATE_TIME]: _init_hvac_mode_pt[
+                STATES.HVAC_MODE
+            ]
+        }
+        hvac_mode_chg_pts.update(
+            {
+                _pt[STATES.DATE_TIME]: _pt[STATES.HVAC_MODE]
+                for _, _pt in _hvac_mode_chg_pts.iterrows()
+            }
+        )
+        return hvac_mode_chg_pts
+
+    @staticmethod
     def get_settings_change_points(data, sim_step_size_seconds):
         """get setting change points:
         - schedules
         - comfort preferences
+        - hvac mode
 
         The day of the week with Monday=0, Sunday=6.
         If times before first observed change point are needed default to
@@ -582,4 +612,10 @@ class ThermostatChannel(DataChannel):
             data, sim_step_size_seconds
         )
 
-        return schedule_chg_pts, comfort_chg_pts
+        hvac_mode_chg_pts = ThermostatChannel.get_hvac_mode_change_points(data)
+
+        return (
+            schedule_chg_pts,
+            comfort_chg_pts,
+            hvac_mode_chg_pts,
+        )

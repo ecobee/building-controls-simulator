@@ -60,7 +60,6 @@ class EnergyPlusBuildingModel(BuildingModel):
     init_humidity = attr.ib(default=50.0)
     init_temperature = attr.ib(default=21.0)
     fmu = attr.ib(default=None)
-    time_zone = attr.ib(default=None)
     eplustofmu_path = attr.ib(default=os.environ.get("ENERGYPLUSTOFMUSCRIPT"))
     weather_dir = attr.ib(default=os.environ.get("WEATHER_DIR"))
     fmu_dir = attr.ib(default=os.environ.get("FMU_DIR"))
@@ -174,15 +173,13 @@ class EnergyPlusBuildingModel(BuildingModel):
             datetime_channel=datetime_channel,
             fill_epw_path=self.fill_epw_path,
         )
-        # this holds the local timezone
-        self.time_zone = weather_channel.time_zone
 
         self.idf.timesteps_per_hour = self.timesteps_per_hour
         self.idf.init_temperature = self.init_temperature
         self.idf.init_humidity = self.init_humidity
         self.idf.preprocess(
             sim_config,
-            time_zone=self.time_zone,
+            datetime_channel=datetime_channel,
             preprocess_check=preprocess_check,
         )
 
@@ -229,6 +226,10 @@ class EnergyPlusBuildingModel(BuildingModel):
         # 86400 seconds (1 day), with t_start being the time in seconds
         # since the start of the year. t_end can be rounded up as needed and
         # simulation can be shutdown before reaching t_end.
+        # EnergyPlus IDF contains the object RunPeriod. The start and end day of
+        # this object is ignored and replaced by the start and stop time
+        # provided by the master algorithm which imports the EnergyPlus FMU.
+        # However, the entry Day of Week for Start Day will be used.
         t_end = t_start + math.ceil((t_end - t_start) / 86400.0) * 86400
         self.fmu.initialize(t_start, t_end)
 

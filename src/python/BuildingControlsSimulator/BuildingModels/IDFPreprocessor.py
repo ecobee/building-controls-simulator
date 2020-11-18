@@ -12,6 +12,8 @@ import numpy as np
 
 from eppy.modeleditor import IDF
 
+from BuildingControlsSimulator.DataClients.DataStates import STATES
+
 logger = logging.getLogger(__name__)
 
 
@@ -149,7 +151,7 @@ class IDFPreprocessor:
     def preprocess(
         self,
         sim_config,
-        time_zone,
+        datetime_channel,
         init_temperature=21.0,
         preprocess_check=False,
     ):
@@ -174,7 +176,7 @@ class IDFPreprocessor:
             # prepare idf file
             self.prep_ep_version(self.ep_version)
             self.prep_simulation_control()
-            self.prep_runperiod(sim_config, time_zone)
+            self.prep_runperiod(sim_config, datetime_channel)
             self.prep_timesteps(self.timesteps_per_hour)
             self.prep_ground_boundary_temp()
             self.prep_remove_unused_objects()
@@ -223,11 +225,11 @@ class IDFPreprocessor:
             if zone_name in v:
                 return k
 
-    def expand_zones(self, zone_list):
-        if zone_list in self.zone_lists.keys():
-            return self.zone_lists[zone_list]
+    def expand_zones(self, zone_or_zone_list):
+        if zone_or_zone_list in self.zone_lists.keys():
+            return self.zone_lists[zone_or_zone_list]
         else:
-            return zone_list
+            return [zone_or_zone_list]
 
     def get_tstat_zone(self):
         tstats = self.ep_idf.idfobjects["zonecontrol:thermostat"]
@@ -248,18 +250,21 @@ class IDFPreprocessor:
         3. sizing:Zone
         """
         equip_conn_zones = [
-            self.expand_zones(obj.Zone_Name)
+            _zone
             for obj in self.ep_idf.idfobjects["ZoneHVAC:EquipmentConnections"]
+            for _zone in self.expand_zones(obj.Zone_Name)
         ]
 
         vent_design_zones = [
-            self.expand_zones(obj.Zone_or_ZoneList_Name)
+            _zone
             for obj in self.ep_idf.idfobjects["ZoneVentilation:DesignFlowRate"]
+            for _zone in self.expand_zones(obj.Zone_or_ZoneList_Name)
         ]
 
         sizing_zones = [
-            self.expand_zones(obj.Zone_or_ZoneList_Name)
+            _zone
             for obj in self.ep_idf.idfobjects["sizing:Zone"]
+            for _zone in self.expand_zones(obj.Zone_or_ZoneList_Name)
         ]
 
         self.conditioned_zones = list(
@@ -271,9 +276,11 @@ class IDFPreprocessor:
         conditioned zones are defined in IDF by:
         1. people
         """
+
         self.occupied_zones = [
-            self.expand_zones(obj.Zone_or_ZoneList_Name)
+            _zone
             for obj in self.ep_idf.idfobjects["people"]
+            for _zone in self.expand_zones(obj.Zone_or_ZoneList_Name)
         ]
 
         if any([z not in self.conditioned_zones for z in self.occupied_zones]):
@@ -302,14 +309,33 @@ class IDFPreprocessor:
             Maximum_Number_of_HVAC_Sizing_Simulation_Passes=2,
         )
 
-    def prep_runperiod(self, sim_config, time_zone):
+    def prep_runperiod(self, sim_config, datetime_channel):
         """This is not used for FMU export of energyplus
         https://simulationresearch.lbl.gov/fmu/EnergyPlus/export/userGuide/usage.html
         """
+        # When using EnergyPlusToFMU the start and end day of RUNPERIOD
+        # object is ignored and replaced by the start and stop time
+        # provided by the master algorithm which imports the EnergyPlus FMU.
+        # However, the entry Day of Week for Start Day will be used.
+
+        # To best make use of this the RUNPERIOD will be set appropriately in
+        # coordination with the available data, simulation control, 
+        # and weather file.
         self.popallidfobjects("RunPeriod")
         # convert to local time for setting RunPeriod
-        start_utc = sim_config["start_utc"].tz_convert(time_zone)
-        end_utc = sim_config["end_utc"].tz_convert(time_zone)
+        start_utc = min(datetime_channel.data[STATES.DATE_TIME]).tz_convert(
+            datetime_channel.timezone
+        )
+        end_utc = max(datetime_channel.data[STATES.DATE_TIME]).tz_convert(
+            datetime_channel.timezone
+        )
+        if start_utc.year != end_utc.year:
+            # EnergyPlusToFMU seems to have a bug that cause .idf file to be read
+            # into eplus with the start of the year as the beginning of the RunPeriod
+            raise NotImplementedError(
+                "Simulations crossing yearline are not fully supported."
+            )
+
         if self.ep_version in ["8-9-0", "9-0-1", "9-1-0"]:
             self.ep_idf.newidfobject(
                 "RunPeriod",
