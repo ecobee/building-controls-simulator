@@ -98,15 +98,13 @@ class TestGCSDYDSource:
         # read back cached filled epw files
         for dc in self.data_clients:
             if not dc.weather.data.empty:
-                data, meta, meta_lines = dc.weather.read_epw(
-                    dc.weather.epw_path
+                # generate the epw file before checking it
+                _epw_path = dc.weather.make_epw_file(
+                    sim_config=dc.sim_config, datetime_channel=dc.datetime
                 )
+                data, meta, meta_lines = dc.weather.read_epw(_epw_path)
                 assert not data.empty
-                assert all(
-                    data.columns
-                    == dc.weather.epw_columns
-                    + [EnergyPlusWeather.datetime_column]
-                )
+                assert all(data.columns == dc.weather.epw_columns)
 
     def test_data_utc(self):
         for dc in self.data_clients:

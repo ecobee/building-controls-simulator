@@ -47,13 +47,13 @@ class TestWeatherChannel:
         # remove test file if previously existing
         if os.path.exists(test_fpath):
             os.remove(test_fpath)
-        fpath, fname = self.weather.get_tmy_epw(lat, lon)
+        fpath, fname = self.weather.get_tmy_fill_epw(lat, lon)
         assert os.path.exists(fpath)
 
         # epw file can be read and has correct columns
         data, meta, meta_epw_lines = self.weather.read_epw(fpath)
         cols = data.columns.to_list()
-        cols.remove(self.weather.datetime_column)
+
         assert cols == self.weather.epw_columns
 
     @pytest.mark.skip(reason="Not implemented.")

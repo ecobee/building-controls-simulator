@@ -5,10 +5,12 @@ import subprocess
 import os
 import shutil
 import logging
+import pytz
 
 import pytest
 import pyfmi
 
+from BuildingControlsSimulator.Simulator.Config import Config
 from BuildingControlsSimulator.BuildingModels.IDFPreprocessor import (
     IDFPreprocessor,
 )
@@ -58,18 +60,42 @@ class TestIDFPreprocessor:
         )
         cls.step_size = int(3600.0 / cls.idf.timesteps_per_hour)
 
+        cls.test_sim_config = (
+            Config.make_sim_config(
+                identifier=[
+                    "2df6959cdf502c23f04f3155758d7b678af0c631",  # has full data periods
+                ],
+                latitude=33.481136,
+                longitude=-112.078232,
+                start_utc="2018-05-16",
+                end_utc="2018-05-26",
+                min_sim_period="1D",
+                min_chunk_period="30D",
+                sim_step_size_seconds=60,
+                output_step_size_seconds=300,
+            )
+            .iloc[0]
+            .to_dict()
+        )
+
     @classmethod
     def teardown_class(cls):
-        """ teardown any state that was previously setup with a call to
+        """teardown any state that was previously setup with a call to
         setup_class.
         """
         pass
 
+    @pytest.mark.skip(reason="Redundant with test_simulator.py")
     def test_preprocess(self):
         """
         test that preprocessing produces output file
         """
-        prep_idf = self.idf.preprocess(preprocess_check=False)
+
+        prep_idf = self.idf.preprocess(
+            sim_config=self.test_sim_config,
+            datetime_channel=datetime_channel,
+            preprocess_check=False,
+        )
         assert os.path.exists(prep_idf)
 
         # test that preprocessing produces valid IDF output file

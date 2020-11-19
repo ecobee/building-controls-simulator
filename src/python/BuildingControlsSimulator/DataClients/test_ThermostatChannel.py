@@ -90,6 +90,9 @@ class TestGCSDYDSource:
                     dc.thermostat.change_points_comfort_prefs
                     == TestGCSDYDSource._return_change_points_comfort_prefs()
                 )
+                assert dc.thermostat.change_points_hvac_mode == {
+                    pd.Timestamp("2018-01-01 17:00:00+0000", tz="UTC"): "auto"
+                }
 
     @staticmethod
     def _return_change_points_schedule():
