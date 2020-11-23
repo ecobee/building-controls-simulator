@@ -23,6 +23,7 @@ class IDFPreprocessor:
 
     # user must supply an idf file as either 1) full path, or 2) a file in self.idf_dir
     idf_file = attr.ib()
+    building_config = attr.ib()
 
     init_temperature = attr.ib(type=float, default=21.0)
     init_humidity = attr.ib(type=float, default=50.0)
@@ -181,6 +182,7 @@ class IDFPreprocessor:
             self.prep_ground_boundary_temp()
             self.prep_remove_unused_objects()
             self.prep_ext_int()
+            self.prep_ventilation_infiltation()
 
             # set the intial temperature via the initial setpoint which will be tracked
             # in the warmup simulation
@@ -309,6 +311,264 @@ class IDFPreprocessor:
             Maximum_Number_of_HVAC_Sizing_Simulation_Passes=2,
         )
 
+    def prep_ventilation_infiltation(self):
+        """Use ASHRAE Standard 62.2 method for calculating infiltration and
+        ventilation requirement.
+
+        areas in m2
+        flows in L/s
+
+        # Q_total requirement
+
+        (4-1b): Q_total = 0.15*A_floor + 3.5*(N_br + 1)
+        A_floor = floor area of conditioned/occupied space (includes heated basements)
+        N_br = number bedrooms (proxy for number of occupants)
+
+        (4-2): Q_fan = Q_total - phi(Q_inf * A_ext)
+        phi = Q_inf/Q_tot, or 1 for balanced ventilation systems
+        A_ext = 1 for detached dwelling, otherwise ratio of exterior not attached
+
+        (4-3): Q_inf = 0.052 * Q50 * wsf * (H/H_r)^z
+        Q50 = Air Change per Hour at 50pa pressurization (ACH50)
+        (ACH50 defined in ASTM E1827 or ANSI/RESNET/ICC Standard 380)
+        wsf = weather and shielding factor in Appendix B for site location
+        H = above grade height of pressure boundary
+        H_r = reference height (2.5m)
+        z = 0.4 for Effective Annual Average Infiltration Rate
+
+        see: ASHRAE Standard 62.2 Section 4. Dwelling-Unit Ventilation
+        https://ashrae.iwrapper.com/ASHRAE_PREVIEW_ONLY_STANDARDS/STD_62.2_2019
+
+        ZoneInfiltration:DesignFlowRate requires:
+        Constant_Term_Coefficient
+        Temperature_Term_Coefficient
+        Velocity_Term_Coefficient
+        Velocity_Squared_Term_Coefficient
+
+        BLAST (one of the EnergyPlus predecessors) used the following values as
+        defaults:
+        Constant_Term_Coefficient = 0.606
+        Temperature_Term_Coefficient = 0.03636
+        Velocity_Term_Coefficient = 0.1177
+        Velocity_Squared_Term_Coefficient = 0.0
+        These coefficients produce a value
+        of 1.0 at 0C deltaT and 3.35 m/s (7.5 mph) windspeed, which corresponds
+        to a typical summer condition. At a winter condition of 40C deltaT and
+        6 m/s (13.4 mph) windspeed, these coefficients would increase the
+        infiltration rate by a factor of 2.75.
+
+        In DOE-2 (the other EnergyPlus predecessor), the air change method
+        defaults are (adjusted to SI units):
+        Constant_Term_Coefficient = 0.0
+        Temperature_Term_Coefficient = 0.224
+        Velocity_Term_Coefficient = 0.0
+        Velocity_Squared_Term_Coefficient = 0.0.
+        With these coefficients, the summer conditions above would give a factor of
+        0.75, and the winter conditions would give 1.34. A windspeed of 4.47 m/s
+        (10 mph) gives a factor of 1.0.
+
+        These coefficients can be estimated based on Sherman and Grimsrud (1980)
+        model.
+
+        q_inf = sqrt(q_s^2 + q_w^2) (47)
+
+        ## stack infiltration airflow
+        q_s = c * C_s * abs(T_in - T_out)^n
+        c = flow coefficient
+        C_s = stack coefficient
+        n = pressure coefficient (0.67)
+
+        a simple value for c * C_s = 0.05 * 0.07 = 0.0035
+
+        ## wind infiltration airlfow
+        q_w = c * C_w * (s*U)^(2*n) (wind airflow)
+
+        c = flow coefficient
+        C_s = wind coefficient
+        s = shelter coefficient
+        U = G * U_met
+        G = wind speed multiplier
+        n = pressure coefficient (0.67)
+        Note: The pressure coefficient (n) and flow coefficient (c) are
+        determined empirically and comes from the geometry of the
+        infiltration cracks, see equation (40).
+        The value of n generally is between 0.6 and 0.7.
+        The value of c generally is between 0.050 and 0.100 m3 / (s*Pa^n)
+
+        a simple value for c * C_w = 0.05 * 0.15 = 0.0075
+
+        assuming q_s ~= q_w then: q_inf = q_s/sqrt(2) + q_w/sqrt(2)
+        therefore adding the coefficeint 1/sqrt(2) to each independently
+        allows for a lower bound estimate of each in super position.
+
+        The following formulas can then be using to estimate
+        Velocity_Term_Coefficient
+        Temperature_Term_Coefficient = 0.0035 * 1/sqrt(2) = 0.0025
+        Velocity_Squared_Term_Coefficient = 0.0075 * 1/sqrt(2) = 0.0053
+
+        assuming averge velocity is 7 m/s:
+        Velocity_Term_Coefficient = 0.0371
+
+        Therefore:
+        Constant_Term_Coefficient = 0.606
+        Temperature_Term_Coefficient = 0.0025
+        Velocity_Term_Coefficient = 0.0371
+        Velocity_Squared_Term_Coefficient = 0.0
+
+        # TODO: alternate method:
+        Sherman and Grimsrud (1980) model
+        EnergyPLus implements using ZoneInfiltration:EffectiveLeakageArea
+        Can specify using ELA_4, which can be computed from NL value, or ACH50
+        using equations from ASHRAE Fundamentals Handbook 2017.
+
+        # TODO: alternate method:
+        Enhanced Model: Infiltration method from Walker and Wilson (1993)
+        from ASHRAE Fundamentals Handbook 2017, Chapter 16.25
+        Equation (47), (49) and (50)
+
+        q_inf = sqrt(q_s^2 + q_w^2) (47)
+
+        See: EnergyPlus Group Airflow
+        https://bigladdersoftware.com/epx/docs/9-4/input-output-reference/group-airflow.html
+        """
+
+        vent_objs = [
+            "ZoneInfiltration:DesignFlowRate",
+            "ZoneInfiltration:EffectiveLeakageArea",
+            "ZoneInfiltration:FlowCoefficient",
+            "ZoneVentilation:DesignFlowRate",
+            "ZoneVentilation:WindandStackOpenArea",
+        ]
+
+        vent_design_zones = []
+        for vent_obj in vent_objs:
+            vent_design_zones = set(vent_design_zones) | set(
+                [
+                    _zone
+                    for obj in self.ep_idf.idfobjects[
+                        "ZoneVentilation:DesignFlowRate"
+                    ]
+                    for _zone in self.expand_zones(obj.Zone_or_ZoneList_Name)
+                ]
+            )
+            self.popallidfobjects(vent_obj)
+
+        # a_floor = self.get_floor_area()
+
+        occupied_zones = [
+            _zone
+            for _zone in self.ep_idf.idfobjects["Zone"]
+            if _zone.Name in self.occupied_zones
+        ]
+
+        # Z = 0.0 is considered to be ground level
+        z_ground = 0.0
+        z_coords = []
+        volume_total = 0.0
+        zone_volumes = {}
+        a_floor = 0.0
+        for _zone in self.ep_idf.idfobjects["Zone"]:
+            if _zone.Name in self.occupied_zones:
+                zone_floor_area = 0
+                zone_x_coords = []
+                zone_y_coords = []
+                zone_z_coords = []
+                for _surf in _zone.zonesurfaces:
+
+                    zone_x_coords = zone_x_coords + [
+                        xyz[0] for xyz in _surf.coords
+                    ]
+                    zone_y_coords = zone_y_coords + [
+                        xyz[1] for xyz in _surf.coords
+                    ]
+                    zone_z_coords = zone_z_coords + [
+                        xyz[2] for xyz in _surf.coords
+                    ]
+                    if _surf.Surface_Type == "Floor":
+                        # zone may have multiple floors
+                        zone_floor_area += _surf.area
+
+                zone_length = max(zone_x_coords) - min(zone_x_coords)
+                zone_width = max(zone_y_coords) - min(zone_y_coords)
+                zone_height = max(zone_z_coords) - min(zone_z_coords)
+                # accumulation variables
+                z_coords = z_coords + zone_z_coords
+                a_floor += zone_floor_area
+                zone_volumes[_zone.Name] = (
+                    zone_length * zone_width * zone_height
+                )
+                volume_total += zone_volumes[_zone.Name]
+
+        height_above_ground = max(z_coords) - max(min(z_coords), z_ground)
+
+        # we assume that the number of bedrooms are equal to number of people
+        n_br = sum(
+            [
+                people_obj.Number_of_People
+                for people_obj in self.ep_idf.idfobjects["People"]
+            ]
+        )
+
+        # equation 4-1b
+        req_q_total = 0.15 * a_floor + 3.5 * (n_br + 1)
+
+        # equation 4-3
+        # q50 is expressed in L/s
+        q50 = volume_total * self.building_config["ach50"] * (1000 / 3600)
+        q_inf = (
+            0.052
+            * q50
+            * self.building_config["wsf"]
+            * pow((height_above_ground / 2.5), 0.4)
+        )
+
+        # equation 4-2
+        # assume unbalanced ventilation
+        phi = q_inf / req_q_total
+        if "a_ext" in self.building_config.keys():
+            a_ext = self.building_config["a_ext"]
+        else:
+            # assume detached
+            a_ext = 1.0
+
+        q_fan = req_q_total - phi * (q_inf * a_ext)
+
+        for zone_name in vent_design_zones:
+            self.ep_idf.newidfobject(
+                "ZoneInfiltration:DesignFlowRate",
+                Name="BCS_infiltration",
+                Zone_or_ZoneList_Name=zone_name,
+                Schedule_Name="always_avail",
+                Design_Flow_Rate_Calculation_Method="Flow/Zone",
+                Design_Flow_Rate=q_inf
+                * (zone_volumes[zone_name] / volume_total)
+                / 1000.0,
+                Constant_Term_Coefficient=0.606,
+                Temperature_Term_Coefficient=0.0025,
+                Velocity_Term_Coefficient=0.0371,
+                Velocity_Squared_Term_Coefficient=0.0,
+            )
+
+        # Exception to 4.1.2:
+        # if q_fan is less than 7 L/s no mechanical ventilation is required
+        if q_fan > 7.0:
+            # add mechanical ventilation using ACH method for all vented zones
+            logger.warn(
+                "UNTESTED: Using IDFPreprocessor inserted mechanical ventilation."
+            )
+            # self.ep_idf.newidfobject("ZoneList", "BCS_vent_zones", list(vent_design_zones)[0])
+            for zone_name in vent_design_zones:
+                self.ep_idf.newidfobject(
+                    "ZoneVentilation:DesignFlowRate",
+                    Name="BCS_mech_ventilation",
+                    Zone_or_ZoneList_Name=zone_name,
+                    Schedule_Name="always_avail",
+                    Design_Flow_Rate_Calculation_Method="Flow/Zone",
+                    Design_Flow_Rate=q_fan
+                    * (zone_volumes[zone_name] / volume_total)
+                    / 1000.0,
+                )
+
     def prep_runperiod(self, sim_config, datetime_channel):
         """This is not used for FMU export of energyplus
         https://simulationresearch.lbl.gov/fmu/EnergyPlus/export/userGuide/usage.html
@@ -319,7 +579,7 @@ class IDFPreprocessor:
         # However, the entry Day of Week for Start Day will be used.
 
         # To best make use of this the RUNPERIOD will be set appropriately in
-        # coordination with the available data, simulation control, 
+        # coordination with the available data, simulation control,
         # and weather file.
         self.popallidfobjects("RunPeriod")
         # convert to local time for setting RunPeriod
@@ -595,7 +855,7 @@ class IDFPreprocessor:
             Initial_Value=FMU_control_type_init,
         )
 
-        # over write ZoneControl:Thermostat control objects
+        # overwrite ZoneControl:Thermostat control objects
         for tstat in self.ep_idf.idfobjects["zonecontrol:thermostat"]:
 
             tstat.Control_Type_Schedule_Name = control_schedule_type_name

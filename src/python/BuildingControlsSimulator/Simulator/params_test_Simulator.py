@@ -19,7 +19,8 @@ test_params_local = []
 test_params_gcs_dyd = []
 test_params_gbq_flatfiles = []
 
-if os.environ.get("LOCAL_CACHE_DIR"):
+# if os.environ.get("LOCAL_CACHE_DIR"):
+if False:
     test_params_local = [
         {
             "config": {
@@ -115,7 +116,8 @@ if os.environ.get("LOCAL_CACHE_DIR"):
         },
     ]
 
-if os.environ.get("DYD_GCS_URI_BASE"):
+# if os.environ.get("DYD_GCS_URI_BASE"):
+if False:
     test_params_gcs_dyd = [
         {
             "config": {
@@ -201,6 +203,65 @@ if os.environ.get("DYD_GCS_URI_BASE"):
             "state_estimator_model": {
                 "is_low_pass_filter": True,
                 "low_pass_filter_alpha": 0.5,
+            },
+            "expected_result": {
+                "mean_thermostat_temperature": 20.913745880126953,
+                "mean_thermostat_humidity": 25.508949279785156,
+                "output_format_mean_thermostat_temperature": 69.64488983154297,
+                "output_format_mean_thermostat_humidity": 25.508949279785156,
+            },
+        },
+    ]
+
+if os.environ.get("FLATFILES_GBQ_TABLE"):
+    test_params_gbq_flatfiles = [
+        {
+            "config": {
+                "identifier": os.environ.get("TEST_GBQ_FF_IDENTIFIER"),
+                "latitude": 41.8781,
+                "longitude": -87.6298,
+                "start_utc": "2019-01-14",
+                "end_utc": "2019-01-18",
+                "min_sim_period": "1D",
+                "sim_step_size_seconds": 60,
+                "output_step_size_seconds": 300,
+            },
+            "data_client": {
+                "is_local_source": False,
+                "is_gcs_source": False,
+                "is_gbq_source": True,
+                "gcp_project": os.environ.get("DYD_GOOGLE_CLOUD_PROJECT"),
+                "gcs_uri_base": None,
+                "gbq_table": os.environ.get("FLATFILES_GBQ_TABLE"),
+                "source_data_spec": FlatFilesSpec(),
+                "source_local_cache": os.environ.get("LOCAL_CACHE_DIR"),
+                "is_local_destination": True,
+                "is_gcs_destination": False,
+                "is_gbq_destination": False,
+                "destination_data_spec": FlatFilesSpec(),
+                "destination_local_cache": os.environ.get("LOCAL_CACHE_DIR"),
+            },
+            "building_model": {
+                "is_energyplus_building": True,
+                "idf_name": "Chicago_IL_2story_heatedbsmt_gasfurnace_AC.idf",
+                "epw_name": "USA_IL_Chicago-OHare.Intl.AP.725300_TMY3.epw",
+                "building_config": {
+                    "ach50": 5,
+                    "wsf": 0.6,
+                    "r_si_wall": 5.2,
+                    "r_si_floor": 4.0,
+                    "r_si_ceil": 6.5,
+                    "window_to_wall_ratio": 0.2,
+                    "u_window": 1.1,
+                },
+            },
+            "controller_model": {
+                "is_deadband": True,
+                "is_fmu": False,
+            },
+            "state_estimator_model": {
+                "is_low_pass_filter": True,
+                "low_pass_filter_alpha": 0.2,
             },
             "expected_result": {
                 "mean_thermostat_temperature": 20.913745880126953,

@@ -224,10 +224,11 @@ class DataClient:
             ] = pd.NA
 
         else:
-            logger.error(
+            raise ValueError(
                 "No full_data_periods for requested duration: "
                 + f"start_utc={self.sim_config['start_utc']}, "
-                + f"end_utc={self.sim_config['end_utc']}"
+                + f"end_utc={self.sim_config['end_utc']} "
+                + f"with min_sim_period={self.sim_config['min_sim_period']}"
             )
 
         self.datetime = DateTimeChannel(
