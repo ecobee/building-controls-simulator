@@ -243,21 +243,7 @@ class TestSimulator:
             ],
         )
         master.simulate(local=True, preprocess_check=False)
-        breakpoint()
-        assert (
-            pytest.approx(
-                test_params["expected_result"]["mean_thermostat_temperature"]
-            )
-            == master.simulations[0]
-            .output[STATES.THERMOSTAT_TEMPERATURE]
-            .mean()
-        )
-        assert (
-            pytest.approx(
-                test_params["expected_result"]["mean_thermostat_humidity"]
-            )
-            == master.simulations[0].output[STATES.THERMOSTAT_HUMIDITY].mean()
-        )
+
         # read back stored output and check it
         sim_name = master.simulations[0].sim_name
         _fpath = os.path.join(
@@ -282,7 +268,21 @@ class TestSimulator:
             ].data_client.destination.data_spec.full.spec.items()
             if _v["internal_state"] == STATES.THERMOSTAT_HUMIDITY
         ][0]
-        breakpoint()
+
+        assert (
+            pytest.approx(
+                test_params["expected_result"]["mean_thermostat_temperature"]
+            )
+            == master.simulations[0]
+            .output[STATES.THERMOSTAT_TEMPERATURE]
+            .mean()
+        )
+        assert (
+            pytest.approx(
+                test_params["expected_result"]["mean_thermostat_humidity"]
+            )
+            == master.simulations[0].output[STATES.THERMOSTAT_HUMIDITY].mean()
+        )
         assert (
             pytest.approx(
                 test_params["expected_result"][

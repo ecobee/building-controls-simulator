@@ -164,7 +164,6 @@ class Simulation:
             sim_config=self.config,
             weather_channel=self.data_client.weather,
             datetime_channel=self.data_client.datetime,
-            # fill_epw_path=self.data_client.weather.epw_path,
             preprocess_check=preprocess_check,
         )
 
@@ -262,7 +261,6 @@ class Simulation:
                 step_sensor_input=self.state_estimator_model.step_output,
                 step_weather_input=self.data_client.weather.data.iloc[i],
             )
-
             self.building_model.do_step(
                 t_start=_sim_time[i],
                 t_step=self.step_size_seconds,

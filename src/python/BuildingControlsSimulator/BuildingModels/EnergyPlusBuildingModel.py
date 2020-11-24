@@ -180,6 +180,7 @@ class EnergyPlusBuildingModel(BuildingModel):
         self.idf.preprocess(
             sim_config,
             datetime_channel=datetime_channel,
+            weather_channel=weather_channel,
             preprocess_check=preprocess_check,
         )
 

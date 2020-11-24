@@ -12,6 +12,8 @@ Models:
         This model is not realistic at all, but is included in every
         EnergyPlus installation and for this reason is used to test
         basic I/O and functionality of the simulation platform.
+    heatedbsmt_2story_2300sqft_gasfurnace_AC.idf:
+        Template model for testing `IDFPreprocessor` features.
     
 """
 
@@ -19,8 +21,7 @@ test_params_local = []
 test_params_gcs_dyd = []
 test_params_gbq_flatfiles = []
 
-# if os.environ.get("LOCAL_CACHE_DIR"):
-if False:
+if os.environ.get("LOCAL_CACHE_DIR"):
     test_params_local = [
         {
             "config": {
@@ -52,6 +53,7 @@ if False:
                 "is_energyplus_building": True,
                 "idf_name": "Furnace.idf",
                 "epw_name": "USA_IL_Chicago-OHare.Intl.AP.725300_TMY3.epw",
+                "building_config": {},
             },
             "controller_model": {
                 "is_deadband": True,
@@ -62,10 +64,10 @@ if False:
                 "low_pass_filter_alpha": 0.5,
             },
             "expected_result": {
-                "mean_thermostat_temperature": 31.277347564697266,
-                "mean_thermostat_humidity": 94.8772964477539,
-                "output_format_mean_thermostat_temperature": 88.2989273071289,
-                "output_format_mean_thermostat_humidity": 94.8772964477539,
+                "mean_thermostat_temperature": 31.378896713256836,
+                "mean_thermostat_humidity": 94.83988189697266,
+                "output_format_mean_thermostat_temperature": 88.48159790039062,
+                "output_format_mean_thermostat_humidity": 94.83988189697266,
             },
         },
         {
@@ -98,6 +100,7 @@ if False:
                 "is_energyplus_building": True,
                 "idf_name": "Furnace.idf",
                 "epw_name": "USA_IL_Chicago-OHare.Intl.AP.725300_TMY3.epw",
+                "building_config": {},
             },
             "controller_model": {
                 "is_deadband": True,
@@ -108,16 +111,15 @@ if False:
                 "low_pass_filter_alpha": 0.5,
             },
             "expected_result": {
-                "mean_thermostat_temperature": 30.995126724243164,
-                "mean_thermostat_humidity": 96.03016662597656,
-                "output_format_mean_thermostat_temperature": 87.79023742675781,
-                "output_format_mean_thermostat_humidity": 96.03016662597656,
+                "mean_thermostat_temperature": 31.407203674316406,
+                "mean_thermostat_humidity": 95.72138977050781,
+                "output_format_mean_thermostat_temperature": 88.53276062011719,
+                "output_format_mean_thermostat_humidity": 95.72138977050781,
             },
         },
     ]
 
-# if os.environ.get("DYD_GCS_URI_BASE"):
-if False:
+if os.environ.get("DYD_GCS_URI_BASE"):
     test_params_gcs_dyd = [
         {
             "config": {
@@ -147,8 +149,35 @@ if False:
             },
             "building_model": {
                 "is_energyplus_building": True,
-                "idf_name": "IL_Chicago_gasfurnace_heatedbsmt_IECC_2018_940_upgraded.idf",
+                "idf_name": "heatedbsmt_2story_2300sqft_gasfurnace_AC.idf",
                 "epw_name": "USA_IL_Chicago-OHare.Intl.AP.725300_TMY3.epw",
+                "building_config": {
+                    "infilration_ventilation": {
+                        "ach50": 10,
+                        "wsf": 0.6,
+                    },
+                    "insulation_r_si": {
+                        "Exterior Roof": 1.0,
+                        "Interior Ceiling": 6.7,
+                        "Interior Floor": 0.75,
+                        "Exterior Wall": 5.25,
+                        "Exterior Floor": 5.0,
+                    },
+                    "windows": {
+                        "u_factor": 0.8,
+                        "solar_heat_gain": 0.30,
+                        "visible_transmittance": 0.60,
+                    },
+                    "hvac": {
+                        "heating_stages": 1,
+                        "heating_equipment": "gas_furnace",
+                        "heating_sizing_factor": 0.9,
+                        "cooling_stages": 1,
+                        "cooling_equipment": "dx_ac",
+                        "cooling_sizing_factor": 0.9,
+                    },
+                    "thermal_mass": 1e7,
+                },
             },
             "controller_model": {
                 "is_deadband": True,
@@ -159,10 +188,10 @@ if False:
                 "low_pass_filter_alpha": 0.5,
             },
             "expected_result": {
-                "mean_thermostat_temperature": 20.913745880126953,
-                "mean_thermostat_humidity": 25.508949279785156,
-                "output_format_mean_thermostat_temperature": 69.64488983154297,
-                "output_format_mean_thermostat_humidity": 25.508949279785156,
+                "mean_thermostat_temperature": 20.91022491455078,
+                "mean_thermostat_humidity": 24.17104721069336,
+                "output_format_mean_thermostat_temperature": 69.63801574707031,
+                "output_format_mean_thermostat_humidity": 24.17104721069336,
             },
         },
         {
@@ -193,8 +222,35 @@ if False:
             },
             "building_model": {
                 "is_energyplus_building": True,
-                "idf_name": "IL_Chicago_gasfurnace_heatedbsmt_IECC_2018_940_no_elec_no_dhw.idf",
+                "idf_name": "heatedbsmt_2story_2300sqft_gasfurnace_AC.idf",
                 "epw_name": "USA_IL_Chicago-OHare.Intl.AP.725300_TMY3.epw",
+                "building_config": {
+                    "infilration_ventilation": {
+                        "ach50": 10,
+                        "wsf": 0.6,
+                    },
+                    "insulation_r_si": {
+                        "Exterior Roof": 1.0,
+                        "Interior Ceiling": 6.7,
+                        "Interior Floor": 0.75,
+                        "Exterior Wall": 5.25,
+                        "Exterior Floor": 5.0,
+                    },
+                    "windows": {
+                        "u_factor": 0.8,
+                        "solar_heat_gain": 0.30,
+                        "visible_transmittance": 0.60,
+                    },
+                    "hvac": {
+                        "heating_stages": 1,
+                        "heating_equipment": "gas_furnace",
+                        "heating_sizing_factor": 0.9,
+                        "cooling_stages": 1,
+                        "cooling_equipment": "dx_ac",
+                        "cooling_sizing_factor": 0.9,
+                    },
+                    "thermal_mass": 1e7,
+                },
             },
             "controller_model": {
                 "is_deadband": True,
@@ -205,10 +261,10 @@ if False:
                 "low_pass_filter_alpha": 0.5,
             },
             "expected_result": {
-                "mean_thermostat_temperature": 20.913745880126953,
-                "mean_thermostat_humidity": 25.508949279785156,
-                "output_format_mean_thermostat_temperature": 69.64488983154297,
-                "output_format_mean_thermostat_humidity": 25.508949279785156,
+                "mean_thermostat_temperature": 24.984683990478516,
+                "mean_thermostat_humidity": 49.655948638916016,
+                "output_format_mean_thermostat_temperature": 76.97237396240234,
+                "output_format_mean_thermostat_humidity": 49.655948638916016,
             },
         },
     ]
@@ -243,16 +299,34 @@ if os.environ.get("FLATFILES_GBQ_TABLE"):
             },
             "building_model": {
                 "is_energyplus_building": True,
-                "idf_name": "Chicago_IL_2story_heatedbsmt_gasfurnace_AC.idf",
+                "idf_name": "heatedbsmt_2story_2300sqft_gasfurnace_AC.idf",
                 "epw_name": "USA_IL_Chicago-OHare.Intl.AP.725300_TMY3.epw",
                 "building_config": {
-                    "ach50": 5,
-                    "wsf": 0.6,
-                    "r_si_wall": 5.2,
-                    "r_si_floor": 4.0,
-                    "r_si_ceil": 6.5,
-                    "window_to_wall_ratio": 0.2,
-                    "u_window": 1.1,
+                    "infilration_ventilation": {
+                        "ach50": 10,
+                        "wsf": 0.6,
+                    },
+                    "insulation_r_si": {
+                        "Exterior Roof": 1.0,
+                        "Interior Ceiling": 6.7,
+                        "Interior Floor": 0.75,
+                        "Exterior Wall": 5.25,
+                        "Exterior Floor": 5.0,
+                    },
+                    "windows": {
+                        "u_factor": 0.8,
+                        "solar_heat_gain": 0.30,
+                        "visible_transmittance": 0.60,
+                    },
+                    "hvac": {
+                        "heating_stages": 1,
+                        "heating_equipment": "gas_furnace",
+                        "heating_sizing_factor": 0.9,
+                        "cooling_stages": 1,
+                        "cooling_equipment": "dx_ac",
+                        "cooling_sizing_factor": 0.9,
+                    },
+                    "thermal_mass": 1e7,
                 },
             },
             "controller_model": {
@@ -264,10 +338,10 @@ if os.environ.get("FLATFILES_GBQ_TABLE"):
                 "low_pass_filter_alpha": 0.2,
             },
             "expected_result": {
-                "mean_thermostat_temperature": 20.913745880126953,
-                "mean_thermostat_humidity": 25.508949279785156,
-                "output_format_mean_thermostat_temperature": 69.64488983154297,
-                "output_format_mean_thermostat_humidity": 25.508949279785156,
+                "mean_thermostat_temperature": 20.722007751464844,
+                "mean_thermostat_humidity": 20.880502700805664,
+                "output_format_mean_thermostat_temperature": 693.014892578125,
+                "output_format_mean_thermostat_humidity": 20.880502700805664,
             },
         },
     ]

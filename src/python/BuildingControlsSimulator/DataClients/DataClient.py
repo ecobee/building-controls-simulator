@@ -209,7 +209,9 @@ class DataClient:
             _data[STATES.CALENDAR_EVENT] = _data[STATES.CALENDAR_EVENT].fillna(
                 na_code_name
             )
+            # bfill then ffill to handle where no data after null
             _data = _data.fillna(method="bfill", limit=None)
+            _data = _data.fillna(method="ffill", limit=None)
 
             _data = DataClient.resample_to_step_size(
                 df=_data,
@@ -274,7 +276,6 @@ class DataClient:
             spec=self.internal_spec.sensors,
         )
         self.sensors.drop_unused_room_sensors()
-
         self.weather = WeatherChannel(
             data=_data[
                 self.internal_spec.intersect_columns(
