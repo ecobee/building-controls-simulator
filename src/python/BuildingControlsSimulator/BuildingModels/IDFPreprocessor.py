@@ -16,6 +16,8 @@ from BuildingControlsSimulator.DataClients.DataStates import STATES
 
 logger = logging.getLogger(__name__)
 
+DSOA_OBJ_BASE_NAME = "prep_dsoa_"
+
 
 @attr.s(kw_only=True, init=True)
 class IDFPreprocessor:
@@ -23,6 +25,7 @@ class IDFPreprocessor:
 
     # user must supply an idf file as either 1) full path, or 2) a file in self.idf_dir
     idf_file = attr.ib()
+    building_config = attr.ib(factory=dict)
 
     init_temperature = attr.ib(type=float, default=21.0)
     init_humidity = attr.ib(type=float, default=50.0)
@@ -152,6 +155,7 @@ class IDFPreprocessor:
         self,
         sim_config,
         datetime_channel,
+        weather_channel,
         init_temperature=21.0,
         preprocess_check=False,
     ):
@@ -174,13 +178,21 @@ class IDFPreprocessor:
             logger.info(f"Making new preprocessed IDF: {self.idf_prep_path}")
             self.get_zone_info()
             # prepare idf file
+            self.prep_remove_unused_objects()
             self.prep_ep_version(self.ep_version)
+            self.prep_building()
             self.prep_simulation_control()
+            self.prep_shadow_calculation()
             self.prep_runperiod(sim_config, datetime_channel)
             self.prep_timesteps(self.timesteps_per_hour)
+            self.prep_algorithms()
             self.prep_ground_boundary_temp()
-            self.prep_remove_unused_objects()
             self.prep_ext_int()
+            self.prep_insulation()
+            self.prep_hvac(datetime_channel, weather_channel)
+            self.prep_windows()
+            self.prep_ventilation_infiltation()
+            self.prep_thermal_mass()
 
             # set the intial temperature via the initial setpoint which will be tracked
             # in the warmup simulation
@@ -292,6 +304,54 @@ class IDFPreprocessor:
     def prep_remove_unused_objects(self):
         self.popallidfobjects("Site:Location")
 
+    def prep_building(self):
+        self.popallidfobjects("Building")
+        self.ep_idf.newidfobject(
+            "Building",
+            Name="prep_building_name",
+            North_Axis=0,
+            Terrain="Suburbs",
+            Loads_Convergence_Tolerance_Value=0.3,
+            Temperature_Convergence_Tolerance_Value=0.3,
+            Solar_Distribution="MinimalShadowing",
+            Maximum_Number_of_Warmup_Days=20,
+            Minimum_Number_of_Warmup_Days=2,
+        )
+
+    def prep_algorithms(self):
+        """
+        See Simulation Parameters group:
+        https://bigladdersoftware.com/epx/docs/9-4/input-output-reference/group-simulation-parameters.html#hvacystemrootfindingalgorithm
+        """
+        self.popallidfobjects("SurfaceConvectionAlgorithm:Inside")
+        self.ep_idf.newidfobject(
+            "SurfaceConvectionAlgorithm:Inside", Algorithm="TARP"
+        )
+
+        self.popallidfobjects("SurfaceConvectionAlgorithm:Outside")
+        self.ep_idf.newidfobject(
+            "SurfaceConvectionAlgorithm:Outside", Algorithm="DOE-2"
+        )
+
+        self.popallidfobjects("HeatBalanceAlgorithm")
+        self.ep_idf.newidfobject(
+            "HeatBalanceAlgorithm", Algorithm="ConductionTransferFunction"
+        )
+
+    def prep_shadow_calculation(self):
+        self.popallidfobjects("ShadowCalculation")
+        self.ep_idf.newidfobject(
+            "ShadowCalculation",
+            Shading_Calculation_Method="PolygonClipping",
+            Shading_Calculation_Update_Frequency_Method="Periodic",
+            Shading_Calculation_Update_Frequency=20,
+            Maximum_Figures_in_Shadow_Overlap_Calculations=200,
+            Polygon_Clipping_Algorithm="SutherlandHodgman",
+            Pixel_Counting_Resolution=128,
+            Sky_Diffuse_Modeling_Algorithm="SimpleSkyDiffuseModeling",
+            Output_External_Shading_Calculation_Results="No",
+        )
+
     def prep_simulation_control(self):
         """
         See V8-9-0-Energy+.idd:
@@ -309,6 +369,548 @@ class IDFPreprocessor:
             Maximum_Number_of_HVAC_Sizing_Simulation_Passes=2,
         )
 
+    def prep_hvac(self, datetime_channel, weather_channel):
+        # TODO: set HVAC equipment from config
+
+        if "hvac" not in self.building_config.keys():
+            return
+
+        hvac_config = self.building_config["hvac"]
+
+        # auto sizing parameters
+        self.popallidfobjects("SizingPeriod:DesignDay")
+        self.popallidfobjects("Sizing:Parameters")
+        self.popallidfobjects("Sizing:Zone")
+        # TODO: add generated parameters for system sizing
+        # self.popallidfobjects("Sizing:System")
+
+        # set global sizing factors for over/undersizing
+        self.ep_idf.newidfobject(
+            "Sizing:Parameters",
+            Heating_Sizing_Factor=hvac_config.get(
+                "heating_sizing_factor", 1.0
+            ),
+            Cooling_Sizing_Factor=hvac_config.get(
+                "cooling_sizing_factor", 1.0
+            ),
+        )
+        for zone_name in self.occupied_zones:
+
+            self.ep_idf.newidfobject(
+                "Sizing:Zone",
+                Zone_or_ZoneList_Name=zone_name,
+                Zone_Cooling_Design_Supply_Air_Temperature_Input_Method="SupplyAirTemperature",
+                Zone_Cooling_Design_Supply_Air_Temperature=12,
+                Zone_Heating_Design_Supply_Air_Temperature_Input_Method="SupplyAirTemperature",
+                Zone_Heating_Design_Supply_Air_Temperature=50,
+                Zone_Cooling_Design_Supply_Air_Humidity_Ratio=0.008,
+                Zone_Heating_Design_Supply_Air_Humidity_Ratio=0.008,
+                Design_Specification_Outdoor_Air_Object_Name=DSOA_OBJ_BASE_NAME
+                + zone_name,
+                Cooling_Design_Air_Flow_Method="DesignDay",
+                Cooling_Minimum_Air_Flow_per_Zone_Floor_Area=0.000762,
+                Heating_Design_Air_Flow_Method="DesignDay",
+                Heating_Maximum_Air_Flow_per_Zone_Floor_Area=0.002032,
+                Heating_Maximum_Air_Flow=0.1415762,
+                Heating_Maximum_Air_Flow_Fraction=0.3,
+                Account_for_Dedicated_Outdoor_Air_System="No",
+                Dedicated_Outdoor_Air_System_Control_Strategy="NeutralSupplyAir",
+                Dedicated_Outdoor_Air_Low_Setpoint_Temperature_for_Design="autosize",
+                Dedicated_Outdoor_Air_High_Setpoint_Temperature_for_Design="autosize",
+            )
+
+        # use epw data for climate to set deisgn day values
+        winter_rec = weather_channel.fill_epw_data[
+            weather_channel.fill_epw_data.temp_air
+            == weather_channel.fill_epw_data.temp_air.min()
+        ].iloc[0]
+
+        self.ep_idf.newidfobject(
+            "SizingPeriod:DesignDay",
+            Name="winter_design_day",
+            Month=winter_rec["month"],
+            Day_of_Month=winter_rec["day"],
+            Day_Type="WinterDesignDay",
+            Maximum_DryBulb_Temperature=winter_rec["temp_air"],
+            Daily_DryBulb_Temperature_Range=0,
+            DryBulb_Temperature_Range_Modifier_Type="DefaultMultipliers",
+            Humidity_Condition_Type="DewPoint",
+            Wetbulb_or_DewPoint_at_Maximum_DryBulb=winter_rec["temp_dew"],
+            Barometric_Pressure=winter_rec["atmospheric_pressure"],
+            Wind_Speed=winter_rec["wind_speed"],
+            Wind_Direction=winter_rec["wind_direction"],
+            Rain_Indicator="No",
+            Snow_Indicator="No",
+            Daylight_Saving_Time_Indicator="No",
+            Solar_Model_Indicator="ASHRAEClearSky",
+            Sky_Clearness=0.0,
+        )
+
+        summer_rec = weather_channel.fill_epw_data[
+            weather_channel.fill_epw_data.temp_air
+            == weather_channel.fill_epw_data.temp_air.max()
+        ].iloc[0]
+
+        self.ep_idf.newidfobject(
+            "SizingPeriod:DesignDay",
+            Name="summer_design_day",
+            Month=summer_rec["month"],
+            Day_of_Month=summer_rec["day"],
+            Day_Type="SummerDesignDay",
+            Maximum_DryBulb_Temperature=summer_rec["temp_air"],
+            Daily_DryBulb_Temperature_Range=0,
+            DryBulb_Temperature_Range_Modifier_Type="DefaultMultipliers",
+            Humidity_Condition_Type="DewPoint",
+            Wetbulb_or_DewPoint_at_Maximum_DryBulb=summer_rec["temp_dew"],
+            Barometric_Pressure=summer_rec["atmospheric_pressure"],
+            Wind_Speed=summer_rec["wind_speed"],
+            Wind_Direction=summer_rec["wind_direction"],
+            Rain_Indicator="No",
+            Snow_Indicator="No",
+            Daylight_Saving_Time_Indicator="No",
+            Solar_Model_Indicator="ASHRAEClearSky",
+            Sky_Clearness=1.0,
+        )
+
+    def prep_windows(self):
+
+        if "windows" not in self.building_config.keys():
+            return
+
+        window_config = self.building_config["windows"]
+        # TODO: window_to_wall ratio
+
+        # set WindowMaterial:SimpleGlazingSystem obj and connect to windows
+
+        window_name = "prep_window_material"
+        self.ep_idf.newidfobject(
+            "WindowMaterial:SimpleGlazingSystem",
+            Name=window_name,
+            UFactor=window_config["u_factor"],
+            Solar_Heat_Gain_Coefficient=window_config["solar_heat_gain"],
+            Visible_Transmittance=window_config["visible_transmittance"],
+        )
+
+        cons_name = "prep_window_construction"
+        self.ep_idf.newidfobject(
+            "Construction", Name=cons_name, Outside_Layer=window_name
+        )
+
+        for window in self.ep_idf.idfobjects["Window"]:
+            window.Construction_Name = cons_name
+
+    def prep_thermal_mass(self):
+        """Add thermal mass evenly distributed in occupied zones."""
+
+        if "thermal_mass" not in self.building_config.keys():
+            return
+
+        # remove any lingering thermal mass
+        self.popallidfobjects("InternalMass")
+
+        # use wood thermal properties
+        thickness = 0.25  # kg
+        density = 600.0  # kg/m^3
+        specific_heat = 1700  # J/kg*K
+        conductivity = 0.12
+
+        equivalent_area = self.building_config["thermal_mass"] / (
+            thickness * density * specific_heat
+        )
+
+        # make material to avoid collisions
+        mat_name = "prep_thermal_mass_material"
+        self.ep_idf.newidfobject(
+            "Material",
+            Name=mat_name,
+            Roughness="MediumSmooth",
+            Thickness=thickness,
+            Conductivity=conductivity,
+            Density=density,
+            Specific_Heat=specific_heat,
+        )
+
+        # make construction
+        cons_name = "prep_thermal_mass_construction"
+        self.ep_idf.newidfobject(
+            "Construction", Name=cons_name, Outside_Layer=mat_name
+        )
+
+        for zone in self.occupied_zones:
+            self.ep_idf.newidfobject(
+                "InternalMass",
+                Name="prep_thermal_mass_obj",
+                Construction_Name=cons_name,
+                Zone_or_ZoneList_Name=zone,
+                Surface_Area=equivalent_area / len(self.occupied_zones),
+            )
+
+    def prep_insulation(self):
+        """
+        Specify insulation values in R-si for all exterior constructions of building
+        envelope using building config.
+
+        Building config like:
+        {
+            "insulation_r_si": {
+                "Exterior Roof": 1.5,
+                "Interior Ceiling": 6.5,
+                "Interior Floor": 1.5,
+                "Exterior Wall": 5.2,
+                "Exterior Floor": 4.5,
+            }
+        }
+
+        """
+        if "insulation_r_si" not in self.building_config.keys():
+            return
+
+        insulation_config = self.building_config["insulation_r_si"]
+
+        cons = [
+            cons
+            for cons in self.ep_idf.idfobjects["Construction"]
+            if cons.Name in insulation_config.keys()
+        ]
+
+        # use equivalent of EPS insulation: k = 0.035 (W/m^2⋅K) and
+        k_eps = 0.035
+
+        for con in cons:
+            diff_r_si = insulation_config[con.Name] - con.rvalue
+            mat_name = f"{con.Name}_prep_insulation_material"
+            layers = [con.Outside_Layer]
+            for layer_idx in range(2, 10):
+                _layer = getattr(con, f"Layer_{layer_idx}")
+                if _layer:
+                    layers.append(_layer)
+                else:
+                    break
+
+            # if removing insulation, replace insulation layer
+            # if adding insulation add new layer
+            # note: must generate new materials per construction to avoid
+            # name collisions and re-changing materials
+            if diff_r_si < 0:
+                mats = []
+                for layer in layers:
+                    mats.append(
+                        next(
+                            mat
+                            for mat in self.ep_idf.idfobjects["Material"]
+                            if mat.Name == layer
+                        )
+                    )
+
+                # find material layer with max R-si value in current construction
+                r_values = [mat.rvalue for mat in mats]
+                mat_idx = r_values.index(max(r_values))
+
+                # take this material and replace it with EPS meet desired R
+                if r_values[mat_idx] + diff_r_si > 0:
+                    self.ep_idf.newidfobject(
+                        "Material",
+                        Name=mat_name,
+                        Roughness="Rough",
+                        Thickness=(r_values[mat_idx] + diff_r_si) * k_eps,
+                        Conductivity=k_eps,
+                        Density=30.0,
+                        Specific_Heat=1300,
+                    )
+                    if mat_idx == 0:
+                        setattr(con, "Outside_Layer", mat_name)
+                    else:
+                        setattr(con, f"Layer_{mat_idx+1}", mat_name)
+                else:
+                    raise NotImplementedError(
+                        f"insulation_config[{con.Name}]={insulation_config[con.Name]}. "
+                        + f"Reducing insulation beyond max R layer not implemented."
+                    )
+            else:
+                # add additional layer on inside containing difference in R-si
+                # generate material of exact thickness required
+                self.ep_idf.newidfobject(
+                    "Material",
+                    Name=mat_name,
+                    Roughness="Rough",
+                    Thickness=diff_r_si * k_eps,
+                    Conductivity=k_eps,
+                    Density=30.0,
+                    Specific_Heat=1300,
+                )
+
+                setattr(con, f"Layer_{len(layers)+1}", mat_name)
+
+    def prep_ventilation_infiltation(self):
+        """Use ASHRAE Standard 62.2 method for calculating infiltration and
+        ventilation requirement.
+
+        All areas in m^2, flows in L/s.
+
+        # Q_total requirement
+
+        (4-1b): Q_total = 0.15*A_floor + 3.5*(N_br + 1)
+        A_floor = floor area of conditioned/occupied space (includes heated basements)
+        N_br = number bedrooms (proxy for number of occupants)
+
+        (4-2): Q_fan = Q_total - phi(Q_inf * A_ext)
+        phi = Q_inf/Q_tot, or 1 for balanced ventilation systems
+        A_ext = 1 for detached dwelling, otherwise ratio of exterior not attached
+
+        (4-3): Q_inf = 0.052 * Q50 * wsf * (H/H_r)^z
+        Q50 = Air Change per Hour at 50pa pressurization (ACH50)
+        (ACH50 defined in ASTM E1827 or ANSI/RESNET/ICC Standard 380)
+        wsf = weather and shielding factor in Appendix B for site location
+        H = above grade height of pressure boundary
+        H_r = reference height (2.5m)
+        z = 0.4 for Effective Annual Average Infiltration Rate
+
+        see: ASHRAE Standard 62.2 Section 4. Dwelling-Unit Ventilation
+        https://ashrae.iwrapper.com/ASHRAE_PREVIEW_ONLY_STANDARDS/STD_62.2_2019
+
+        ZoneInfiltration:DesignFlowRate requires:
+        Constant_Term_Coefficient
+        Temperature_Term_Coefficient
+        Velocity_Term_Coefficient
+        Velocity_Squared_Term_Coefficient
+
+        BLAST (one of the EnergyPlus predecessors) used the following values as
+        defaults:
+        Constant_Term_Coefficient = 0.606
+        Temperature_Term_Coefficient = 0.03636
+        Velocity_Term_Coefficient = 0.1177
+        Velocity_Squared_Term_Coefficient = 0.0
+        These coefficients produce a value
+        of 1.0 at 0C deltaT and 3.35 m/s (7.5 mph) windspeed, which corresponds
+        to a typical summer condition. At a winter condition of 40C deltaT and
+        6 m/s (13.4 mph) windspeed, these coefficients would increase the
+        infiltration rate by a factor of 2.75.
+
+        In DOE-2 (the other EnergyPlus predecessor), the air change method
+        defaults are (adjusted to SI units):
+        Constant_Term_Coefficient = 0.0
+        Temperature_Term_Coefficient = 0.224
+        Velocity_Term_Coefficient = 0.0
+        Velocity_Squared_Term_Coefficient = 0.0.
+        With these coefficients, the summer conditions above would give a factor of
+        0.75, and the winter conditions would give 1.34. A windspeed of 4.47 m/s
+        (10 mph) gives a factor of 1.0.
+
+        These coefficients can be estimated based on Sherman and Grimsrud (1980)
+        model.
+
+        q_inf = sqrt(q_s^2 + q_w^2) (47)
+
+        ## stack infiltration airflow
+        q_s = c * C_s * abs(T_in - T_out)^n
+        c = flow coefficient
+        C_s = stack coefficient
+        n = pressure coefficient (0.67)
+
+        a simple value for c * C_s = 0.05 * 0.07 = 0.0035
+
+        ## wind infiltration airlfow
+        q_w = c * C_w * (s*U)^(2*n) (wind airflow)
+
+        c = flow coefficient
+        C_s = wind coefficient
+        s = shelter coefficient
+        U = G * U_met
+        G = wind speed multiplier
+        n = pressure coefficient (0.67)
+        Note: The pressure coefficient (n) and flow coefficient (c) are
+        determined empirically and comes from the geometry of the
+        infiltration cracks, see equation (40).
+        The value of n generally is between 0.6 and 0.7.
+        The value of c generally is between 0.050 and 0.100 m3 / (s*Pa^n)
+
+        a simple value for c * C_w = 0.05 * 0.15 = 0.0075
+
+        assuming q_s ~= q_w then: q_inf = q_s/sqrt(2) + q_w/sqrt(2)
+        therefore adding the coefficeint 1/sqrt(2) to each independently
+        allows for a lower bound estimate of each in super position.
+
+        The following formulas can then be using to estimate
+        Velocity_Term_Coefficient
+        Temperature_Term_Coefficient = 0.0035 * 1/sqrt(2) = 0.0025
+        Velocity_Squared_Term_Coefficient = 0.0075 * 1/sqrt(2) = 0.0053
+
+        assuming averge velocity is 7 m/s:
+        Velocity_Term_Coefficient = 0.0371
+
+        Therefore:
+        Constant_Term_Coefficient = 0.606
+        Temperature_Term_Coefficient = 0.0025
+        Velocity_Term_Coefficient = 0.0371
+        Velocity_Squared_Term_Coefficient = 0.0
+
+        # TODO: alternate method:
+        Sherman and Grimsrud (1980) model
+        EnergyPLus implements using ZoneInfiltration:EffectiveLeakageArea
+        Can specify using ELA_4, which can be computed from NL value, or ACH50
+        using equations from ASHRAE Fundamentals Handbook 2017.
+
+        # TODO: alternate method:
+        Enhanced Model: Infiltration method from Walker and Wilson (1993)
+        from ASHRAE Fundamentals Handbook 2017, Chapter 16.25
+        Equation (47), (49) and (50)
+
+        q_inf = sqrt(q_s^2 + q_w^2) (47)
+
+        See: EnergyPlus Group Airflow
+        https://bigladdersoftware.com/epx/docs/9-4/input-output-reference/group-airflow.html
+        """
+
+        if "infilration_ventilation" not in self.building_config.keys():
+            return
+
+        vent_objs = [
+            "ZoneInfiltration:DesignFlowRate",
+            "ZoneInfiltration:EffectiveLeakageArea",
+            "ZoneInfiltration:FlowCoefficient",
+            "ZoneVentilation:DesignFlowRate",
+            "ZoneVentilation:WindandStackOpenArea",
+        ]
+
+        vent_design_zones = []
+        for vent_obj in vent_objs:
+            vent_design_zones = set(vent_design_zones) | set(
+                [
+                    _zone
+                    for obj in self.ep_idf.idfobjects[
+                        "ZoneVentilation:DesignFlowRate"
+                    ]
+                    for _zone in self.expand_zones(obj.Zone_or_ZoneList_Name)
+                ]
+            )
+            self.popallidfobjects(vent_obj)
+
+        occupied_zones = [
+            _zone
+            for _zone in self.ep_idf.idfobjects["Zone"]
+            if _zone.Name in self.occupied_zones
+        ]
+
+        # Z = 0.0 is considered to be ground level
+        z_ground = 0.0
+        z_coords = []
+        volume_total = 0.0
+        zone_volumes = {}
+        a_floor = 0.0
+        for _zone in self.ep_idf.idfobjects["Zone"]:
+            if _zone.Name in self.occupied_zones:
+                zone_floor_area = 0
+                zone_x_coords = []
+                zone_y_coords = []
+                zone_z_coords = []
+                for _surf in _zone.zonesurfaces:
+
+                    zone_x_coords = zone_x_coords + [
+                        xyz[0] for xyz in _surf.coords
+                    ]
+                    zone_y_coords = zone_y_coords + [
+                        xyz[1] for xyz in _surf.coords
+                    ]
+                    zone_z_coords = zone_z_coords + [
+                        xyz[2] for xyz in _surf.coords
+                    ]
+                    if _surf.Surface_Type == "Floor":
+                        # zone may have multiple floors
+                        zone_floor_area += _surf.area
+
+                zone_length = max(zone_x_coords) - min(zone_x_coords)
+                zone_width = max(zone_y_coords) - min(zone_y_coords)
+                zone_height = max(zone_z_coords) - min(zone_z_coords)
+                # accumulation variables
+                z_coords = z_coords + zone_z_coords
+                a_floor += zone_floor_area
+                zone_volumes[_zone.Name] = (
+                    zone_length * zone_width * zone_height
+                )
+                volume_total += zone_volumes[_zone.Name]
+
+        height_above_ground = max(z_coords) - max(min(z_coords), z_ground)
+
+        # we assume that the number of bedrooms are equal to number of people
+        n_br = sum(
+            [
+                people_obj.Number_of_People
+                for people_obj in self.ep_idf.idfobjects["People"]
+            ]
+        )
+
+        # equation 4-1b
+        req_q_total = 0.15 * a_floor + 3.5 * (n_br + 1)
+
+        # equation 4-3
+        # q50 is expressed in L/s
+        q50 = (
+            volume_total
+            * self.building_config["infilration_ventilation"]["ach50"]
+            * (1000 / 3600)
+        )
+        q_inf = (
+            0.052
+            * q50
+            * self.building_config["infilration_ventilation"]["wsf"]
+            * pow((height_above_ground / 2.5), 0.4)
+        )
+
+        # equation 4-2
+        # assume unbalanced ventilation
+        phi = q_inf / req_q_total
+        if "a_ext" in self.building_config.keys():
+            a_ext = self.building_config["infilration_ventilation"]["a_ext"]
+        else:
+            # assume detached
+            a_ext = 1.0
+
+        q_fan = req_q_total - phi * (q_inf * a_ext)
+
+        for zone_name in vent_design_zones:
+            self.ep_idf.newidfobject(
+                "ZoneInfiltration:DesignFlowRate",
+                Name="BCS_infiltration",
+                Zone_or_ZoneList_Name=zone_name,
+                Schedule_Name="always_avail",
+                Design_Flow_Rate_Calculation_Method="Flow/Zone",
+                Design_Flow_Rate=q_inf
+                * (zone_volumes[zone_name] / volume_total)
+                / 1000.0,
+                Constant_Term_Coefficient=0.606,
+                Temperature_Term_Coefficient=0.0025,
+                Velocity_Term_Coefficient=0.0371,
+                Velocity_Squared_Term_Coefficient=0.0,
+            )
+
+            # set sizing params for infiltration
+            self.popallidfobjects("DesignSpecification:OutdoorAir")
+            self.ep_idf.newidfobject(
+                "DesignSpecification:OutdoorAir",
+                Name=DSOA_OBJ_BASE_NAME + zone_name,
+                Outdoor_Air_Method="Flow/Zone",
+                Outdoor_Air_Flow_per_Zone=q_inf
+                * (zone_volumes[zone_name] / volume_total)
+                / 1000.0,
+            )
+
+        # Exception to 4.1.2:
+        # if q_fan is less than 7 L/s no mechanical ventilation is required
+        if q_fan > 7.0:
+            # add mechanical ventilation using ACH method for all vented zones
+            for zone_name in vent_design_zones:
+                self.ep_idf.newidfobject(
+                    "ZoneVentilation:DesignFlowRate",
+                    Name="BCS_mech_ventilation",
+                    Zone_or_ZoneList_Name=zone_name,
+                    Schedule_Name="always_avail",
+                    Design_Flow_Rate_Calculation_Method="Flow/Zone",
+                    Design_Flow_Rate=q_fan
+                    * (zone_volumes[zone_name] / volume_total)
+                    / 1000.0,
+                    Ventilation_Type="Exhaust",
+                )
+
     def prep_runperiod(self, sim_config, datetime_channel):
         """This is not used for FMU export of energyplus
         https://simulationresearch.lbl.gov/fmu/EnergyPlus/export/userGuide/usage.html
@@ -319,7 +921,7 @@ class IDFPreprocessor:
         # However, the entry Day of Week for Start Day will be used.
 
         # To best make use of this the RUNPERIOD will be set appropriately in
-        # coordination with the available data, simulation control, 
+        # coordination with the available data, simulation control,
         # and weather file.
         self.popallidfobjects("RunPeriod")
         # convert to local time for setting RunPeriod
@@ -372,11 +974,12 @@ class IDFPreprocessor:
 
     def prep_timesteps(self, timesteps_per_hour):
         """
-        See V8-9-0-Energy+.idd:
+        Set timesteps for model.
         """
-        self.ep_idf.idfobjects["TIMESTEP"][
-            0
-        ].Number_of_Timesteps_per_Hour = timesteps_per_hour
+        self.popallidfobjects("Timestep")
+        self.ep_idf.newidfobject(
+            "Timestep", Number_of_Timesteps_per_Hour=timesteps_per_hour
+        )
 
     def prep_ep_version(self, target_version):
         """
@@ -505,18 +1108,7 @@ class IDFPreprocessor:
             Sinusoidal_Variation_of_Constant_Temperature_Coefficient="No",
             Period_of_Sinusoidal_Variation=24,
             Previous_Other_Side_Temperature_Coefficient=0.0,
-            # Minimum_Other_Side_Temperature_Limit=None,
-            # Maximum_Other_Side_Temperature_Limit=None,
         )
-
-        # self.ep_idf.newidfobject(
-        #     "Schedule:Compact",
-        #     Name="scheduleGroundBoundaryTemp",
-        #     Lower_Limit_Value=-100.0,
-        #     Upper_Limit_Value=200.0,
-        #     Numeric_Type="CONTINUOUS",
-        #     Unit_Type="Temperature",
-        # )
 
     def prep_onoff_setpt_control(
         self,
@@ -595,7 +1187,7 @@ class IDFPreprocessor:
             Initial_Value=FMU_control_type_init,
         )
 
-        # over write ZoneControl:Thermostat control objects
+        # overwrite ZoneControl:Thermostat control objects
         for tstat in self.ep_idf.idfobjects["zonecontrol:thermostat"]:
 
             tstat.Control_Type_Schedule_Name = control_schedule_type_name

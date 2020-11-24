@@ -78,9 +78,9 @@ class GBQDataSource(DataSource, ABC):
         # use_bqstorage_api=False
         # BigQuery Storage API allows downloading large (>125 MB) query results
         # more quickly at an increased cost. We are querying once per ID, which
-        # should be no more than 1 MB.
+        # should be no more than 50 MB.
         # max_results=1,000,000
-        # 8760 * 12 = 105120 records per thermostat-year
+        # 8760 * 12 = 105,120 records per thermostat-year
         # use max_results as guard to query accidentaly getting multiple datasets
         # there should never be 1,000,000 results for a single identifier
 

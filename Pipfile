@@ -26,7 +26,7 @@ plotly = "*"
 ipywidgets = "*"
 psutil = "*"
 attrs = "*"
-google-cloud-storage = "*"
+google-cloud-storage = "2.3.1"
 pandas-gbq = "*"
 tqdm = "*"
 BuildingControlsSimulator = {editable = true,path = "."}

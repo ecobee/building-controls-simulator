@@ -14,6 +14,15 @@ logger = logging.getLogger(__name__)
 
 @attr.s(kw_only=True)
 class SensorsChannel(DataChannel):
+    def __attrs_post_init__(self):
+        # validate sensor data
+        if all(self.data[STATES.THERMOSTAT_MOTION].isnull()):
+            raise NotImplementedError(
+                "Support for devices without thermostat motion sensor."
+            )
+
+        self.drop_unused_room_sensors()
+
     def drop_unused_room_sensors(self):
         """null room sensors temperature and motion data can safely be dropped"""
         drop_columns = []

@@ -209,7 +209,9 @@ class DataClient:
             _data[STATES.CALENDAR_EVENT] = _data[STATES.CALENDAR_EVENT].fillna(
                 na_code_name
             )
+            # bfill then ffill to handle where no data after null
             _data = _data.fillna(method="bfill", limit=None)
+            _data = _data.fillna(method="ffill", limit=None)
 
             _data = DataClient.resample_to_step_size(
                 df=_data,
@@ -224,10 +226,11 @@ class DataClient:
             ] = pd.NA
 
         else:
-            logger.error(
+            raise ValueError(
                 "No full_data_periods for requested duration: "
                 + f"start_utc={self.sim_config['start_utc']}, "
-                + f"end_utc={self.sim_config['end_utc']}"
+                + f"end_utc={self.sim_config['end_utc']} "
+                + f"with min_sim_period={self.sim_config['min_sim_period']}"
             )
 
         self.datetime = DateTimeChannel(
@@ -273,7 +276,6 @@ class DataClient:
             spec=self.internal_spec.sensors,
         )
         self.sensors.drop_unused_room_sensors()
-
         self.weather = WeatherChannel(
             data=_data[
                 self.internal_spec.intersect_columns(
