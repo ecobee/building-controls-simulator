@@ -898,10 +898,6 @@ class IDFPreprocessor:
         # if q_fan is less than 7 L/s no mechanical ventilation is required
         if q_fan > 7.0:
             # add mechanical ventilation using ACH method for all vented zones
-            logger.warn(
-                "UNTESTED: Using IDFPreprocessor inserted mechanical ventilation."
-            )
-            # self.ep_idf.newidfobject("ZoneList", "BCS_vent_zones", list(vent_design_zones)[0])
             for zone_name in vent_design_zones:
                 self.ep_idf.newidfobject(
                     "ZoneVentilation:DesignFlowRate",
