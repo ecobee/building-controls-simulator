@@ -28,6 +28,7 @@ class WeatherChannel(DataChannel):
     epw_path = attr.ib(default=None)
     epw_data = attr.ib(factory=dict)
     epw_meta = attr.ib(factory=dict)
+    fill_epw_data = attr.ib(default=None)
 
     # env variables
     ep_tmy3_cache_dir = attr.ib()
@@ -468,6 +469,12 @@ class WeatherChannel(DataChannel):
         if input_epw_data.empty:
             input_epw_data.columns = self.epw_columns
             return input_epw_data
+
+        if fill_epw_data.empty:
+            raise ValueError(f"fill_epw_data is empty.")
+
+        # save fill_epw_data that was actually used to fill
+        self.fill_epw_data = fill_epw_data
 
         # edit unique copy of input df
         epw_data = input_epw_data.copy(deep=True)

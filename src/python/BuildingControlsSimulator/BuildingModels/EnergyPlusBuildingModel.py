@@ -180,6 +180,7 @@ class EnergyPlusBuildingModel(BuildingModel):
         self.idf.preprocess(
             sim_config,
             datetime_channel=datetime_channel,
+            weather_channel=weather_channel,
             preprocess_check=preprocess_check,
         )
 
@@ -446,11 +447,29 @@ class EnergyPlusBuildingModel(BuildingModel):
 
     @staticmethod
     def make_directories():
-        os.makedirs(os.environ.get("IDF_DIR"), exist_ok=True)
+        _idf_dir = os.environ.get("IDF_DIR")
+        _fmu_dir = os.environ.get("FMU_DIR")
+        _weather_dir = os.environ.get("WEATHER_DIR")
+
+        if not _idf_dir:
+            raise ValueError(
+                "Required environment variable: IDF_DIR is not defined."
+            )
+
+        if not _fmu_dir:
+            raise ValueError(
+                "Required environment variable: FMU_DIR is not defined."
+            )
+
+        if not _weather_dir:
+            raise ValueError(
+                "Required environment variable: WEATHER_DIR is not defined."
+            )
+
+        os.makedirs(_idf_dir, exist_ok=True)
         os.makedirs(
-            os.path.join(os.environ.get("IDF_DIR"), "preprocessed"),
+            os.path.join(_idf_dir, "preprocessed"),
             exist_ok=True,
         )
-        os.makedirs(os.environ.get("FMU_DIR"), exist_ok=True)
-        os.makedirs(os.environ.get("WEATHER_DIR"), exist_ok=True)
-        os.makedirs(os.environ.get("OUTPUT_DIR"), exist_ok=True)
+        os.makedirs(_fmu_dir, exist_ok=True)
+        os.makedirs(_weather_dir, exist_ok=True)

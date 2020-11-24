@@ -143,7 +143,7 @@ class TestSimulator:
                 )
 
         elif data_client_params["is_gbq_source"]:
-            _source = GBQSource(
+            _source = GBQDataSource(
                 data_spec=data_client_params["source_data_spec"],
                 gcp_project=data_client_params["gcp_project"],
                 gbq_table=data_client_params["gbq_table"],
@@ -163,24 +163,18 @@ class TestSimulator:
     def get_building_model(self, building_model_params):
         _building = None
         if building_model_params["is_energyplus_building"]:
-            if building_model_params["epw_name"]:
-                _building = EnergyPlusBuildingModel(
-                    idf=IDFPreprocessor(
-                        idf_file=self.get_idf_path(
-                            building_model_params["idf_name"]
-                        ),
-                        debug=True,
+            _building = EnergyPlusBuildingModel(
+                idf=IDFPreprocessor(
+                    idf_file=self.get_idf_path(
+                        building_model_params["idf_name"]
                     ),
-                    fill_epw_path=self.get_epw_path(
-                        building_model_params["epw_name"]
-                    ),
-                )
-            else:
-                _building = EnergyPlusBuildingModel(
-                    idf=IDFPreprocessor(
-                        idf_file=building_model_params["idf_name"], debug=True
-                    ),
-                )
+                    building_config=building_model_params["building_config"],
+                    debug=True,
+                ),
+                fill_epw_path=self.get_epw_path(
+                    building_model_params["epw_name"]
+                ),
+            )
 
         return _building
 
@@ -249,21 +243,7 @@ class TestSimulator:
             ],
         )
         master.simulate(local=True, preprocess_check=False)
-        breakpoint()
-        assert (
-            pytest.approx(
-                test_params["expected_result"]["mean_thermostat_temperature"]
-            )
-            == master.simulations[0]
-            .output[STATES.THERMOSTAT_TEMPERATURE]
-            .mean()
-        )
-        assert (
-            pytest.approx(
-                test_params["expected_result"]["mean_thermostat_humidity"]
-            )
-            == master.simulations[0].output[STATES.THERMOSTAT_HUMIDITY].mean()
-        )
+
         # read back stored output and check it
         sim_name = master.simulations[0].sim_name
         _fpath = os.path.join(
@@ -288,7 +268,21 @@ class TestSimulator:
             ].data_client.destination.data_spec.full.spec.items()
             if _v["internal_state"] == STATES.THERMOSTAT_HUMIDITY
         ][0]
-        breakpoint()
+
+        assert (
+            pytest.approx(
+                test_params["expected_result"]["mean_thermostat_temperature"]
+            )
+            == master.simulations[0]
+            .output[STATES.THERMOSTAT_TEMPERATURE]
+            .mean()
+        )
+        assert (
+            pytest.approx(
+                test_params["expected_result"]["mean_thermostat_humidity"]
+            )
+            == master.simulations[0].output[STATES.THERMOSTAT_HUMIDITY].mean()
+        )
         assert (
             pytest.approx(
                 test_params["expected_result"][
