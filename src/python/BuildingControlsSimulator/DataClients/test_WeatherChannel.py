@@ -55,9 +55,3 @@ class TestWeatherChannel:
         cols = data.columns.to_list()
 
         assert cols == self.weather.epw_columns
-
-    @pytest.mark.skip(reason="Not implemented.")
-    def test_get_archive_tmy3(self):
-        lat = 33.481136
-        lon = -112.078232
-        self.weather.get_archive_tmy3(lat, lon)

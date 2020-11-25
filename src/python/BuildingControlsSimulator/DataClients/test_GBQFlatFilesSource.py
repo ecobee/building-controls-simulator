@@ -68,8 +68,11 @@ class TestGBQFlatFilesSource:
         for _idx, _sim_config in cls.sim_config.iterrows():
             dc = copy.deepcopy(cls.data_client)
             dc.sim_config = _sim_config
-
-            dc.get_data()
+            if _sim_config["identifier"] == "9999999":
+                with pytest.raises(ValueError):
+                    dc.get_data()
+            else:
+                dc.get_data()
 
             cls.data_clients.append(dc)
 
@@ -83,16 +86,17 @@ class TestGBQFlatFilesSource:
     def test_get_data(self):
         # test HVAC data returns dict of non-empty pd.DataFrame
         for dc in self.data_clients:
-            assert isinstance(dc.datetime.data, pd.DataFrame)
-            assert isinstance(dc.thermostat.data, pd.DataFrame)
-            assert isinstance(dc.equipment.data, pd.DataFrame)
-            assert isinstance(dc.sensors.data, pd.DataFrame)
-            assert isinstance(dc.weather.data, pd.DataFrame)
+            if dc.datetime:
+                assert isinstance(dc.datetime.data, pd.DataFrame)
+                assert isinstance(dc.thermostat.data, pd.DataFrame)
+                assert isinstance(dc.equipment.data, pd.DataFrame)
+                assert isinstance(dc.sensors.data, pd.DataFrame)
+                assert isinstance(dc.weather.data, pd.DataFrame)
 
     def test_read_epw(self):
         # read back cached filled epw files
         for dc in self.data_clients:
-            if not dc.weather.data.empty:
+            if dc.weather and not dc.weather.data.empty:
                 # generate the epw file before checking it
                 _epw_path = dc.weather.make_epw_file(
                     sim_config=dc.sim_config, datetime_channel=dc.datetime
@@ -103,7 +107,7 @@ class TestGBQFlatFilesSource:
 
     def test_data_utc(self):
         for dc in self.data_clients:
-            if not dc.datetime.data.empty:
+            if dc.datetime and not dc.datetime.data.empty:
                 assert (
                     dc.datetime.data[dc.datetime.spec.datetime_column].dtype.tz
                     == pytz.utc

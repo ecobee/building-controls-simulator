@@ -43,6 +43,7 @@ class DataClient:
     equipment = attr.ib(default=None)
     sensors = attr.ib(default=None)
     weather = attr.ib(default=None)
+    datetime = attr.ib(default=None)
     full_data_periods = attr.ib(factory=list)
 
     # input variables
@@ -227,7 +228,8 @@ class DataClient:
 
         else:
             raise ValueError(
-                "No full_data_periods for requested duration: "
+                f"ID={self.sim_config['identifier']} has no full_data_periods "
+                + "for requested duration: "
                 + f"start_utc={self.sim_config['start_utc']}, "
                 + f"end_utc={self.sim_config['end_utc']} "
                 + f"with min_sim_period={self.sim_config['min_sim_period']}"
