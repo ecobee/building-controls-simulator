@@ -760,8 +760,7 @@ class IDFPreprocessor:
         See: EnergyPlus Group Airflow
         https://bigladdersoftware.com/epx/docs/9-4/input-output-reference/group-airflow.html
         """
-        breakpoint()
-
+        
         if "infiltration_ventilation" not in self.building_config.keys():
             return
 

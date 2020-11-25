@@ -1124,36 +1124,6 @@ BranchList,
   Air Loop Branches_unit1, !- Name
   Air Loop Main Branch_unit1;  !- Branch 1 Name
 
-!-   ===========  ALL OBJECTS IN CLASS: ZONEHVAC:OUTDOORAIRUNIT ===========
-
-ZoneVentilation:DesignFlowRate,
-  Ventilation_unit1,       !- Name
-  living_unit1,            !- Zone or ZoneList Name
-  always_avail,            !- Schedule Name
-  Flow/Zone,               !- Design Flow Rate Calculation Method
-  autosize,     !- Design Flow Rate {m3/s}
-  ,                        !- Flow Rate per Zone Floor Area {m3/s-m2}
-  ,                        !- Flow Rate per Person {m3/s-person}
-  ,                        !- Air Changes per Hour {1/hr}
-  Exhaust,                 !- Ventilation Type
-  0,                       !- Fan Pressure Rise {Pa}
-  1,                       !- Fan Total Efficiency
-  1,                       !- Constant Term Coefficient
-  0,                       !- Temperature Term Coefficient
-  0,                       !- Velocity Term Coefficient
-  0,                       !- Velocity Squared Term Coefficient
-  -100,                    !- Minimum Indoor Temperature {C}
-  ,                        !- Minimum Indoor Temperature Schedule Name
-  100,                     !- Maximum Indoor Temperature {C}
-  ,                        !- Maximum Indoor Temperature Schedule Name
-  -100,                    !- Delta Temperature {deltaC}
-  ,                        !- Delta Temperature Schedule Name
-  -100,                    !- Minimum Outdoor Temperature {C}
-  ,                        !- Minimum Outdoor Temperature Schedule Name
-  100,                     !- Maximum Outdoor Temperature {C}
-  ,                        !- Maximum Outdoor Temperature Schedule Name
-  40;                      !- Maximum Wind Speed {m/s}
-
 !-   ===========  ALL OBJECTS IN CLASS: COIL:COOLING:DX:SINGLESPEED ===========
 
 Coil:Cooling:DX:SingleSpeed,
