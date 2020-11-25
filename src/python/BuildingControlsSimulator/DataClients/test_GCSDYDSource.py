@@ -26,9 +26,9 @@ class TestGCSDYDSource:
         # initialize with data to avoid pulling multiple times
         cls.sim_config = Config.make_sim_config(
             identifier=[
-                "f2254479e14daf04089082d1cd9df53948f98f1e",  # missing thermostat_temperature data
-                "2df6959cdf502c23f04f3155758d7b678af0c631",  # has full data periods
-                "6e63291da5427ae87d34bb75022ee54ee3b1fc1a",  # file not found
+                "d310f1c1f600c374d8975c753f7c0fb8de9c96b1",
+                "8c00c9bb17bfcca53809cb1b2d033a448bc017df",  # has full data periods
+                "6773291da5427ae87d34bb75022ee54ee3b1fc17",  # file not found
             ],
             latitude=33.481136,
             longitude=-112.078232,
@@ -74,7 +74,13 @@ class TestGCSDYDSource:
             dc = copy.deepcopy(cls.data_client)
             dc.sim_config = _sim_config
 
-            dc.get_data()
+            if _sim_config["identifier"] in [
+                "6773291da5427ae87d34bb75022ee54ee3b1fc17",
+            ]:
+                with pytest.raises(ValueError):
+                    dc.get_data()
+            else:
+                dc.get_data()
 
             cls.data_clients.append(dc)
 
@@ -88,16 +94,17 @@ class TestGCSDYDSource:
     def test_get_data(self):
         # test HVAC data returns dict of non-empty pd.DataFrame
         for dc in self.data_clients:
-            assert isinstance(dc.datetime.data, pd.DataFrame)
-            assert isinstance(dc.thermostat.data, pd.DataFrame)
-            assert isinstance(dc.equipment.data, pd.DataFrame)
-            assert isinstance(dc.sensors.data, pd.DataFrame)
-            assert isinstance(dc.weather.data, pd.DataFrame)
+            if dc.datetime:
+                assert isinstance(dc.datetime.data, pd.DataFrame)
+                assert isinstance(dc.thermostat.data, pd.DataFrame)
+                assert isinstance(dc.equipment.data, pd.DataFrame)
+                assert isinstance(dc.sensors.data, pd.DataFrame)
+                assert isinstance(dc.weather.data, pd.DataFrame)
 
     def test_read_epw(self):
         # read back cached filled epw files
         for dc in self.data_clients:
-            if not dc.weather.data.empty:
+            if dc.weather and not dc.weather.data.empty:
                 # generate the epw file before checking it
                 _epw_path = dc.weather.make_epw_file(
                     sim_config=dc.sim_config, datetime_channel=dc.datetime
@@ -108,7 +115,7 @@ class TestGCSDYDSource:
 
     def test_data_utc(self):
         for dc in self.data_clients:
-            if not dc.datetime.data.empty:
+            if dc.datetime and not dc.datetime.data.empty:
                 assert (
                     dc.datetime.data[dc.datetime.spec.datetime_column].dtype.tz
                     == pytz.utc
@@ -119,29 +126,29 @@ class TestGCSDYDSource:
         for dc in self.data_clients:
             if (
                 dc.sim_config["identifier"]
-                == "2df6959cdf502c23f04f3155758d7b678af0c631"
+                == "8c00c9bb17bfcca53809cb1b2d033a448bc017df"
             ):
                 # verify that data bfill works with full_data_periods
                 assert (
-                    pytest.approx(27.64957)
+                    pytest.approx(21.037790298461914)
                     == dc.thermostat.data.iloc[
                         dc.datetime.data[
                             (
                                 dc.datetime.data[STATES.DATE_TIME]
                                 >= pd.Timestamp(
-                                    "2018-05-15 16:30:00", tz="utc"
+                                    "2018-02-21 16:25:00+0000", tz="UTC"
                                 )
                             )
                             & (
                                 dc.datetime.data[STATES.DATE_TIME]
                                 <= pd.Timestamp(
-                                    "2018-05-15 17:30:00", tz="utc"
+                                    "2018-02-26 17:00:00+0000", tz="UTC"
                                 )
                             )
                         ].index,
                     ][STATES.TEMPERATURE_CTRL].mean()
                 )
                 assert dc.full_data_periods[0] == [
-                    pd.Timestamp("2018-04-13 17:00:00", tz="utc"),
-                    pd.Timestamp("2018-04-26 15:55:00", tz="utc"),
+                    pd.Timestamp("2018-02-10 17:00:00+0000", tz="UTC"),
+                    pd.Timestamp("2018-02-21 16:25:00+0000", tz="UTC"),
                 ]

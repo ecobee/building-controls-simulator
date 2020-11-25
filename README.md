@@ -17,9 +17,18 @@ cd building-controls-simulator
 
 ### Local Docker Setup
 
-You're going to need Docker Desktop installed, if not see https://www.docker.com/. Docker Compose is used to manage the containers and is included by default in the desktop versions of docker for all systems.
+You're going to need Docker Desktop installed, if not see https://www.docker.com/. Docker Compose CLI is used to manage the containers and is included by default in the desktop versions of docker for all systems.
 
 ### Using Docker-Compose
+
+Required minimal versions:
+```
+$ docker --version
+Docker version 19.03.13, build 4484c46d9d
+
+$ docker-compose --version
+docker-compose version 1.27.4, build 40524192
+```
 
 `docker-compose.yml` defines the Dockerfile and image to use, ports to map, and volumes to mount. It also specifies the env file `.env` to inject environment variables that are needed both to build the container and to be used inside the container. As a user all you need to know is that any API keys or GCP variables are stored here (safely) the default EnergyPlus version is 8-9-0, and this can be changed later very easily. 
 
@@ -55,7 +64,7 @@ every EnergyPlus version in `scripts/setup/install_ep.sh` and not downloading
 all IECC 2018 IDF files in `scripts/setup/download_IECC_idfs.sh`. Simply comment
 out the files you do not need.
 
-## Run BCS with Jupyter Lab Server (option 1)
+## Run BCS with Jupyter Lab Server (recommended: option 1)
 
 A jupyter-lab server is setup to run when the container is brought up by `docker-compose up`. This is accessible locally at: http://localhost:8888/lab. 
 
@@ -83,7 +92,7 @@ version, by default this is "8-9-0" which is the minimum version supported.
 . "${PACKAGE_DIR:?}/scripts/epvm.sh" "<x-x-x>"
 ```
 
-## Run BCS with interactive bash shell (option 2)
+## Run BCS with interactive bash shell (alternative: option 2)
 
 The `docker-compose run` command does most of the set up and can be used again 
 to run the container after it is built. The `--service-ports` flag should be set 
@@ -97,11 +106,8 @@ docker-compose run --service-ports building-controls-simulator bash
 
 # select the version of EnergyPlus to use in current environment, this can be changed at any time
 # EnergyPlus Version Manager (epvm) script changes env variables and symbolic links to hot-swap version
-# by default .bashrc sets version to 8-9-0.
-. scripts/epvm.sh 8-9-0
-
-# (optional) download IECC 2018 IDF files to start with
-. scripts/setup/download_IECC_idfs.sh
+# by default .bashrc sets version to 9-4-0.
+. scripts/epvm.sh 9-4-0
 
 # you're done with container setup! now exit container shell or just stop the docker container
 # unless you specifically delete this docker container it can be restarted with the setup already done
@@ -154,10 +160,13 @@ sudo chown "bcs":"bcs" ~/.config/application_default_credentials.json
 
 ## Using locally cached data
 
-Instead of using GCS access to download data you can use a locally cached
-DYD files following the format: `data/cache/GCSDYD/<hashed ID>.csv.zip`.
+Instead of using GCP access to download data you can use a locally cached
+DYD files following the format: `data/input/local/<hashed ID>.csv.zip`.
 
 Simply save the files using this format and you can use them in local simulations.
+
+See `src/python/BuildingControlsSimulator/DataClients/test_LocalSource.py` and
+`notebooks/demo_LocalSource.ipynb` for example usage.
 
 ## Docker Issues
 
@@ -165,6 +174,9 @@ Some issues that have occurred on different machines are:
 
 ### Build issues
 
+- incompatible versions of Docker and Docker Compose (see requirements above).
+- `.env` variables unset, make sure all `.env` variables not specified in `.env.template` are matched correctly to your host system.
+- windows line endings in `.env` file.
 - `apt-get install` failing or other packages not being found by apt-get
     - Verify network connection and build container again
 - `jupyter lab build` failing
