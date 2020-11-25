@@ -261,6 +261,7 @@ class Simulation:
                 step_sensor_input=self.state_estimator_model.step_output,
                 step_weather_input=self.data_client.weather.data.iloc[i],
             )
+
             self.building_model.do_step(
                 t_start=_sim_time[i],
                 t_step=self.step_size_seconds,

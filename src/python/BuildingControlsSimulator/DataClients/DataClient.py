@@ -613,13 +613,21 @@ class DataClient:
         df = df.reset_index()
 
         # linear interpolation
+        # setpoint columns which are in units that can be interpolated,
+        # must not be interpolated, but ffilled, exclude them from list
+        linear_columns_exclude = [
+            STATES.TEMPERATURE_STP_COOL,
+            STATES.TEMPERATURE_STP_HEAT,
+            STATES.HUMIDITY_EXPECTED_LOW,
+            STATES.HUMIDITY_EXPECTED_HIGH,
+        ]
         linear_columns = [
             _state
             for _state, _v in data_spec.full.spec.items()
             if (
                 _v["unit"] in [UNITS.CELSIUS, UNITS.RELATIVE_HUMIDITY]
                 and _state in df.columns
-            )
+            ) and (_state not in linear_columns_exclude)
         ]
         df.loc[:, linear_columns] = df.loc[:, linear_columns].interpolate(
             axis="rows", method="linear"
@@ -630,7 +638,7 @@ class DataClient:
             _state
             for _state, _v in data_spec.full.spec.items()
             if (_v["unit"] == UNITS.OTHER and _state in df.columns)
-        ]
+        ] + linear_columns_exclude
         df.loc[:, ffill_columns] = df.loc[:, ffill_columns].interpolate(
             axis="rows", method="ffill"
         )
