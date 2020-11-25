@@ -760,8 +760,9 @@ class IDFPreprocessor:
         See: EnergyPlus Group Airflow
         https://bigladdersoftware.com/epx/docs/9-4/input-output-reference/group-airflow.html
         """
+        breakpoint()
 
-        if "infilration_ventilation" not in self.building_config.keys():
+        if "infiltration_ventilation" not in self.building_config.keys():
             return
 
         vent_objs = [
@@ -773,6 +774,7 @@ class IDFPreprocessor:
         ]
 
         vent_design_zones = []
+
         for vent_obj in vent_objs:
             vent_design_zones = set(vent_design_zones) | set(
                 [
@@ -784,6 +786,8 @@ class IDFPreprocessor:
                 ]
             )
             self.popallidfobjects(vent_obj)
+
+        
 
         occupied_zones = [
             _zone
@@ -846,13 +850,13 @@ class IDFPreprocessor:
         # q50 is expressed in L/s
         q50 = (
             volume_total
-            * self.building_config["infilration_ventilation"]["ach50"]
+            * self.building_config["infiltration_ventilation"]["ach50"]
             * (1000 / 3600)
         )
         q_inf = (
             0.052
             * q50
-            * self.building_config["infilration_ventilation"]["wsf"]
+            * self.building_config["infiltration_ventilation"]["wsf"]
             * pow((height_above_ground / 2.5), 0.4)
         )
 
@@ -860,7 +864,7 @@ class IDFPreprocessor:
         # assume unbalanced ventilation
         phi = q_inf / req_q_total
         if "a_ext" in self.building_config.keys():
-            a_ext = self.building_config["infilration_ventilation"]["a_ext"]
+            a_ext = self.building_config["infiltration_ventilation"]["a_ext"]
         else:
             # assume detached
             a_ext = 1.0
