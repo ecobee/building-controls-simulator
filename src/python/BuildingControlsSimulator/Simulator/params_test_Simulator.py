@@ -152,7 +152,7 @@ if os.environ.get("DYD_GCS_URI_BASE"):
                 "idf_name": "heatedbsmt_2story_2300sqft_gasfurnace_AC.idf",
                 "epw_name": "USA_IL_Chicago-OHare.Intl.AP.725300_TMY3.epw",
                 "building_config": {
-                    "infilration_ventilation": {
+                    "infiltration_ventilation": {
                         "ach50": 10,
                         "wsf": 0.6,
                     },
@@ -225,7 +225,7 @@ if os.environ.get("DYD_GCS_URI_BASE"):
                 "idf_name": "heatedbsmt_2story_2300sqft_gasfurnace_AC.idf",
                 "epw_name": "USA_IL_Chicago-OHare.Intl.AP.725300_TMY3.epw",
                 "building_config": {
-                    "infilration_ventilation": {
+                    "infiltration_ventilation": {
                         "ach50": 10,
                         "wsf": 0.6,
                     },
@@ -302,7 +302,7 @@ if os.environ.get("FLATFILES_GBQ_TABLE"):
                 "idf_name": "heatedbsmt_2story_2300sqft_gasfurnace_AC.idf",
                 "epw_name": "USA_IL_Chicago-OHare.Intl.AP.725300_TMY3.epw",
                 "building_config": {
-                    "infilration_ventilation": {
+                    "infiltration_ventilation": {
                         "ach50": 10,
                         "wsf": 0.6,
                     },
