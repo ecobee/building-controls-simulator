@@ -870,7 +870,7 @@ class IDFPreprocessor:
 
         q_fan = req_q_total - phi * (q_inf * a_ext)
 
-        for zone_name in vent_design_zones:
+        for zone_name in self.occupied_zones:
             self.ep_idf.newidfobject(
                 "ZoneInfiltration:DesignFlowRate",
                 Name="BCS_infiltration",
@@ -899,20 +899,22 @@ class IDFPreprocessor:
 
         # Exception to 4.1.2:
         # if q_fan is less than 7 L/s no mechanical ventilation is required
-        if q_fan > 7.0:
-            # add mechanical ventilation using ACH method for all vented zones
-            for zone_name in vent_design_zones:
-                self.ep_idf.newidfobject(
-                    "ZoneVentilation:DesignFlowRate",
-                    Name="BCS_mech_ventilation",
-                    Zone_or_ZoneList_Name=zone_name,
-                    Schedule_Name="always_avail",
-                    Design_Flow_Rate_Calculation_Method="Flow/Zone",
-                    Design_Flow_Rate=q_fan
-                    * (zone_volumes[zone_name] / volume_total)
-                    / 1000.0,
-                    Ventilation_Type="Exhaust",
-                )
+        if q_fan < 7.0:
+            q_fan = 0.0
+            
+        # add mechanical ventilation using ACH method for all vented zones
+        for zone_name in self.occupied_zones:
+            self.ep_idf.newidfobject(
+                "ZoneVentilation:DesignFlowRate",
+                Name="BCS_mech_ventilation",
+                Zone_or_ZoneList_Name=zone_name,
+                Schedule_Name="always_avail",
+                Design_Flow_Rate_Calculation_Method="Flow/Zone",
+                Design_Flow_Rate=q_fan
+                * (zone_volumes[zone_name] / volume_total)
+                / 1000.0,
+                Ventilation_Type="Exhaust",
+            )
 
     def prep_runperiod(self, sim_config, datetime_channel):
         """This is not used for FMU export of energyplus
