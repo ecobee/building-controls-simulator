@@ -269,19 +269,27 @@ class TestSimulator:
             if _v["internal_state"] == STATES.THERMOSTAT_HUMIDITY
         ][0]
 
+        mean_thermostat_temperature = (
+            master.simulations[0].output[STATES.THERMOSTAT_TEMPERATURE].mean()
+        )
+        mean_thermostat_humidity = (
+            master.simulations[0].output[STATES.THERMOSTAT_HUMIDITY].mean()
+        )
+
+        output_format_mean_thermostat_temperature = r_df[t_ctrl_name].mean()
+        output_format_mean_thermostat_humidity = r_df[humidity_name].mean()
+
         assert (
             pytest.approx(
                 test_params["expected_result"]["mean_thermostat_temperature"]
             )
-            == master.simulations[0]
-            .output[STATES.THERMOSTAT_TEMPERATURE]
-            .mean()
+            == mean_thermostat_temperature
         )
         assert (
             pytest.approx(
                 test_params["expected_result"]["mean_thermostat_humidity"]
             )
-            == master.simulations[0].output[STATES.THERMOSTAT_HUMIDITY].mean()
+            == mean_thermostat_humidity
         )
         assert (
             pytest.approx(
@@ -289,7 +297,7 @@ class TestSimulator:
                     "output_format_mean_thermostat_temperature"
                 ]
             )
-            == r_df[t_ctrl_name].mean()
+            == output_format_mean_thermostat_temperature
         )
         assert (
             pytest.approx(
@@ -297,5 +305,5 @@ class TestSimulator:
                     "output_format_mean_thermostat_humidity"
                 ]
             )
-            == r_df[humidity_name].mean()
+            == output_format_mean_thermostat_humidity
         )
