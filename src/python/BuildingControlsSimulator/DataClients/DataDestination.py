@@ -59,39 +59,77 @@ class DataDestination(ABC):
                 f"local_cache_file: {local_cache_file} does not exist."
             )
 
-    def write_data_by_extension(self, df, filepath_or_buffer):
+    def write_data_by_extension(
+        self,
+        df,
+        filepath_or_buffer,
+        data_spec=None,
+        file_extension=None,
+        gcs_uri=None,
+    ):
         """When using a buffer of bytes the compression cannot be inferred."""
-        logger.info(f"Storing simulation ouput at: {filepath_or_buffer}")
+
+        # allow for overriding
+        if not data_spec:
+            data_spec = self.data_spec
+
+        # check that filepath_or_buffer matches file_extension
+        # default to filepath_or_buffer overriding
+        if not gcs_uri:
+            fpath_file_extension = os.path.basename(filepath_or_buffer).split(
+                ".", 1
+            )[1]
+        else:
+            fpath_file_extension = os.path.basename(gcs_uri).split(".", 1)[1]
+
+        if not file_extension:
+            file_extension = self.file_extension
+            if file_extension != fpath_file_extension:
+                logger.warn(
+                    f"Expected DataDestination file extension: {file_extension}"
+                )
+                file_extension = fpath_file_extension
+
+        if not fpath_file_extension:
+            if file_extension:
+                filepath_or_buffer = filepath_or_buffer + "." + file_extension
+            else:
+                raise ValueError(
+                    f"filepath_or_buffer: {filepath_or_buffer} contains no file extension."
+                    + f" Default file_extension: {file_extension}."
+                )
+
         # use human readable column names
-        if isinstance(self.data_spec, Internal):
+        if isinstance(data_spec, Internal):
             # if modifing df for export need a copy
             _df = df.copy(deep=True)
             _df.columns = [
-                self.data_spec.full.spec[_col]["name"] for _col in _df.columns
+                data_spec.full.spec[_col]["name"] for _col in _df.columns
             ]
         else:
             _df = df
 
-        if self.file_extension.startswith("parquet"):
+        logger.info(f"Storing simulation ouput at: {filepath_or_buffer}")
+        if file_extension.startswith("parquet"):
             # note: parquet requires string column names
             _df.to_parquet(
                 filepath_or_buffer,
                 compression="gzip",
                 index=False,
             )
-        elif self.file_extension == "csv":
+        elif file_extension == "csv":
             _df.to_csv(
                 filepath_or_buffer,
                 compression=None,
                 index=False,
             )
-        elif self.file_extension == "csv.zip":
+        elif file_extension == "csv.zip":
             _df.to_csv(
                 filepath_or_buffer,
                 compression="zip",
                 index=False,
             )
-        elif self.file_extension in ["csv.gzip", "csv.gz"]:
+        elif file_extension in ["csv.gzip", "csv.gz"]:
             _df.to_csv(
                 filepath_or_buffer,
                 compression="gzip",
@@ -99,5 +137,5 @@ class DataDestination(ABC):
             )
         else:
             logger.error(
-                f"Unsupported destination file extension: {self.file_extension}"
+                f"Unsupported destination file extension: {file_extension}"
             )

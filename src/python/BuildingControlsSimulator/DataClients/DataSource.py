@@ -86,12 +86,25 @@ class DataSource(ABC):
         if not extension:
             extension = self.file_extension
 
+        _df = DataSource.read_data_static(
+            filepath_or_buffer, data_spec=self.data_spec, extension=extension
+        )
+
+        if _df is None:
+            _df = self.get_empty_df()
+
+        return _df
+
+    @staticmethod
+    def read_data_static(
+        filepath_or_buffer, data_spec, extension="parquet.gzip"
+    ):
+        _df = None
         if extension.startswith("parquet"):
             # read_parquet does not take dtype info
-            _df = pd.read_parquet(
-                filepath_or_buffer,
-                columns=self.data_spec.full.columns,
-            )
+            _df = pd.read_parquet(filepath_or_buffer)
+            # get intersection of columns
+            _df = _df[set(data_spec.full.columns) & set(_df.columns)]
         elif extension == "csv":
             # pandas cannot currently parse datetimes in read_csv
             # need to first remove from dtype map
@@ -99,45 +112,45 @@ class DataSource(ABC):
             _df = pd.read_csv(
                 filepath_or_buffer,
                 compression=None,
-                usecols=self.data_spec.full.columns,
+                usecols=data_spec.full.columns,
                 dtype=get_dtype_mapper(
                     [
                         _col
-                        for _col in self.data_spec.full.columns
-                        if _col != self.data_spec.datetime_column
+                        for _col in data_spec.full.columns
+                        if _col != data_spec.datetime_column
                     ],
-                    self.data_spec,
+                    data_spec,
                 ),
             )
         elif extension == "csv.zip":
             _df = pd.read_csv(
                 filepath_or_buffer,
                 compression="zip",
-                usecols=self.data_spec.full.columns,
+                usecols=data_spec.full.columns,
                 dtype=get_dtype_mapper(
                     [
                         _col
-                        for _col in self.data_spec.full.columns
-                        if _col != self.data_spec.datetime_column
+                        for _col in data_spec.full.columns
+                        if _col != data_spec.datetime_column
                     ],
-                    self.data_spec,
+                    data_spec,
                 ),
             )
         elif extension in ["csv.gzip", "csv.gz"]:
             _df = pd.read_csv(
                 filepath_or_buffer,
                 compression="gzip",
-                usecols=self.data_spec.full.columns,
+                usecols=data_spec.full.columns,
                 dtype=get_dtype_mapper(
                     [
                         _col
-                        for _col in self.data_spec.full.columns
-                        if _col != self.data_spec.datetime_column
+                        for _col in data_spec.full.columns
+                        if _col != data_spec.datetime_column
                     ],
-                    self.data_spec,
+                    data_spec,
                 ),
             )
         else:
-            _df = self.get_empty_df()
+            logger.error(f"Unsupported extension: {extension}")
 
         return _df

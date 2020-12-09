@@ -56,6 +56,6 @@ class GCSDestination(DataDestination):
                 access="read_write",
             )
             with _fs.open(gcs_uri, "wb") as _file:
-                self.write_data_by_extension(df, _file)
+                self.write_data_by_extension(df, _file, gcs_uri=gcs_uri)
         else:
             logger.error("put_gcs: gcs_uri is None.")
