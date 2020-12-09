@@ -126,9 +126,7 @@ class IDFPreprocessor:
         if not self.check_valid_idf(self.idf_file):
             raise ValueError(f"""{self.idf_file} is not a valid IDF file.""")
 
-        logger.info(
-            "IDFPreprocessor loading .idf file: {}".format(self.idf_file)
-        )
+        logger.info("IDFPreprocessor loading .idf file: {}".format(self.idf_file))
         self.ep_idf = IDF(self.idf_file)
         # select .idf output type
         self.ep_idf.outputtype = "standard"
@@ -170,9 +168,7 @@ class IDFPreprocessor:
             # this sets fmu output keys
             # TODO: generalize so doesnt wrap editing .idf
             self.prep_ext_int_output()
-            logger.info(
-                f"Found correct preprocessed IDF: {self.idf_prep_path}"
-            )
+            logger.info(f"Found correct preprocessed IDF: {self.idf_prep_path}")
             logger.info(f"IDF version: {self.ep_version}")
         else:
             logger.info(f"Making new preprocessed IDF: {self.idf_prep_path}")
@@ -246,9 +242,7 @@ class IDFPreprocessor:
     def get_tstat_zone(self):
         tstats = self.ep_idf.idfobjects["zonecontrol:thermostat"]
         if len(tstats) > 1:
-            raise ValueError(
-                f"Multiple thermostats in IDF file: {self.idf_file}"
-            )
+            raise ValueError(f"Multiple thermostats in IDF file: {self.idf_file}")
 
         self.thermostat_zone = fmu_variable_name_conversion(
             tstats[0].Zone_or_ZoneList_Name
@@ -324,9 +318,7 @@ class IDFPreprocessor:
         https://bigladdersoftware.com/epx/docs/9-4/input-output-reference/group-simulation-parameters.html#hvacystemrootfindingalgorithm
         """
         self.popallidfobjects("SurfaceConvectionAlgorithm:Inside")
-        self.ep_idf.newidfobject(
-            "SurfaceConvectionAlgorithm:Inside", Algorithm="TARP"
-        )
+        self.ep_idf.newidfobject("SurfaceConvectionAlgorithm:Inside", Algorithm="TARP")
 
         self.popallidfobjects("SurfaceConvectionAlgorithm:Outside")
         self.ep_idf.newidfobject(
@@ -387,12 +379,8 @@ class IDFPreprocessor:
         # set global sizing factors for over/undersizing
         self.ep_idf.newidfobject(
             "Sizing:Parameters",
-            Heating_Sizing_Factor=hvac_config.get(
-                "heating_sizing_factor", 1.0
-            ),
-            Cooling_Sizing_Factor=hvac_config.get(
-                "cooling_sizing_factor", 1.0
-            ),
+            Heating_Sizing_Factor=hvac_config.get("heating_sizing_factor", 1.0),
+            Cooling_Sizing_Factor=hvac_config.get("cooling_sizing_factor", 1.0),
         )
         for zone_name in self.occupied_zones:
 
@@ -532,9 +520,7 @@ class IDFPreprocessor:
 
         # make construction
         cons_name = "prep_thermal_mass_construction"
-        self.ep_idf.newidfobject(
-            "Construction", Name=cons_name, Outside_Layer=mat_name
-        )
+        self.ep_idf.newidfobject("Construction", Name=cons_name, Outside_Layer=mat_name)
 
         for zone in self.occupied_zones:
             self.ep_idf.newidfobject(
@@ -760,7 +746,7 @@ class IDFPreprocessor:
         See: EnergyPlus Group Airflow
         https://bigladdersoftware.com/epx/docs/9-4/input-output-reference/group-airflow.html
         """
-        
+
         if "infiltration_ventilation" not in self.building_config.keys():
             return
 
@@ -778,15 +764,11 @@ class IDFPreprocessor:
             vent_design_zones = set(vent_design_zones) | set(
                 [
                     _zone
-                    for obj in self.ep_idf.idfobjects[
-                        "ZoneVentilation:DesignFlowRate"
-                    ]
+                    for obj in self.ep_idf.idfobjects["ZoneVentilation:DesignFlowRate"]
                     for _zone in self.expand_zones(obj.Zone_or_ZoneList_Name)
                 ]
             )
             self.popallidfobjects(vent_obj)
-
-        
 
         occupied_zones = [
             _zone
@@ -808,15 +790,9 @@ class IDFPreprocessor:
                 zone_z_coords = []
                 for _surf in _zone.zonesurfaces:
 
-                    zone_x_coords = zone_x_coords + [
-                        xyz[0] for xyz in _surf.coords
-                    ]
-                    zone_y_coords = zone_y_coords + [
-                        xyz[1] for xyz in _surf.coords
-                    ]
-                    zone_z_coords = zone_z_coords + [
-                        xyz[2] for xyz in _surf.coords
-                    ]
+                    zone_x_coords = zone_x_coords + [xyz[0] for xyz in _surf.coords]
+                    zone_y_coords = zone_y_coords + [xyz[1] for xyz in _surf.coords]
+                    zone_z_coords = zone_z_coords + [xyz[2] for xyz in _surf.coords]
                     if _surf.Surface_Type == "Floor":
                         # zone may have multiple floors
                         zone_floor_area += _surf.area
@@ -827,9 +803,7 @@ class IDFPreprocessor:
                 # accumulation variables
                 z_coords = z_coords + zone_z_coords
                 a_floor += zone_floor_area
-                zone_volumes[_zone.Name] = (
-                    zone_length * zone_width * zone_height
-                )
+                zone_volumes[_zone.Name] = zone_length * zone_width * zone_height
                 volume_total += zone_volumes[_zone.Name]
 
         height_above_ground = max(z_coords) - max(min(z_coords), z_ground)
@@ -901,7 +875,7 @@ class IDFPreprocessor:
         # if q_fan is less than 7 L/s no mechanical ventilation is required
         if q_fan < 7.0:
             q_fan = 0.0
-            
+
         # add mechanical ventilation using ACH method for all vented zones
         for zone_name in self.occupied_zones:
             self.ep_idf.newidfobject(
@@ -1011,21 +985,15 @@ class IDFPreprocessor:
         cur_version = self.get_idf_version(self.ep_idf)
 
         # check if current version above target
-        if int(cur_version.replace("-", "")) > int(
-            target_version.replace("-", "")
-        ):
+        if int(cur_version.replace("-", "")) > int(target_version.replace("-", "")):
             logger.error(
                 f".idf current_version={cur_version} above target_version={target_version}"
             )
         elif cur_version == target_version:
-            logger.info(
-                f"Correct .idf version {cur_version}. Using {self.idf_file}"
-            )
+            logger.info(f"Correct .idf version {cur_version}. Using {self.idf_file}")
         else:
             # first check for previous upgrade
-            transition_fpath = self.idf_file.replace(
-                ".idf", f"_{target_version}.idf"
-            )
+            transition_fpath = self.idf_file.replace(".idf", f"_{target_version}.idf")
             if not os.path.isfile(transition_fpath):
                 # upgrade .idf file repeatedly
                 first_transition = True
@@ -1049,18 +1017,14 @@ class IDFPreprocessor:
                         cmd = f"{transistion_path} {self.idf_file}"
 
                         # make transition call
-                        subprocess.call(
-                            shlex.split(cmd), stdout=subprocess.PIPE
-                        )
+                        subprocess.call(shlex.split(cmd), stdout=subprocess.PIPE)
                         os.chdir(original_wd)
 
                         cur_version = conversion_dict[cur_version][-5:]
                         if self.debug:
                             shutil.move(
                                 self.idf_file + "new",
-                                self.idf_file.replace(
-                                    ".idf", f"_{cur_version}.idf"
-                                ),
+                                self.idf_file.replace(".idf", f"_{cur_version}.idf"),
                             )
 
                         if first_transition:
@@ -1355,9 +1319,7 @@ class IDFPreprocessor:
 
     def popifdobject_by_name(self, idf_objs, name):
         """"""
-        for i, s_obj in enumerate(
-            self.ep_idf.idfobjects["ScheduleTypeLimits"]
-        ):
+        for i, s_obj in enumerate(self.ep_idf.idfobjects["ScheduleTypeLimits"]):
             if "temperature" in s_obj.Name.lower():
                 self.ep_idf.popidfobject("ScheduleTypeLimits", i)
 
@@ -1404,9 +1366,7 @@ def fix_idf_version_line(idf_path, ep_version):
 
                 if line == "Version,\n":
                     output.write(
-                        line.replace(
-                            "\n", "{};\n".format(ep_version.replace("-", "."))
-                        )
+                        line.replace("\n", "{};\n".format(ep_version.replace("-", ".")))
                     )
                 elif "!- Version Identifier" not in line:
                     output.write(line)

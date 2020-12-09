@@ -14,7 +14,10 @@ from BuildingControlsSimulator.DataClients.DataStates import (
     CHANNELS,
     STATES,
 )
-from BuildingControlsSimulator.DataClients.DataSpec import Internal
+from BuildingControlsSimulator.DataClients.DataSpec import (
+    Internal,
+    convert_spec,
+)
 from BuildingControlsSimulator.DataClients.DateTimeChannel import (
     DateTimeChannel,
 )
@@ -105,8 +108,6 @@ class DataClient:
             )
         # load from cache or download data from source
         _data = self.source.get_data(self.sim_config)
-        _data = _data.sort_index()
-
         if _data.empty:
             logger.error(
                 "EMPTY DATA SOURCE: \nsim_config={} \nsource={}\n".format(
@@ -115,10 +116,27 @@ class DataClient:
             )
             _data = self.internal_spec.get_empty_df()
 
-        _data = _data.drop_duplicates(ignore_index=True).reset_index(drop=True)
+        # remove any fully duplicated records
+        _data = _data.drop_duplicates(ignore_index=True)
+
+        # remove multiple records for same datetime
+        # there may also be multiple entries for same exact datetime in ISM
+        # in this case keep the record that has the most combined runtime
+        # because in observed cases of this the extra record has 0 runtime.
+        _runtime_sum_column = "sum_runtime"
+        _data[_runtime_sum_column] = _data[
+            set(self.internal_spec.equipment.spec.keys()) & set(_data.columns)
+        ].sum(axis=1)
+        # last duplicate datetime value will have maximum sum_runtime
         _data = _data.sort_values(
-            self.internal_spec.datetime_column, ascending=True
+            [self.internal_spec.datetime_column, _runtime_sum_column],
+            ascending=True,
         )
+        _data = _data.drop_duplicates(
+            subset=[STATES.DATE_TIME], keep="last", ignore_index=True
+        )
+        _data = _data.drop(columns=[_runtime_sum_column])
+
         # truncate the data to desired simulation start and end time
         _data = _data[
             (
@@ -344,6 +362,38 @@ class DataClient:
     def store_output(self, output, sim_name, src_spec):
         self.destination.put_data(
             df=output, sim_name=sim_name, src_spec=src_spec
+        )
+
+    def store_input(
+        self,
+        filepath_or_buffer,
+        df_input=None,
+        src_spec=None,
+        dest_spec=None,
+        file_extension=None,
+    ):
+        """For usage capturing input data for unit tests."""
+        if not df_input:
+            df_input = self.get_full_input()
+
+        if not src_spec:
+            src_spec = self.internal_spec
+
+        if not dest_spec:
+            dest_spec = self.destination.data_spec
+
+        if not file_extension:
+            file_extension = self.destination.file_extension
+
+        _df = convert_spec(
+            df=df_input, src_spec=src_spec, dest_spec=dest_spec, copy=True
+        )
+
+        self.destination.write_data_by_extension(
+            _df,
+            filepath_or_buffer,
+            data_spec=dest_spec,
+            file_extension=file_extension,
         )
 
     @staticmethod
@@ -625,9 +675,10 @@ class DataClient:
             _state
             for _state, _v in data_spec.full.spec.items()
             if (
-                _v["unit"] in [UNITS.CELSIUS, UNITS.RELATIVE_HUMIDITY]
-                and _state in df.columns
-            ) and (_state not in linear_columns_exclude)
+                (_v["unit"] in [UNITS.CELSIUS, UNITS.RELATIVE_HUMIDITY])
+                and (_state in df.columns)
+            )
+            and (_state not in linear_columns_exclude)
         ]
         df.loc[:, linear_columns] = df.loc[:, linear_columns].interpolate(
             axis="rows", method="linear"
@@ -637,8 +688,11 @@ class DataClient:
         ffill_columns = [
             _state
             for _state, _v in data_spec.full.spec.items()
-            if (_v["unit"] == UNITS.OTHER and _state in df.columns)
-        ] + linear_columns_exclude
+            if ((_v["unit"] == UNITS.OTHER) and (_state in df.columns))
+        ]
+        ffill_columns = ffill_columns + list(
+            set(linear_columns_exclude) & set(df.columns)
+        )
         df.loc[:, ffill_columns] = df.loc[:, ffill_columns].interpolate(
             axis="rows", method="ffill"
         )
@@ -648,7 +702,7 @@ class DataClient:
         zero_fill_columns = [
             _state
             for _state, _v in data_spec.full.spec.items()
-            if (_v["unit"] == UNITS.SECONDS and _state in df.columns)
+            if ((_v["unit"] == UNITS.SECONDS) and (_state in df.columns))
         ]
         df.loc[:, zero_fill_columns] = df.loc[:, zero_fill_columns].fillna(0)
 
