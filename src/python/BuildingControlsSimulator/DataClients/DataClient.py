@@ -156,7 +156,7 @@ class DataClient:
             for _col in _data.columns
             if isinstance(_data[_col].dtype, pd.api.types.CategoricalDtype)
         ]:
-            _data[_cat_col].cat.remove_unused_categories(inplace=True)
+            _data[_cat_col].cat = _data[_cat_col].cat.remove_unused_categories()
 
         # run settings change point detection before filling missing data
         # the fill data would create false positive change points
@@ -680,6 +680,7 @@ class DataClient:
             )
             and (_state not in linear_columns_exclude)
         ]
+        # Note: must have numpy `float32` or `float64` dtypes for interpolation
         df.loc[:, linear_columns] = df.loc[:, linear_columns].interpolate(
             axis="rows", method="linear"
         )

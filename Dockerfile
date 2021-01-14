@@ -18,8 +18,9 @@ ENV EXT_DIR="${LIB_DIR}/external"
 ENV ENERGYPLUS_INSTALL_DIR="${EXT_DIR}/EnergyPlus"
 ENV FMIL_HOME="${EXT_DIR}/FMIL/build-fmil" 
 ENV PACKAGE_DIR="${LIB_DIR}/${PACKAGE_NAME}"
-ENV PATH="${HOME}/.local/bin:${HOME}/pyenv/shims:${HOME}/pyenv/bin:${PATH}"
-ENV PYENV_ROOT="${HOME}/pyenv"
+ENV PYENV_ROOT="${HOME}/.pyenv"
+ENV PATH="${HOME}/.local/bin:${PYENV_ROOT}/shims:${PYENV_ROOT}/bin:${PATH}"
+ENV VENV_NAME="${USER_NAME}_venv"
 
 # set build noninteractive
 ARG DEBIAN_FRONTEND=noninteractive
@@ -66,9 +67,8 @@ RUN sudo apt-get update && sudo apt-get upgrade -y \
     p7zip-full
 
 # install nodejs and npm (for plotly)
-# install pip
 # install pyenv https://github.com/pyenv/pyenv-installer
-# install pipenv
+# note: pyenv.run is not accessible to all networks, use github url
 # install FMI library
 # install FMUComplianceChecker
 # install EnergyPlusToFMU
@@ -76,29 +76,27 @@ RUN sudo apt-get update && sudo apt-get upgrade -y \
 # note: PyFMI 2.7.4 is latest release that doesnt require Assimulo which is unnecessary
 # because we dont use builtin PyFMI ODE simulation capabilities
 RUN curl -sL https://deb.nodesource.com/setup_12.x | sudo bash - \
-    && sudo apt-get install -y nodejs \
-    && curl --silent https://bootstrap.pypa.io/get-pip.py | python3 \
-    && curl https://pyenv.run | bash \
+    && sudo apt-get update && sudo apt-get install -y nodejs \
+    && curl -L https://github.com/pyenv/pyenv-installer/raw/master/bin/pyenv-installer | bash \
     && pyenv update && pyenv install 3.8.6 \
-    && pip3 install pipenv \
     && mkdir "${LIB_DIR}" && mkdir "${EXT_DIR}" \
     && cd "${EXT_DIR}" \
-    && wget https://github.com/modelon-community/fmi-library/archive/2.2.3.zip \
-    && unzip 2.2.3.zip && mv fmi-library-2.2.3 FMIL \
-    && rm -rf 2.2.3.zip \
-    && cd FMIL \
+    && wget "https://github.com/modelon-community/fmi-library/archive/2.2.3.zip" \
+    && unzip "2.2.3.zip" && mv "fmi-library-2.2.3" "FMIL" \
+    && rm -rf "2.2.3.zip" \
+    && cd "FMIL" \
     && mkdir build-fmil; cd build-fmil \
     && cmake -DFMILIB_INSTALL_PREFIX=./ ../ \
     && make install test \
     && cd "${EXT_DIR}" \
-    && wget https://github.com/modelica-tools/FMUComplianceChecker/releases/download/2.0.4/FMUChecker-2.0.4-linux64.zip \
-    && unzip FMUChecker-2.0.4-linux64.zip \
-    && rm FMUChecker-2.0.4-linux64.zip \
-    && mv FMUChecker-2.0.4-linux64 FMUComplianceChecker \
-    && mkdir fmu \
+    && wget "https://github.com/modelica-tools/FMUComplianceChecker/releases/download/2.0.4/FMUChecker-2.0.4-linux64.zip" \
+    && unzip "FMUChecker-2.0.4-linux64.zip" \
+    && rm "FMUChecker-2.0.4-linux64.zip" \
+    && mv "FMUChecker-2.0.4-linux64" "FMUComplianceChecker" \
+    && mkdir "fmu" \
     && cd "${EXT_DIR}" \
     && wget "https://github.com/lbl-srg/EnergyPlusToFMU/archive/v3.0.0.zip" \
-    && unzip v3.0.0.zip && rm v3.0.0.zip \
+    && unzip "v3.0.0.zip" && rm "v3.0.0.zip" \
     && cd "${EXT_DIR}" \
     && wget "https://github.com/modelon-community/PyFMI/archive/PyFMI-2.7.4.tar.gz" \
     && tar -xzf "PyFMI-2.7.4.tar.gz" \
@@ -107,8 +105,14 @@ RUN curl -sL https://deb.nodesource.com/setup_12.x | sudo bash - \
     && mkdir "${PACKAGE_DIR}" \
     && sudo rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
-# copying in a directory will cause rebuild at minimum to start from here
-COPY ./ "${PACKAGE_DIR}" 
+# copying will cause rebuild at minimum to start from here
+COPY ./src "${PACKAGE_DIR}/src"
+COPY ./scripts "${PACKAGE_DIR}/scripts"
+COPY ./requirements_fixed.txt "${PACKAGE_DIR}/requirements_fixed.txt"
+COPY ./requirements_unfixed.txt "${PACKAGE_DIR}/requirements_unfixed.txt"
+COPY ./setup.py "${PACKAGE_DIR}/setup.py"
+COPY ./pytest.ini "${PACKAGE_DIR}/pytest.ini"
+COPY ./.test.env "${PACKAGE_DIR}/.test.env"
 
 # copied directory will not have user ownership by default
 # install energyplus versions desired in `scripts/setup/install_ep.sh`
@@ -119,15 +123,24 @@ RUN sudo chown -R "${USER_NAME}" "${PACKAGE_DIR}" \
     && sudo chmod +x "./scripts/setup/install_ep.sh" \
     && sudo ./scripts/setup/install_ep.sh "${ENERGYPLUS_INSTALL_DIR}" \
     && cd "${PACKAGE_DIR}" \
-    && pipenv install --dev --skip-lock \
+    && ${PYENV_ROOT}/versions/3.8.6/bin/python3.8 -m venv "${LIB_DIR}/${VENV_NAME}" \
+    && . "${LIB_DIR}/${VENV_NAME}/bin/activate" \
+    && pip install --upgrade setuptools pip \
+    # && pip install -r "requirements_fixed.txt" \
+    && pip install -r "requirements_unfixed.txt" \
+    && pip install --editable . \
     && cd "${EXT_DIR}/PyFMI" \
-    && . ${HOME}/.local/share/virtualenvs/$( ls "${HOME}/.local/share/virtualenvs/" | grep "${PACKAGE_NAME}" )/bin/activate \
-    && python "setup.py" install --fmil-home="${FMIL_HOME}"
+    && python "setup.py" install --fmil-home="${FMIL_HOME}" \
+    && cd "${EXT_DIR}" \
+    && wget "https://github.com/RJT1990/pyflux/archive/0.4.15.zip" \
+    && unzip "0.4.15.zip" && rm "0.4.15.zip" \
+    && cd "pyflux-0.4.15" \
+    && pip install .
 
 # install jupyter lab extensions for plotly
 # if jupyter lab build fails with webpack optimization, set --minimize=False
 RUN cd "${PACKAGE_DIR}" \
-    && . ${HOME}/.local/share/virtualenvs/$( ls "${HOME}/.local/share/virtualenvs/" | grep "${PACKAGE_NAME}" )/bin/activate \
+    && . "${LIB_DIR}/${VENV_NAME}/bin/activate" \
     && export NODE_OPTIONS="--max-old-space-size=8192" \
     && jupyter labextension install @jupyter-widgets/jupyterlab-manager@2 --no-build \
     && jupyter labextension install jupyterlab-plotly --no-build \

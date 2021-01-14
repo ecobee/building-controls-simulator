@@ -204,7 +204,6 @@ class Spec:
         return list(self.spec.keys())
 
 
-# @attr.s(kw_only=True, frozen=True, slots=True)
 class Internal:
     """Definition of internal data fields and types.
     For details of string dtype aliases see:
@@ -264,37 +263,37 @@ class Internal:
                 },
                 STATES.TEMPERATURE_CTRL: {
                     "name": "temperature_ctrl",
-                    "dtype": "Float32",
+                    "dtype": "float32",
                     "channel": CHANNELS.THERMOSTAT_SETTING,
                     "unit": UNITS.CELSIUS,
                 },
                 STATES.TEMPERATURE_STP_COOL: {
                     "name": "temperature_stp_cool",
-                    "dtype": "Float32",
+                    "dtype": "float32",
                     "channel": CHANNELS.THERMOSTAT_SETTING,
                     "unit": UNITS.CELSIUS,
                 },
                 STATES.TEMPERATURE_STP_HEAT: {
                     "name": "temperature_stp_heat",
-                    "dtype": "Float32",
+                    "dtype": "float32",
                     "channel": CHANNELS.THERMOSTAT_SETTING,
                     "unit": UNITS.CELSIUS,
                 },
                 STATES.HUMIDITY: {
                     "name": "humidity",
-                    "dtype": "Float32",
+                    "dtype": "float32",
                     "channel": CHANNELS.THERMOSTAT_SETTING,
                     "unit": UNITS.RELATIVE_HUMIDITY,
                 },
                 STATES.HUMIDITY_EXPECTED_LOW: {
                     "name": "humidity_expected_low",
-                    "dtype": "Float32",
+                    "dtype": "float32",
                     "channel": CHANNELS.THERMOSTAT_SETTING,
                     "unit": UNITS.RELATIVE_HUMIDITY,
                 },
                 STATES.HUMIDITY_EXPECTED_HIGH: {
                     "name": "humidity_expected_high",
-                    "dtype": "Float32",
+                    "dtype": "float32",
                     "channel": CHANNELS.THERMOSTAT_SETTING,
                     "unit": UNITS.RELATIVE_HUMIDITY,
                 },
@@ -404,25 +403,25 @@ class Internal:
             spec={
                 STATES.THERMOSTAT_TEMPERATURE: {
                     "name": "thermostat_temperature",
-                    "dtype": "Float32",
+                    "dtype": "float32",
                     "channel": CHANNELS.THERMOSTAT_SENSOR,
                     "unit": UNITS.CELSIUS,
                 },
                 STATES.THERMOSTAT_TEMPERATURE_ESTIMATE: {
                     "name": "thermostat_temperature_estimate",
-                    "dtype": "Float32",
+                    "dtype": "float32",
                     "channel": CHANNELS.THERMOSTAT_SENSOR,
                     "unit": UNITS.CELSIUS,
                 },
                 STATES.THERMOSTAT_HUMIDITY: {
                     "name": "thermostat_humidity",
-                    "dtype": "Float32",
+                    "dtype": "float32",
                     "channel": CHANNELS.THERMOSTAT_SENSOR,
                     "unit": UNITS.RELATIVE_HUMIDITY,
                 },
                 STATES.THERMOSTAT_HUMIDITY_ESTIMATE: {
                     "name": "thermostat_humidity_estimate",
-                    "dtype": "Float32",
+                    "dtype": "float32",
                     "channel": CHANNELS.THERMOSTAT_SENSOR,
                     "unit": UNITS.RELATIVE_HUMIDITY,
                 },
@@ -441,7 +440,7 @@ class Internal:
                 **{
                     STATES["RS{}_TEMPERATURE".format(i)]: {
                         "name": "rs{}_temperature".format(i),
-                        "dtype": "Float32",
+                        "dtype": "float32",
                         "channel": CHANNELS.REMOTE_SENSOR,
                         "unit": UNITS.CELSIUS,
                     }
@@ -450,7 +449,7 @@ class Internal:
                 **{
                     STATES["RS{}_TEMPERATURE_ESTIMATE".format(i)]: {
                         "name": "rs{}_temperature_estimate".format(i),
-                        "dtype": "Float32",
+                        "dtype": "float32",
                         "channel": CHANNELS.REMOTE_SENSOR,
                         "unit": UNITS.CELSIUS,
                     }
@@ -474,13 +473,13 @@ class Internal:
             spec={
                 STATES.OUTDOOR_TEMPERATURE: {
                     "name": "outdoor_temperature",
-                    "dtype": "Float32",
+                    "dtype": "float32",
                     "channel": CHANNELS.WEATHER,
                     "unit": UNITS.CELSIUS,
                 },
                 STATES.OUTDOOR_RELATIVE_HUMIDITY: {
                     "name": "outdoor_relative_humidity",
-                    "dtype": "Float32",
+                    "dtype": "float32",
                     "channel": CHANNELS.WEATHER,
                     "unit": UNITS.RELATIVE_HUMIDITY,
                 },
@@ -586,37 +585,37 @@ class FlatFilesSpec:
                 },
                 "Temperature_ctrl": {
                     "internal_state": STATES.TEMPERATURE_CTRL,
-                    "dtype": "Float32",
+                    "dtype": "float32",
                     "channel": CHANNELS.THERMOSTAT_SETTING,
                     "unit": UNITS.FARHENHEITx10,
                 },
                 "TemperatureExpectedCool": {
                     "internal_state": STATES.TEMPERATURE_STP_COOL,
-                    "dtype": "Float32",
+                    "dtype": "float32",
                     "channel": CHANNELS.THERMOSTAT_SETTING,
                     "unit": UNITS.FARHENHEITx10,
                 },
                 "TemperatureExpectedHeat": {
                     "internal_state": STATES.TEMPERATURE_STP_HEAT,
-                    "dtype": "Float32",
+                    "dtype": "float32",
                     "channel": CHANNELS.THERMOSTAT_SETTING,
                     "unit": UNITS.FARHENHEITx10,
                 },
                 "Humidity": {
                     "internal_state": STATES.HUMIDITY,
-                    "dtype": "Float32",
+                    "dtype": "float32",
                     "channel": CHANNELS.THERMOSTAT_SETTING,
                     "unit": UNITS.RELATIVE_HUMIDITY,
                 },
                 "HumidityExpectedLow": {
                     "internal_state": STATES.HUMIDITY_EXPECTED_LOW,
-                    "dtype": "Float32",
+                    "dtype": "float32",
                     "channel": CHANNELS.THERMOSTAT_SETTING,
                     "unit": UNITS.RELATIVE_HUMIDITY,
                 },
                 "HumidityExpectedHigh": {
                     "internal_state": STATES.HUMIDITY_EXPECTED_HIGH,
-                    "dtype": "Float32",
+                    "dtype": "float32",
                     "channel": CHANNELS.THERMOSTAT_SETTING,
                     "unit": UNITS.RELATIVE_HUMIDITY,
                 },
@@ -708,13 +707,13 @@ class FlatFilesSpec:
             spec={
                 "SensorTemp000": {
                     "internal_state": STATES.THERMOSTAT_TEMPERATURE,
-                    "dtype": "Float32",
+                    "dtype": "float32",
                     "channel": CHANNELS.THERMOSTAT_SENSOR,
                     "unit": UNITS.FARHENHEITx10,
                 },
                 "SensorHum000": {
                     "internal_state": STATES.THERMOSTAT_HUMIDITY,
-                    "dtype": "Float32",
+                    "dtype": "float32",
                     "channel": CHANNELS.THERMOSTAT_SENSOR,
                     "unit": UNITS.RELATIVE_HUMIDITY,
                 },
@@ -727,7 +726,7 @@ class FlatFilesSpec:
                 **{
                     "SensorTemp1{}".format(str(i).zfill(2)): {
                         "internal_state": STATES["RS{}_TEMPERATURE".format(i)],
-                        "dtype": "Float32",
+                        "dtype": "float32",
                         "channel": CHANNELS.REMOTE_SENSOR,
                         "unit": UNITS.FARHENHEITx10,
                     }
@@ -751,13 +750,13 @@ class FlatFilesSpec:
             spec={
                 "Temperature": {
                     "internal_state": STATES.OUTDOOR_TEMPERATURE,
-                    "dtype": "Float32",
+                    "dtype": "float32",
                     "channel": CHANNELS.WEATHER,
                     "unit": UNITS.FARHENHEITx10,
                 },
                 "RelativeHumidity": {
                     "internal_state": STATES.OUTDOOR_RELATIVE_HUMIDITY,
-                    "dtype": "Float32",
+                    "dtype": "float32",
                     "channel": CHANNELS.WEATHER,
                     "unit": UNITS.RELATIVE_HUMIDITY,
                 },
@@ -836,31 +835,31 @@ class DonateYourDataSpec:
                 },
                 "T_ctrl": {
                     "internal_state": STATES.TEMPERATURE_CTRL,
-                    "dtype": "Float32",
+                    "dtype": "float32",
                     "channel": CHANNELS.THERMOSTAT_SETTING,
                     "unit": UNITS.FARHENHEIT,
                 },
                 "T_stp_cool": {
                     "internal_state": STATES.TEMPERATURE_STP_COOL,
-                    "dtype": "Float32",
+                    "dtype": "float32",
                     "channel": CHANNELS.THERMOSTAT_SETTING,
                     "unit": UNITS.FARHENHEIT,
                 },
                 "T_stp_heat": {
                     "internal_state": STATES.TEMPERATURE_STP_HEAT,
-                    "dtype": "Float32",
+                    "dtype": "float32",
                     "channel": CHANNELS.THERMOSTAT_SETTING,
                     "unit": UNITS.FARHENHEIT,
                 },
                 "HumidityExpectedLow": {
                     "internal_state": STATES.HUMIDITY_EXPECTED_LOW,
-                    "dtype": "Float32",
+                    "dtype": "float32",
                     "channel": CHANNELS.THERMOSTAT_SETTING,
                     "unit": UNITS.RELATIVE_HUMIDITY,
                 },
                 "HumidityExpectedHigh": {
                     "internal_state": STATES.HUMIDITY_EXPECTED_HIGH,
-                    "dtype": "Float32",
+                    "dtype": "float32",
                     "channel": CHANNELS.THERMOSTAT_SETTING,
                     "unit": UNITS.RELATIVE_HUMIDITY,
                 },
@@ -928,13 +927,13 @@ class DonateYourDataSpec:
             spec={
                 "Thermostat_Temperature": {
                     "internal_state": STATES.THERMOSTAT_TEMPERATURE,
-                    "dtype": "Float32",
+                    "dtype": "float32",
                     "channel": CHANNELS.THERMOSTAT_SENSOR,
                     "unit": UNITS.FARHENHEIT,
                 },
                 "Humidity": {
                     "internal_state": STATES.THERMOSTAT_HUMIDITY,
-                    "dtype": "Float32",
+                    "dtype": "float32",
                     "channel": CHANNELS.THERMOSTAT_SENSOR,
                     "unit": UNITS.RELATIVE_HUMIDITY,
                 },
@@ -947,7 +946,7 @@ class DonateYourDataSpec:
                 **{
                     "Remote_Sensor_{}_Temperature".format(i): {
                         "internal_state": STATES[f"RS{i}_TEMPERATURE"],
-                        "dtype": "Float32",
+                        "dtype": "float32",
                         "channel": CHANNELS.REMOTE_SENSOR,
                         "unit": UNITS.CELSIUS,
                     }
@@ -971,13 +970,13 @@ class DonateYourDataSpec:
             spec={
                 "T_out": {
                     "internal_state": STATES.OUTDOOR_TEMPERATURE,
-                    "dtype": "Float32",
+                    "dtype": "float32",
                     "channel": CHANNELS.WEATHER,
                     "unit": UNITS.FARHENHEIT,
                 },
                 "RH_out": {
                     "internal_state": STATES.OUTDOOR_RELATIVE_HUMIDITY,
-                    "dtype": "Float32",
+                    "dtype": "float32",
                     "channel": CHANNELS.WEATHER,
                     "unit": UNITS.RELATIVE_HUMIDITY,
                 },

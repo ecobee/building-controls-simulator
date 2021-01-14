@@ -284,6 +284,47 @@ Finally, run all the tests:
 python -m pytest src/python
 ```
 
+## Changing dependency versions
+
+The dependencies are pinned to exact versions in the `requirements_fixed.txt` file.
+To change this simply change line (approx) 124 in the `Dockerfile` from:
+```
+    && pip install -r "requirements_fixed.txt" \
+    # && pip install -r "requirements_unfixed.txt" \
+```
+
+to
+
+```
+    # && pip install -r "requirements_fixed.txt" \
+    && pip install -r "requirements_unfixed.txt" \
+```
+
+This will install the latest satisfying versions of all dependencies. After testing that
+the dependencies are working freeze them into a new `requirements_fixed.txt` file.
+
+```
+pip freeze > requirements_fixed.txt
+```
+
+Several dependencies are installed from source so these must be removed from the
+`requirements_fixed.txt` file. These are:
+
+```
+PyFMI
+pyflux
+```
+
+Then change line 124 in the `Dockerfile` back to use the `requirements.txt` file.
+Note that when building the image using the `requirements.txt` file it will 
+add the pinned dependencies to the Pipfile, discard those changes.
+
+## Making a Release
+
+1. On GitHub use the releases/new wizard (https://github.com/ecobee/building-controls-simulator/releases/new). Use semver (https://semver.org/) convention for release versioning.
+2. Make docker image locally
+3. Push docker image to dockerhub (https://hub.docker.com/repository/docker/tstesco/building-controls-simulator)
+
 ## Weather Data
 
 There are several data sources that can be used. The `WeatherSource` provides methods
