@@ -66,7 +66,9 @@ elif [[ "${TO_SET_VERSION}" =~ ^("8-9-0"|"9-0-1"|"9-1-0"|"9-2-0"|"9-3-0"|"9-4-0"
 
     # EnergyPlus uses symbolic links to define all runtime executables
     # we simply redefine these to hot-swap what version is currently used
-    _LINK_DIR="/home/bcs/.local/bin"
+    _LINK_DIR="/home/${USER_NAME}/.local/bin"
+    if [ ! -d "${_LINK_DIR}" ]; then mkdir -p "${_LINK_DIR}"; fi
+
     ln -sf "${EPLUS_DIR}/runenergyplus" "${_LINK_DIR}/runenergyplus"
     ln -sf "${EPLUS_DIR}/runepmacro" "${_LINK_DIR}/runepmacro"
     ln -sf "${EPLUS_DIR}/runreadvars" "${_LINK_DIR}/runreadvars"

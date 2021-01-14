@@ -117,8 +117,8 @@ if ! shopt -oq posix; then
 fi
 
 # manage shell for interactive login shell
-if [ "${PIPENV_ACTIVE:-0}" = "0" ]; then
-   # if not in pipenv shell setup environment
+if [[ "$VIRTUAL_ENV" == "" ]]; then
+   # if venv not activated
     cat << EndOfMessage
 ================================================================================
                         ██████╗   ██████╗ ███████╗
@@ -153,5 +153,5 @@ EndOfMessage
         echo "${HOME}/.jupyter/jupyter_notebook_config.py already exists. Not overriden."
         echo "If jupyter server is inaccessible without password delete this file and re-run."
     fi
-    pipenv shell
+    . "${LIB_DIR}/${VENV_NAME}/bin/activate"
 fi
