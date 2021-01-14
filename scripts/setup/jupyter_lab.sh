@@ -23,7 +23,9 @@ if [ ! -d "${JUPYTER_LOG_DIR}" ]; then mkdir "${JUPYTER_LOG_DIR}"; fi
 echo "jupyter-lab accessable at: http://localhost:8888/lab"
 echo "jupyter-lab logs are being stored in: ${JUPYTER_LOG_DIR}/${FNAME}"
 
-pipenv run jupyter-lab --ip="0.0.0.0" --no-browser > "${JUPYTER_LOG_DIR}/${FNAME}"
+. "${LIB_DIR}/${VENV_NAME}/bin/activate"
+jupyter-lab --ip="0.0.0.0" --no-browser > "${JUPYTER_LOG_DIR}/${FNAME}"
+
 echo "$!" > "${JUPYTER_LOG_DIR}/JUPYTER_SERVER_PID.txt"
 
 set +eu +o pipefail
