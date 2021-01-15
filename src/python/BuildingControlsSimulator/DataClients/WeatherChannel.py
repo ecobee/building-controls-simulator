@@ -90,9 +90,7 @@ class WeatherChannel(DataChannel):
         # self.time_zone = copy.deepcopy(datetime_channel.timezone)
         # if self.time_zone:
         _hour_offset = (
-            datetime_channel.timezone.utcoffset(
-                datetime.utcnow()
-            ).total_seconds()
+            datetime_channel.timezone.utcoffset(datetime.utcnow()).total_seconds()
             / 3600
         )
         if self.epw_meta["TZ"] != _hour_offset:
@@ -105,9 +103,7 @@ class WeatherChannel(DataChannel):
         if not fill_epw_data.empty:
             _epw_path = os.path.join(
                 self.simulation_epw_dir,
-                "NREL_EPLUS"
-                + f"_{sim_config['identifier']}"
-                + f"_{fill_epw_fname}",
+                "NREL_EPLUS" + f"_{sim_config['identifier']}" + f"_{fill_epw_fname}",
             )
 
             # fill any missing fields in epw
@@ -207,9 +203,7 @@ class WeatherChannel(DataChannel):
                 if meta_epw_lines[n_meta_line].split(",")[0] == "DATA PERIODS":
                     break
 
-        meta = dict(
-            zip(self.epw_meta_keys, meta_epw_lines[0].rstrip("\n").split(","))
-        )
+        meta = dict(zip(self.epw_meta_keys, meta_epw_lines[0].rstrip("\n").split(",")))
         meta["altitude"] = float(meta["altitude"])
         meta["latitude"] = float(meta["latitude"])
         meta["longitude"] = float(meta["longitude"])
@@ -232,9 +226,7 @@ class WeatherChannel(DataChannel):
 
         return data, meta, meta_epw_lines
 
-    def convert_epw_to_internal(
-        self, data, use_datetime=True, force_year=None
-    ):
+    def convert_epw_to_internal(self, data, use_datetime=True, force_year=None):
         # some EPW files have minutes=60 to represent the end of the hour
         # this doesnt actually mean it is the next hour, it should be 0
         # see: https://discourse.radiance-online.org/t/ \
@@ -305,15 +297,11 @@ class WeatherChannel(DataChannel):
 
         # check for cached eplus geojson
         # cache is updated daily
-        cache_name = (
-            f"eplus_geojson_cache_{datetime.today().strftime('%Y_%m_%d')}.csv"
-        )
+        cache_name = f"eplus_geojson_cache_{datetime.today().strftime('%Y_%m_%d')}.csv"
         if self.archive_tmy3_dir:
             cache_path = os.path.join(self.archive_tmy3_dir, cache_name)
         if self.archive_tmy3_dir and os.path.exists(cache_path):
-            logger.info(
-                f"Reading TMY weather geojson from cache: {cache_path}"
-            )
+            logger.info(f"Reading TMY weather geojson from cache: {cache_path}")
             df = pd.read_csv(cache_path)
             if df.empty:
                 logger.error("Cached TMY weather geojson is empty.")
@@ -357,9 +345,7 @@ class WeatherChannel(DataChannel):
                 fpath = os.path.join(self.ep_tmy3_cache_dir, fname)
                 # if already downloaded return name and path to cache
                 if not os.path.exists(fpath):
-                    logger.info(
-                        f"Downloading TMY weather data from: {epw_url}"
-                    )
+                    logger.info(f"Downloading TMY weather data from: {epw_url}")
                     res = requests.get(epw_url, allow_redirects=True)
                     if res.status_code == 200:
                         with open(fpath, "wb") as f:
@@ -399,9 +385,7 @@ class WeatherChannel(DataChannel):
         tmy3_meta["Longitude"] = np.radians(tmy3_meta["Longitude"])
 
         # compute haversine distance from all stations to query point
-        dis = haversine_distances(
-            tmy3_meta[["Latitude", "Longitude"]].values, qp
-        )
+        dis = haversine_distances(tmy3_meta[["Latitude", "Longitude"]].values, qp)
 
         # station that minimizes distance from query point should be used
         usaf_code = tmy3_meta.USAF[np.argmin(dis)]
@@ -453,9 +437,7 @@ class WeatherChannel(DataChannel):
         data = pd.read_csv(url_tmy, skiprows=2).reset_index()
         return data, meta
 
-    def fill_epw(
-        self, input_epw_data, datetime_channel, fill_epw_data, sim_config
-    ):
+    def fill_epw(self, input_epw_data, datetime_channel, fill_epw_data, sim_config):
         """Any missing fields required by EnergyPlus should be filled with
         defaults from Typical Meteorological Year 3 data sets for nearest city.
         All data is internally in UTC.
@@ -486,18 +468,11 @@ class WeatherChannel(DataChannel):
                 epw_data,
             ],
             axis="columns",
-        ).rename(
-            columns={
-                datetime_channel.spec.datetime_column: self.datetime_column
-            }
-        )
+        ).rename(columns={datetime_channel.spec.datetime_column: self.datetime_column})
 
         # get current period to check if resampling is needed
         _cur_fill_epw_data_period = (
-            fill_epw_data[self.datetime_column]
-            .diff()
-            .mode()[0]
-            .total_seconds()
+            fill_epw_data[self.datetime_column].diff().mode()[0].total_seconds()
         )
 
         if _cur_fill_epw_data_period < sim_config["sim_step_size_seconds"]:
@@ -515,9 +490,7 @@ class WeatherChannel(DataChannel):
                 f"{sim_config['sim_step_size_seconds']}S"
             ).asfreq()
             # ffill is only method that works on all types
-            fill_epw_data = fill_epw_data.interpolate(
-                axis="rows", method="ffill"
-            )
+            fill_epw_data = fill_epw_data.interpolate(axis="rows", method="ffill")
             fill_epw_data = fill_epw_data.reset_index()
 
         # using annual TMY there may be missing columns at beginning
@@ -536,9 +509,7 @@ class WeatherChannel(DataChannel):
             fill_epw_data_prev_years = []
             for y in range(1, years):
                 _fill_epw_data_prev_year = fill_epw_data.copy(deep=True)
-                _fill_epw_data_prev_year["year"] = (
-                    _fill_epw_data_prev_year["year"] - 1
-                )
+                _fill_epw_data_prev_year["year"] = _fill_epw_data_prev_year["year"] - 1
                 _fill_epw_data_prev_year[
                     self.datetime_column
                 ] = _fill_epw_data_prev_year[
@@ -565,9 +536,7 @@ class WeatherChannel(DataChannel):
             fill_epw_data_prev_years = []
             for y in range(1, years):
                 _fill_epw_data_prev_year = fill_epw_data.copy(deep=True)
-                _fill_epw_data_prev_year["year"] = (
-                    _fill_epw_data_prev_year["year"] + 1
-                )
+                _fill_epw_data_prev_year["year"] = _fill_epw_data_prev_year["year"] + 1
                 _fill_epw_data_prev_year[
                     self.datetime_column
                 ] = _fill_epw_data_prev_year[
@@ -584,9 +553,7 @@ class WeatherChannel(DataChannel):
 
         # epw_data left join fill_data will give fill data for every epw_data
         # record
-        epw_data_full = epw_data[
-            [self.datetime_column] + self.spec.columns
-        ].merge(
+        epw_data_full = epw_data[[self.datetime_column] + self.spec.columns].merge(
             fill_epw_data,
             how="left",
             on=[self.datetime_column],
@@ -599,9 +566,9 @@ class WeatherChannel(DataChannel):
                 epw_data_full[_col].isnull(),
                 _col,
             ] = epw_data_full[EnergyPlusWeather.output_rename_dict[_col]]
-            epw_data_full[
-                EnergyPlusWeather.output_rename_dict[_col]
-            ] = epw_data_full[_col]
+            epw_data_full[EnergyPlusWeather.output_rename_dict[_col]] = epw_data_full[
+                _col
+            ]
             epw_data_full = epw_data_full.drop(columns=[_col])
 
         # compute dewpoint from dry-bulb and relative humidity
@@ -626,9 +593,7 @@ class WeatherChannel(DataChannel):
         # add ffill data for final day and extra day.
         _fill = epw_data_full.tail(1).copy(deep=True)
         _fill_rec = _fill.iloc[0]
-        _fill[self.datetime_column] = _fill[
-            self.datetime_column
-        ] + pd.Timedelta(
+        _fill[self.datetime_column] = _fill[self.datetime_column] + pd.Timedelta(
             days=2,
             hours=-_fill_rec[self.datetime_column].hour,
             minutes=-_fill_rec[self.datetime_column].minute,

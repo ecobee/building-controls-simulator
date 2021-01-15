@@ -61,9 +61,7 @@ class Simulation:
         missing_state_estimator_output_states = [
             k
             for k in self.controller_model.input_states
-            if k
-            not in self.state_estimator_model.output_states
-            + available_data_states
+            if k not in self.state_estimator_model.output_states + available_data_states
         ]
         if any(missing_state_estimator_output_states):
             raise ValueError(
@@ -74,9 +72,7 @@ class Simulation:
         missing_controller_output_states = [
             k
             for k in self.controller_model.input_states
-            if k
-            not in self.state_estimator_model.output_states
-            + available_data_states
+            if k not in self.state_estimator_model.output_states + available_data_states
         ]
         if any(missing_controller_output_states):
             raise ValueError(
@@ -87,8 +83,7 @@ class Simulation:
         missing_building_output_keys = [
             k
             for k in self.state_estimator_model.input_states
-            if k
-            not in self.building_model.output_states + available_data_states
+            if k not in self.building_model.output_states + available_data_states
         ]
         if any(missing_building_output_keys):
             raise ValueError(
@@ -243,9 +238,7 @@ class Simulation:
                 change_points_schedule=self.data_client.thermostat.change_points_schedule,
                 change_points_comfort_prefs=self.data_client.thermostat.change_points_comfort_prefs,
                 change_points_hvac_mode=self.data_client.thermostat.change_points_hvac_mode,
-                time_utc=self.data_client.datetime.data.iloc[i][
-                    STATES.DATE_TIME
-                ],
+                time_utc=self.data_client.datetime.data.iloc[i][STATES.DATE_TIME],
             )
 
             self.state_estimator_model.do_step(
@@ -288,9 +281,7 @@ class Simulation:
         # convert output to dataframe
         self.output = pd.DataFrame.from_dict(
             {
-                STATES.DATE_TIME: self.data_client.datetime.data[
-                    STATES.DATE_TIME
-                ],
+                STATES.DATE_TIME: self.data_client.datetime.data[STATES.DATE_TIME],
                 **self.controller_model.output,
                 **self.building_model.output,
             }

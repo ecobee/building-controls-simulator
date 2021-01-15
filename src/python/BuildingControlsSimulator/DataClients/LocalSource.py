@@ -39,13 +39,11 @@ class LocalSource(DataSource):
                     extensions.append(_ext)
 
             if len(extensions) == 0:
-                raise ValueError(
-                    f"{self.local_cache_source} contains no data files."
-                )
+                raise ValueError(f"{self.local_cache_source} contains no data files.")
             elif len(extensions) == 1:
                 self.file_extension = extensions[0]
             elif len(extensions) > 1:
-                ValueError(
+                raise ValueError(
                     f"{self.local_cache_source} contains more than one file"
                     + f" extension type, extensions: {extensions}."
                 )

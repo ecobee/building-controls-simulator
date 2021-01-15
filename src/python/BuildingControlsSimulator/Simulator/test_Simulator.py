@@ -58,9 +58,7 @@ class TestSimulator:
             return epw_name
 
         # check WEATHER_DIR
-        test_weather_path = os.path.join(
-            os.environ.get("WEATHER_DIR"), epw_name
-        )
+        test_weather_path = os.path.join(os.environ.get("WEATHER_DIR"), epw_name)
         # if not found search energyplus default weather files
         # these are included in all energyplus installs
         if not os.path.isfile(test_weather_path):
@@ -72,9 +70,7 @@ class TestSimulator:
             if os.path.isfile(_fpath):
                 shutil.copyfile(_fpath, test_weather_path)
             else:
-                raise ValueError(
-                    f"Could not find supplied weather file: {epw_name}"
-                )
+                raise ValueError(f"Could not find supplied weather file: {epw_name}")
 
         return test_weather_path
 
@@ -99,16 +95,12 @@ class TestSimulator:
             if os.path.isfile(_fpath):
                 shutil.copyfile(_fpath, test_idf_path)
             else:
-                raise ValueError(
-                    f"Could not find supplied idf file: {idf_name}"
-                )
+                raise ValueError(f"Could not find supplied idf file: {idf_name}")
 
         return test_idf_path
 
     def get_fmu(self, fmu_name):
-        return (
-            f"{os.environ.get('FMU_DIR')}/../fmu-models/deadband/deadband.fmu"
-        )
+        return f"{os.environ.get('FMU_DIR')}/../fmu-models/deadband/deadband.fmu"
 
     @classmethod
     def teardown_class(cls):
@@ -125,17 +117,13 @@ class TestSimulator:
                 local_cache=data_client_params["source_local_cache"],
             )
         elif data_client_params["is_gcs_source"]:
-            if isinstance(
-                data_client_params["source_data_spec"], DonateYourDataSpec
-            ):
+            if isinstance(data_client_params["source_data_spec"], DonateYourDataSpec):
                 _source = GCSDYDSource(
                     gcp_project=data_client_params["gcp_project"],
                     gcs_uri_base=data_client_params["gcs_uri_base"],
                     local_cache=data_client_params["source_local_cache"],
                 )
-            elif isinstance(
-                data_client_params["source_data_spec"], FlatFilesSpec
-            ):
+            elif isinstance(data_client_params["source_data_spec"], FlatFilesSpec):
                 _source = GCSFlatFilesSource(
                     gcp_project=data_client_params["gcp_project"],
                     gcs_uri_base=data_client_params["gcs_uri_base"],
@@ -165,15 +153,11 @@ class TestSimulator:
         if building_model_params["is_energyplus_building"]:
             _building = EnergyPlusBuildingModel(
                 idf=IDFPreprocessor(
-                    idf_file=self.get_idf_path(
-                        building_model_params["idf_name"]
-                    ),
+                    idf_file=self.get_idf_path(building_model_params["idf_name"]),
                     building_config=building_model_params["building_config"],
                     debug=True,
                 ),
-                fill_epw_path=self.get_epw_path(
-                    building_model_params["epw_name"]
-                ),
+                fill_epw_path=self.get_epw_path(building_model_params["epw_name"]),
             )
 
         return _building
@@ -189,12 +173,8 @@ class TestSimulator:
         _state_estimator = None
         if state_estimator_model_params["is_low_pass_filter"]:
             _state_estimator = LowPassFilter(
-                alpha_temperature=state_estimator_model_params[
-                    "low_pass_filter_alpha"
-                ],
-                alpha_humidity=state_estimator_model_params[
-                    "low_pass_filter_alpha"
-                ],
+                alpha_temperature=state_estimator_model_params["low_pass_filter_alpha"],
+                alpha_humidity=state_estimator_model_params["low_pass_filter_alpha"],
             )
 
         return _state_estimator
@@ -210,9 +190,7 @@ class TestSimulator:
             end_utc=_config_params["end_utc"],
             min_sim_period=_config_params["min_sim_period"],
             sim_step_size_seconds=_config_params["sim_step_size_seconds"],
-            output_step_size_seconds=_config_params[
-                "output_step_size_seconds"
-            ],
+            output_step_size_seconds=_config_params["output_step_size_seconds"],
         )
 
         dc = DataClient(
@@ -230,16 +208,12 @@ class TestSimulator:
         master = Simulator(
             data_client=dc,
             sim_config=test_sim_config,
-            building_models=[
-                self.get_building_model(test_params["building_model"])
-            ],
+            building_models=[self.get_building_model(test_params["building_model"])],
             controller_models=[
                 self.get_controller_model(test_params["controller_model"])
             ],
             state_estimator_models=[
-                self.get_state_estimator_model(
-                    test_params["state_estimator_model"]
-                )
+                self.get_state_estimator_model(test_params["state_estimator_model"])
             ],
         )
         master.simulate(local=True, preprocess_check=False)
@@ -280,15 +254,11 @@ class TestSimulator:
         output_format_mean_thermostat_humidity = r_df[humidity_name].mean()
 
         assert (
-            pytest.approx(
-                test_params["expected_result"]["mean_thermostat_temperature"]
-            )
+            pytest.approx(test_params["expected_result"]["mean_thermostat_temperature"])
             == mean_thermostat_temperature
         )
         assert (
-            pytest.approx(
-                test_params["expected_result"]["mean_thermostat_humidity"]
-            )
+            pytest.approx(test_params["expected_result"]["mean_thermostat_humidity"])
             == mean_thermostat_humidity
         )
         assert (
@@ -301,9 +271,7 @@ class TestSimulator:
         )
         assert (
             pytest.approx(
-                test_params["expected_result"][
-                    "output_format_mean_thermostat_humidity"
-                ]
+                test_params["expected_result"]["output_format_mean_thermostat_humidity"]
             )
             == output_format_mean_thermostat_humidity
         )

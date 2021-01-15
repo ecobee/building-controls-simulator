@@ -346,6 +346,4 @@ if os.environ.get("FLATFILES_GBQ_TABLE"):
         },
     ]
 
-test_params = (
-    test_params_local + test_params_gcs_dyd + test_params_gbq_flatfiles
-)
+test_params = test_params_local + test_params_gcs_dyd + test_params_gbq_flatfiles

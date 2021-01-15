@@ -22,9 +22,7 @@ class BuildingModel(ABC):
     output_states = attr.ib()
 
     @abstractmethod
-    def initialize(
-        self, start_utc, t_start, t_end, t_step, data_spec, categories_dict
-    ):
+    def initialize(self, start_utc, t_start, t_end, t_step, data_spec, categories_dict):
         pass
 
     @abstractmethod

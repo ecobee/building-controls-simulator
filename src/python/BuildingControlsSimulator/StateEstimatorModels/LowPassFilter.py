@@ -123,9 +123,7 @@ class LowPassFilter(StateEstimatorModel):
     def filter(state, prev_state_estimate, alpha):
         if prev_state_estimate:
             # y[i] := y[i-1] + α * (x[i] - y[i-1])
-            state_estimate = prev_state_estimate + alpha * (
-                state - prev_state_estimate
-            )
+            state_estimate = prev_state_estimate + alpha * (state - prev_state_estimate)
         else:
             # cold start
             state_estimate = state
@@ -140,9 +138,7 @@ class LowPassFilter(StateEstimatorModel):
         """Simulate controller time step."""
         self.step_output[STATES.STEP_STATUS] = 1
 
-        self.step_output[
-            STATES.THERMOSTAT_TEMPERATURE_ESTIMATE
-        ] = LowPassFilter.filter(
+        self.step_output[STATES.THERMOSTAT_TEMPERATURE_ESTIMATE] = LowPassFilter.filter(
             state=step_sensor_input[STATES.THERMOSTAT_TEMPERATURE],
             prev_state_estimate=self.step_output[
                 STATES.THERMOSTAT_TEMPERATURE_ESTIMATE
@@ -150,20 +146,16 @@ class LowPassFilter(StateEstimatorModel):
             alpha=self.alpha_temperature,
         )
 
-        self.step_output[
-            STATES.THERMOSTAT_HUMIDITY_ESTIMATE
-        ] = LowPassFilter.filter(
+        self.step_output[STATES.THERMOSTAT_HUMIDITY_ESTIMATE] = LowPassFilter.filter(
             state=step_sensor_input[STATES.THERMOSTAT_HUMIDITY],
-            prev_state_estimate=self.step_output[
-                STATES.THERMOSTAT_HUMIDITY_ESTIMATE
-            ],
+            prev_state_estimate=self.step_output[STATES.THERMOSTAT_HUMIDITY_ESTIMATE],
             alpha=self.alpha_temperature,
         )
 
         # non filtered states
-        self.step_output[
-            STATES.THERMOSTAT_MOTION_ESTIMATE
-        ] = step_sensor_input[STATES.THERMOSTAT_MOTION]
+        self.step_output[STATES.THERMOSTAT_MOTION_ESTIMATE] = step_sensor_input[
+            STATES.THERMOSTAT_MOTION
+        ]
 
         self.step_output[STATES.STEP_STATUS] = 0
         self.add_step_to_output(self.step_output)
