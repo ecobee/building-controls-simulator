@@ -44,20 +44,14 @@ class DataDestination(ABC):
                 self.get_file_name(sim_name),
             )
         else:
-            logger.info(
-                "No local_cache provided. To enable set env LOCAL_CACHE_DIR."
-            )
+            logger.info("No local_cache provided. To enable set env LOCAL_CACHE_DIR.")
             return None
 
     def put_local_cache(self, df, local_cache_file):
-        if local_cache_file and os.path.exists(
-            os.path.dirname(local_cache_file)
-        ):
+        if local_cache_file and os.path.exists(os.path.dirname(local_cache_file)):
             self.write_data_by_extension(df, local_cache_file)
         else:
-            logger.error(
-                f"local_cache_file: {local_cache_file} does not exist."
-            )
+            logger.error(f"local_cache_file: {local_cache_file} does not exist.")
 
     def write_data_by_extension(
         self,
@@ -76,9 +70,7 @@ class DataDestination(ABC):
         # check that filepath_or_buffer matches file_extension
         # default to filepath_or_buffer overriding
         if not gcs_uri:
-            fpath_file_extension = os.path.basename(filepath_or_buffer).split(
-                ".", 1
-            )[1]
+            fpath_file_extension = os.path.basename(filepath_or_buffer).split(".", 1)[1]
         else:
             fpath_file_extension = os.path.basename(gcs_uri).split(".", 1)[1]
 
@@ -103,9 +95,7 @@ class DataDestination(ABC):
         if isinstance(data_spec, Internal):
             # if modifing df for export need a copy
             _df = df.copy(deep=True)
-            _df.columns = [
-                data_spec.full.spec[_col]["name"] for _col in _df.columns
-            ]
+            _df.columns = [data_spec.full.spec[_col]["name"] for _col in _df.columns]
         else:
             _df = df
 
@@ -124,6 +114,8 @@ class DataDestination(ABC):
                 index=False,
             )
         elif file_extension == "csv.zip":
+            raise NotImplementedError("Pandas 1.2.0 has issue with writting zip files.")
+            # see
             _df.to_csv(
                 filepath_or_buffer,
                 compression="zip",
@@ -136,6 +128,4 @@ class DataDestination(ABC):
                 index=False,
             )
         else:
-            logger.error(
-                f"Unsupported destination file extension: {file_extension}"
-            )
+            logger.error(f"Unsupported destination file extension: {file_extension}")

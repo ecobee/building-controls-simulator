@@ -37,18 +37,10 @@ class ThermostatChannel(DataChannel):
                 # check that day of week has been oberserved before
                 # if not, assume part of same schedule and add it
 
-                if (
-                    _match_periods[0]["on_day_of_week"][_chg["day_of_week"]]
-                    is None
-                ):
+                if _match_periods[0]["on_day_of_week"][_chg["day_of_week"]] is None:
                     # observed period on new day of week
-                    _match_periods[0]["on_day_of_week"][
-                        _chg["day_of_week"]
-                    ] = True
-                elif (
-                    _match_periods[0]["on_day_of_week"][_chg["day_of_week"]]
-                    is False
-                ):
+                    _match_periods[0]["on_day_of_week"][_chg["day_of_week"]] = True
+                elif _match_periods[0]["on_day_of_week"][_chg["day_of_week"]] is False:
                     raise ValueError(
                         "Schedule invalid. False values should not exist yet: "
                         + f"_chg={_chg}"
@@ -100,19 +92,14 @@ class ThermostatChannel(DataChannel):
             return schedule_chg_pts
 
         # feature cols
-        schedule_data["prev_schedule"] = schedule_data[STATES.SCHEDULE].shift(
-            1
-        )
+        schedule_data["prev_schedule"] = schedule_data[STATES.SCHEDULE].shift(1)
         schedule_data["diff"] = schedule_data[STATES.DATE_TIME].diff()
 
         schedule_chgs = schedule_data[
             (schedule_data["prev_schedule"] != schedule_data[STATES.SCHEDULE])
             & (~schedule_data[STATES.SCHEDULE].isnull())
             & (~schedule_data["prev_schedule"].isnull())
-            & (
-                schedule_data["diff"]
-                == pd.Timedelta(seconds=sim_step_size_seconds)
-            )
+            & (schedule_data["diff"] == pd.Timedelta(seconds=sim_step_size_seconds))
         ][[STATES.DATE_TIME, STATES.SCHEDULE]]
 
         if schedule_chgs.empty:
@@ -130,9 +117,7 @@ class ThermostatChannel(DataChannel):
 
             return schedule_chg_pts
 
-        schedule_chgs["day_of_week"] = schedule_chgs[
-            STATES.DATE_TIME
-        ].dt.dayofweek
+        schedule_chgs["day_of_week"] = schedule_chgs[STATES.DATE_TIME].dt.dayofweek
         schedule_chgs["minute_of_day"] = (
             schedule_chgs[STATES.DATE_TIME].dt.hour * 60
             + schedule_chgs[STATES.DATE_TIME].dt.minute
@@ -143,17 +128,12 @@ class ThermostatChannel(DataChannel):
         pt_end = schedule_chgs[STATES.DATE_TIME].max()
         # get first week schedule
         schedule_chg_pts = {
-            pt_start: ThermostatChannel.get_next_week_schedule(
-                schedule_chgs, pt_start
-            )
+            pt_start: ThermostatChannel.get_next_week_schedule(schedule_chgs, pt_start)
         }
         # initialize first week of schedule changes as current schedule
         cur_schedule_week_chgs = schedule_chgs[
             (schedule_chgs[STATES.DATE_TIME] >= pt_start)
-            & (
-                schedule_chgs[STATES.DATE_TIME]
-                < pt_start + pd.Timedelta(days=7)
-            )
+            & (schedule_chgs[STATES.DATE_TIME] < pt_start + pd.Timedelta(days=7))
         ].sort_values(["day_of_week", "minute_of_day"])
 
         # check each week's schedule changes against last week for added or
@@ -166,10 +146,7 @@ class ThermostatChannel(DataChannel):
             new_week = True
             week_chgs = schedule_chgs[
                 (schedule_chgs[STATES.DATE_TIME] >= _week_start)
-                & (
-                    schedule_chgs[STATES.DATE_TIME]
-                    < _week_start + pd.Timedelta(days=7)
-                )
+                & (schedule_chgs[STATES.DATE_TIME] < _week_start + pd.Timedelta(days=7))
             ].sort_values(["day_of_week", "minute_of_day"])
 
             merged = cur_schedule_week_chgs.merge(
@@ -200,10 +177,7 @@ class ThermostatChannel(DataChannel):
                     prev_week_chg_time = _chg_time - pd.Timedelta(days=7)
                     _prev_week_chg = schedule_data[
                         (schedule_data[STATES.DATE_TIME] == prev_week_chg_time)
-                        & (
-                            schedule_data[STATES.SCHEDULE]
-                            != _chg[STATES.SCHEDULE]
-                        )
+                        & (schedule_data[STATES.SCHEDULE] != _chg[STATES.SCHEDULE])
                     ]
                     if _prev_week_chg.empty:
                         # case 1)
@@ -218,18 +192,14 @@ class ThermostatChannel(DataChannel):
                         )
                         # set index to above current index
                         # cur_schedule_week_chgs is only used for debugging
-                        _revised_chg.index = [
-                            cur_schedule_week_chgs.index.max() + 1
-                        ]
+                        _revised_chg.index = [cur_schedule_week_chgs.index.max() + 1]
                         cur_schedule_week_chgs = pd.concat(
                             [cur_schedule_week_chgs, _revised_chg]
                         ).sort_values(["day_of_week", "minute_of_day"])
 
                         # revise last schedule
-                        schedule_chg_pts = (
-                            ThermostatChannel.add_chg_to_last_schedule(
-                                schedule_chg_pts, _chg
-                            )
+                        schedule_chg_pts = ThermostatChannel.add_chg_to_last_schedule(
+                            schedule_chg_pts, _chg
                         )
 
                     elif not _prev_week_chg.empty:
@@ -251,9 +221,9 @@ class ThermostatChannel(DataChannel):
                             + _before_chg_time.minute
                         )
 
-                        left_chgs = merged[
-                            merged["_merge"] == "left_only"
-                        ].copy(deep=True)
+                        left_chgs = merged[merged["_merge"] == "left_only"].copy(
+                            deep=True
+                        )
                         left_chgs["min_of_week"] = (
                             left_chgs["day_of_week"] * 24 * 60
                             + left_chgs["minute_of_day"]
@@ -267,9 +237,7 @@ class ThermostatChannel(DataChannel):
                         # period are of the schedule that was missing and
                         # found in right when data started recording again
                         found_chg = unobserved_chgs[
-                            unobserved_chgs[
-                                str(int(STATES.SCHEDULE)) + suffix_last
-                            ]
+                            unobserved_chgs[str(int(STATES.SCHEDULE)) + suffix_last]
                             == _chg[str(int(STATES.SCHEDULE)) + suffix_curr]
                         ]
                         # if we found the missing change then do nothing
@@ -331,10 +299,7 @@ class ThermostatChannel(DataChannel):
                     # and if they are not the expected schedule
                     _new_rec = schedule_data[
                         (schedule_data[STATES.DATE_TIME] == _chg_time)
-                        & (
-                            schedule_data[STATES.SCHEDULE]
-                            != _chg[STATES.SCHEDULE]
-                        )
+                        & (schedule_data[STATES.SCHEDULE] != _chg[STATES.SCHEDULE])
                     ]
 
                     if not _new_rec.empty:
@@ -344,12 +309,8 @@ class ThermostatChannel(DataChannel):
                         _new_chg = _new_rec.iloc[0]
                         # check if missing due to missing data right before
                         if (
-                            _new_chg[STATES.DATE_TIME] - _new_chg["diff"]
-                            > _chg_time
-                        ) or (
-                            _new_chg[STATES.SCHEDULE]
-                            == _new_chg["prev_schedule"]
-                        ):
+                            _new_chg[STATES.DATE_TIME] - _new_chg["diff"] > _chg_time
+                        ) or (_new_chg[STATES.SCHEDULE] == _new_chg["prev_schedule"]):
                             schedule_chg_pts[
                                 _chg_time
                             ] = ThermostatChannel.get_next_week_schedule(
@@ -408,46 +369,6 @@ class ThermostatChannel(DataChannel):
             ]
         ]
 
-        comfort_chg_pts = {}
-
-        if filtered_df.empty:
-            # check for all holds
-            # use schedule column as check for record not being entirely null
-            _hold_names = ["hold", "Hold", "auto", "HKhold"]
-            if all(
-                [
-                    _cat
-                    for _cat in data[~data[STATES.SCHEDULE].isnull()][
-                        STATES.CALENDAR_EVENT
-                    ].unique()
-                    if _cat in _hold_names
-                ]
-            ):
-                # entirely holds, set dummy comfort settings with mode
-                comfort_chg_pts[data.iloc[0][STATES.DATE_TIME]] = {}
-                for _schedule in data[STATES.SCHEDULE].cat.categories:
-                    comfort_chg_pts[data.iloc[0][STATES.DATE_TIME]][
-                        _schedule
-                    ] = {
-                        STATES.TEMPERATURE_STP_COOL: data[
-                            STATES.TEMPERATURE_STP_COOL
-                        ]
-                        .mode()
-                        .values[0],
-                        STATES.TEMPERATURE_STP_HEAT: data[
-                            STATES.TEMPERATURE_STP_HEAT
-                        ]
-                        .mode()
-                        .values[0],
-                    }
-            else:
-                # there is no unambiguous way to extract setpoints
-                # TODO: do something less abrupt and log error.
-                raise ValueError(
-                    "There is no unambiguous way to extract setpoints."
-                    + "Do not use this input data file for this time period."
-                )
-
         # clean up columns
         data = data.drop(
             axis="columns",
@@ -459,55 +380,68 @@ class ThermostatChannel(DataChannel):
             ],
         )
 
+        comfort_chg_pts = {}
+
         # iterate over each schedule specifically and collect comfort changes
-        for _schedule in filtered_df[STATES.SCHEDULE].cat.categories:
+        for _schedule in data[STATES.SCHEDULE].dropna().unique():
             schedule_spt_df = filtered_df[
                 (filtered_df[STATES.SCHEDULE] == _schedule)
             ].reset_index(drop=True)
 
             if schedule_spt_df.empty:
-                # while schedule may exist in full df it may have no occurance
+                # while schedule exists in full df it may have no occurance
                 # in filtered df if the periods always occur with a hold
-                # as well
-                break
+                # in this case take mode, the set point will be overridden anyway
+                if data.iloc[0][STATES.DATE_TIME] not in comfort_chg_pts.keys():
+                    comfort_chg_pts[data.iloc[0][STATES.DATE_TIME]] = {}
 
-            schedule_spt_df["prev_stp_cool"] = schedule_spt_df[
-                STATES.TEMPERATURE_STP_COOL
-            ].shift(1)
-            schedule_spt_df["prev_stp_heat"] = schedule_spt_df[
-                STATES.TEMPERATURE_STP_HEAT
-            ].shift(1)
+                comfort_chg_pts[data.iloc[0][STATES.DATE_TIME]][_schedule] = {
+                    STATES.TEMPERATURE_STP_COOL: data[STATES.TEMPERATURE_STP_COOL]
+                    .mode()
+                    .values[0],
+                    STATES.TEMPERATURE_STP_HEAT: data[STATES.TEMPERATURE_STP_HEAT]
+                    .mode()
+                    .values[0],
+                }
+            else:
+                # extract detectable change points
+                schedule_spt_df["prev_stp_cool"] = schedule_spt_df[
+                    STATES.TEMPERATURE_STP_COOL
+                ].shift(1)
+                schedule_spt_df["prev_stp_heat"] = schedule_spt_df[
+                    STATES.TEMPERATURE_STP_HEAT
+                ].shift(1)
 
-            # extract initial setpoints for schedule
-            _init_row = schedule_spt_df.iloc[0]
-            comfort_chg_pts[
-                _init_row[STATES.DATE_TIME]
-            ] = ThermostatChannel.extract_comfort_preferences(_init_row)
-
-            comfort_chgs = schedule_spt_df[
-                (
-                    (
-                        schedule_spt_df["prev_stp_cool"]
-                        != schedule_spt_df[STATES.TEMPERATURE_STP_COOL]
-                    )
-                    & (~schedule_spt_df["prev_stp_cool"].isnull())
-                    & (~schedule_spt_df[STATES.TEMPERATURE_STP_COOL].isnull())
-                )
-                | (
-                    (
-                        schedule_spt_df["prev_stp_heat"]
-                        != schedule_spt_df[STATES.TEMPERATURE_STP_HEAT]
-                    )
-                    & (~schedule_spt_df["prev_stp_heat"].isnull())
-                    & (~schedule_spt_df[STATES.TEMPERATURE_STP_HEAT].isnull())
-                )
-            ]
-
-            # store setpoint changes for schedule
-            for _, _row in comfort_chgs.iterrows():
+                # extract initial setpoints for schedule
+                _init_row = schedule_spt_df.iloc[0]
                 comfort_chg_pts[
-                    _row[STATES.DATE_TIME]
-                ] = ThermostatChannel.extract_comfort_preferences(_row)
+                    _init_row[STATES.DATE_TIME]
+                ] = ThermostatChannel.extract_comfort_preferences(_init_row)
+
+                comfort_chgs = schedule_spt_df[
+                    (
+                        (
+                            schedule_spt_df["prev_stp_cool"]
+                            != schedule_spt_df[STATES.TEMPERATURE_STP_COOL]
+                        )
+                        & (~schedule_spt_df["prev_stp_cool"].isnull())
+                        & (~schedule_spt_df[STATES.TEMPERATURE_STP_COOL].isnull())
+                    )
+                    | (
+                        (
+                            schedule_spt_df["prev_stp_heat"]
+                            != schedule_spt_df[STATES.TEMPERATURE_STP_HEAT]
+                        )
+                        & (~schedule_spt_df["prev_stp_heat"].isnull())
+                        & (~schedule_spt_df[STATES.TEMPERATURE_STP_HEAT].isnull())
+                    )
+                ]
+
+                # store setpoint changes for schedule
+                for _, _row in comfort_chgs.iterrows():
+                    comfort_chg_pts[
+                        _row[STATES.DATE_TIME]
+                    ] = ThermostatChannel.extract_comfort_preferences(_row)
 
         return comfort_chg_pts
 
@@ -545,9 +479,7 @@ class ThermostatChannel(DataChannel):
                 "on_day_of_week": [False] * 7,
             }
             _new_chg["on_day_of_week"][chg["day_of_week"]] = True
-            schedule_chg_pts[max(list(schedule_chg_pts.keys()))].append(
-                _new_chg
-            )
+            schedule_chg_pts[max(list(schedule_chg_pts.keys()))].append(_new_chg)
 
         return schedule_chg_pts
 
@@ -579,9 +511,7 @@ class ThermostatChannel(DataChannel):
         ]
         _init_hvac_mode_pt = data[~data[STATES.HVAC_MODE].isnull()].iloc[0]
         hvac_mode_chg_pts = {
-            _init_hvac_mode_pt[STATES.DATE_TIME]: _init_hvac_mode_pt[
-                STATES.HVAC_MODE
-            ]
+            _init_hvac_mode_pt[STATES.DATE_TIME]: _init_hvac_mode_pt[STATES.HVAC_MODE]
         }
         hvac_mode_chg_pts.update(
             {

@@ -32,9 +32,7 @@ class TestIDFPreprocessor:
         # make test/ dirs
         EnergyPlusBuildingModel.make_directories()
 
-        cls.dummy_idf_path = os.path.join(
-            os.environ.get("IDF_DIR"), cls.dummy_idf_name
-        )
+        cls.dummy_idf_path = os.path.join(os.environ.get("IDF_DIR"), cls.dummy_idf_name)
 
         cls.dummy_weather_file = os.path.join(
             os.environ.get("WEATHER_DIR"), cls.dummy_weather_name
@@ -55,9 +53,7 @@ class TestIDFPreprocessor:
             )
             shutil.copyfile(_fpath, cls.dummy_weather_file)
 
-        cls.idf = IDFPreprocessor(
-            idf_file=cls.dummy_idf_path, timesteps_per_hour=12
-        )
+        cls.idf = IDFPreprocessor(idf_file=cls.dummy_idf_path, timesteps_per_hour=12)
         cls.step_size = int(3600.0 / cls.idf.timesteps_per_hour)
 
         cls.test_sim_config = (

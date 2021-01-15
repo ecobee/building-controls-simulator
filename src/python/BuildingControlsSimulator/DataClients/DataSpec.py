@@ -38,25 +38,17 @@ def spec_unit_conversion(df, src_spec, dest_spec):
                         dest_unit = d_v["unit"]
 
             if dest_unit and src_unit != dest_unit:
-                if (src_unit == UNITS.FARHENHEIT) and (
-                    dest_unit == UNITS.CELSIUS
-                ):
+                if (src_unit == UNITS.FARHENHEIT) and (dest_unit == UNITS.CELSIUS):
                     df[k] = Conversions.F2C(df[k])
-                elif (src_unit == UNITS.CELSIUS) and (
-                    dest_unit == UNITS.FARHENHEIT
-                ):
+                elif (src_unit == UNITS.CELSIUS) and (dest_unit == UNITS.FARHENHEIT):
                     df[k] = Conversions.C2F(df[k])
                 elif (src_unit == UNITS.FARHENHEITx10) and (
                     dest_unit == UNITS.FARHENHEIT
                 ):
                     df[k] = df[k] / 10.0
-                elif (src_unit == UNITS.FARHENHEITx10) and (
-                    dest_unit == UNITS.CELSIUS
-                ):
+                elif (src_unit == UNITS.FARHENHEITx10) and (dest_unit == UNITS.CELSIUS):
                     df[k] = Conversions.F2C(df[k] / 10.0)
-                elif (src_unit == UNITS.CELSIUS) and (
-                    dest_unit == UNITS.FARHENHEITx10
-                ):
+                elif (src_unit == UNITS.CELSIUS) and (dest_unit == UNITS.FARHENHEITx10):
                     df[k] = Conversions.C2F(df[k]) * 10.0
                 else:
                     logger.error(
@@ -79,9 +71,7 @@ def get_dtype_mapper(df_cols, dest_spec):
 def get_rename_mapper(src_spec, dest_spec):
     # permutations on Internal spec usage
     if isinstance(dest_spec, Internal):
-        rename_mapper = {
-            k: v["internal_state"] for k, v in src_spec.full.spec.items()
-        }
+        rename_mapper = {k: v["internal_state"] for k, v in src_spec.full.spec.items()}
     elif isinstance(src_spec, Internal):
         rename_mapper = {}
         for k, v in src_spec.full.spec.items():
@@ -155,9 +145,7 @@ def convert_spec(df, src_spec, dest_spec, copy=False):
         src_spec=src_spec,
         dest_spec=dest_spec,
     )
-    _df = _df.rename(
-        columns=get_rename_mapper(src_spec=src_spec, dest_spec=dest_spec)
-    )
+    _df = _df.rename(columns=get_rename_mapper(src_spec=src_spec, dest_spec=dest_spec))
 
     _df = _df.astype(
         dtype=get_dtype_mapper(df_cols=_df.columns, dest_spec=dest_spec),

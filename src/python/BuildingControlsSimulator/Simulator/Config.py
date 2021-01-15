@@ -52,13 +52,9 @@ class Config:
         # parse and validate input
         for i in range(len(identifier)):
             if not isinstance(latitude[i], float):
-                raise ValueError(
-                    f"latitude[{i}]: {latitude[i]} is not a float."
-                )
+                raise ValueError(f"latitude[{i}]: {latitude[i]} is not a float.")
             if not isinstance(longitude[i], float):
-                raise ValueError(
-                    f"longitude[{i}]: {longitude[i]} is not a float."
-                )
+                raise ValueError(f"longitude[{i}]: {longitude[i]} is not a float.")
             # convert str to datetime utc
             if isinstance(start_utc[i], str):
                 start_utc[i] = pd.Timestamp(start_utc[i], tz="utc")

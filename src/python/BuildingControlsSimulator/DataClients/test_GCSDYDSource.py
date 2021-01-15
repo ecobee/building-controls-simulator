@@ -135,15 +135,11 @@ class TestGCSDYDSource:
                         dc.datetime.data[
                             (
                                 dc.datetime.data[STATES.DATE_TIME]
-                                >= pd.Timestamp(
-                                    "2018-02-21 16:25:00+0000", tz="UTC"
-                                )
+                                >= pd.Timestamp("2018-02-21 16:25:00+0000", tz="UTC")
                             )
                             & (
                                 dc.datetime.data[STATES.DATE_TIME]
-                                <= pd.Timestamp(
-                                    "2018-02-26 17:00:00+0000", tz="UTC"
-                                )
+                                <= pd.Timestamp("2018-02-26 17:00:00+0000", tz="UTC")
                             )
                         ].index,
                     ][STATES.TEMPERATURE_CTRL].mean()

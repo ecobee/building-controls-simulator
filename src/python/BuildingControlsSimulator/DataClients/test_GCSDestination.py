@@ -100,9 +100,7 @@ class TestGCSDestination:
     def test_put_data(self):
         sim_name = self.get_sim_name()
         _df = self.data_client.get_full_input()
-        self.data_client.destination.put_data(
-            _df, sim_name, src_spec=Internal()
-        )
+        self.data_client.destination.put_data(_df, sim_name, src_spec=Internal())
         _gcs_uri = self.data_client.destination.get_gcs_uri(sim_name)
 
         r_df = pd.read_parquet(_gcs_uri)
