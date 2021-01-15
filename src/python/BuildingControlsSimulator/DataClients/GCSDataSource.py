@@ -28,9 +28,7 @@ class GCSDataSource(DataSource, ABC):
     # TODO: add validators
     gcp_project = attr.ib(default=None)
     gcs_uri_base = attr.ib(default=None)
-    gcs_token = attr.ib(
-        default=os.environ.get("GOOGLE_APPLICATION_CREDENTIALS")
-    )
+    gcs_token = attr.ib(default=os.environ.get("GOOGLE_APPLICATION_CREDENTIALS"))
 
     def get_data(self, sim_config):
         # first check if file in local cache
@@ -41,9 +39,7 @@ class GCSDataSource(DataSource, ABC):
         if _data.empty:
             _data = self.get_gcs_cache(sim_config, local_cache_file)
         _data = self.drop_unused_columns(_data=_data)
-        _data = convert_spec(
-            df=_data, src_spec=self.data_spec, dest_spec=Internal()
-        )
+        _data = convert_spec(df=_data, src_spec=self.data_spec, dest_spec=Internal())
         return _data
 
     @abstractmethod

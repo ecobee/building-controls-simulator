@@ -65,9 +65,7 @@ class GCSDYDSource(GCSDataSource):
 
         years_supported = [2016, 2017, 2018, 2019]
         if start_year not in years_supported:
-            raise ValueError(
-                f"start_utc must be in supported years: {years_supported}"
-            )
+            raise ValueError(f"start_utc must be in supported years: {years_supported}")
 
         return (
             self.gcs_uri_base

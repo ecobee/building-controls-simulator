@@ -29,9 +29,7 @@ class TestGBQFlatFilesSource:
         # initialize with data to avoid pulling multiple times
         cls.sim_config = Config.make_sim_config(
             identifier=[
-                os.environ.get(
-                    "TEST_FLATFILES_GBQ_IDENTIFIER"
-                ),  # has all holds
+                os.environ.get("TEST_FLATFILES_GBQ_IDENTIFIER"),  # has all holds
                 "9999999",  # file not found
             ],
             latitude=33.481136,
@@ -130,9 +128,7 @@ class TestGBQFlatFilesSource:
                             )
                             & (
                                 dc.datetime.data[STATES.DATE_TIME]
-                                <= pd.Timestamp(
-                                    "2019-01-07 11:40:00", tz="utc"
-                                )
+                                <= pd.Timestamp("2019-01-07 11:40:00", tz="utc")
                             )
                         ].index,
                     ][STATES.TEMPERATURE_CTRL].mean()

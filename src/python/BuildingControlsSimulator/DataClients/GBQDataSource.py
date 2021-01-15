@@ -27,9 +27,7 @@ class GBQDataSource(DataSource, ABC):
     # TODO: add validators
     gcp_project = attr.ib(default=None)
     gbq_table = attr.ib(default=None)
-    gbq_token = attr.ib(
-        default=os.environ.get("GOOGLE_APPLICATION_CREDENTIALS")
-    )
+    gbq_token = attr.ib(default=os.environ.get("GOOGLE_APPLICATION_CREDENTIALS"))
     # data is written and read back using parquet.gzip format
 
     file_extension = attr.ib(default="parquet.gzip")
@@ -47,9 +45,7 @@ class GBQDataSource(DataSource, ABC):
         if _data.empty:
             _data = self.get_gbq_data(sim_config, local_cache_file)
         _data = self.drop_unused_columns(_data=_data)
-        _data = convert_spec(
-            df=_data, src_spec=self.data_spec, dest_spec=Internal()
-        )
+        _data = convert_spec(df=_data, src_spec=self.data_spec, dest_spec=Internal())
         return _data
 
     def get_gbq_data(self, sim_config, local_cache_file):
@@ -93,9 +89,7 @@ class GBQDataSource(DataSource, ABC):
             dialect="standard",
             max_results=1000000,
             use_bqstorage_api=False,
-            dtypes={
-                k: v["dtype"] for k, v in self.data_spec.full.spec.items()
-            },
+            dtypes={k: v["dtype"] for k, v in self.data_spec.full.spec.items()},
         )
 
         if _df.empty:
@@ -109,9 +103,7 @@ class GBQDataSource(DataSource, ABC):
         if local_cache_file:
             if os.path.isdir(os.path.dirname(local_cache_file)):
                 # store as gzip compressed parquet file
-                _df.to_parquet(
-                    local_cache_file, compression="gzip", index=False
-                )
+                _df.to_parquet(local_cache_file, compression="gzip", index=False)
         else:
             logger.info(
                 "GCSDataSource received no local_cache. Proceeding without caching."

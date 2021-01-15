@@ -30,9 +30,7 @@ class GCSDestination(DataDestination):
     # TODO: add validators
     gcp_project = attr.ib(default=None)
     gcs_uri_base = attr.ib(default=None)
-    gcs_token = attr.ib(
-        default=os.environ.get("GOOGLE_APPLICATION_CREDENTIALS")
-    )
+    gcs_token = attr.ib(default=os.environ.get("GOOGLE_APPLICATION_CREDENTIALS"))
 
     def put_data(self, df, sim_name, src_spec):
         _df = convert_spec(
@@ -44,9 +42,7 @@ class GCSDestination(DataDestination):
         self.put_gcs(_df, gcs_uri)
 
     def get_gcs_uri(self, sim_name):
-        return os.path.join(
-            self.gcs_uri_base, self.get_file_name(sim_name=sim_name)
-        )
+        return os.path.join(self.gcs_uri_base, self.get_file_name(sim_name=sim_name))
 
     def put_gcs(self, df, gcs_uri):
         if gcs_uri:

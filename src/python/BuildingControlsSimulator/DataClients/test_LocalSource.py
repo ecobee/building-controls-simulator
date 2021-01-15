@@ -122,9 +122,7 @@ class TestLocalSource:
                             )
                             & (
                                 dc.datetime.data[STATES.DATE_TIME]
-                                <= pd.Timestamp(
-                                    "2018-06-22 17:00:00", tz="utc"
-                                )
+                                <= pd.Timestamp("2018-06-22 17:00:00", tz="utc")
                             )
                         ].index,
                     ][STATES.TEMPERATURE_CTRL].mean()

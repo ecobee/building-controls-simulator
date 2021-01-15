@@ -72,10 +72,7 @@ class Simulator:
         # use current UTC time as human readable identifier
         # use last 6 chars of hex coded uuid to disambiguate in unlikely case
         # of multiple simulations occuring in same second
-        return (
-            datetime.utcnow().strftime("%Y_%m_%d_%H_%M_%S")
-            + uuid.uuid4().hex[-6:]
-        )
+        return datetime.utcnow().strftime("%Y_%m_%d_%H_%M_%S") + uuid.uuid4().hex[-6:]
 
     def __attrs_post_init__(self):
         """Lazy init of all simulations"""

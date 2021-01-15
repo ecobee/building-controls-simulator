@@ -128,15 +128,11 @@ class TestGCSFlatFilesSource:
                         dc.datetime.data[
                             (
                                 dc.datetime.data[STATES.DATE_TIME]
-                                >= pd.Timestamp(
-                                    "2018-06-18 22:10:00", tz="utc"
-                                )
+                                >= pd.Timestamp("2018-06-18 22:10:00", tz="utc")
                             )
                             & (
                                 dc.datetime.data[STATES.DATE_TIME]
-                                <= pd.Timestamp(
-                                    "2018-06-18 22:50:00", tz="utc"
-                                )
+                                <= pd.Timestamp("2018-06-18 22:50:00", tz="utc")
                             )
                         ].index,
                     ][STATES.TEMPERATURE_CTRL].mean()
