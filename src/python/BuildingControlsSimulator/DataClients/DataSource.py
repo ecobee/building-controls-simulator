@@ -115,6 +115,8 @@ class DataSource(ABC):
                         if _col != data_spec.datetime_column
                     ],
                     data_spec,
+                    src_nullable=True,
+                    dest_nullable=True,
                 ),
             )
         elif extension == "csv.zip":
@@ -129,6 +131,8 @@ class DataSource(ABC):
                         if _col != data_spec.datetime_column
                     ],
                     data_spec,
+                    src_nullable=True,
+                    dest_nullable=True,
                 ),
             )
         elif extension in ["csv.gzip", "csv.gz"]:
@@ -143,6 +147,8 @@ class DataSource(ABC):
                         if _col != data_spec.datetime_column
                     ],
                     data_spec,
+                    src_nullable=True,
+                    dest_nullable=True,
                 ),
             )
         else:

@@ -34,7 +34,9 @@ class DataDestination(ABC):
         pass
 
     def get_file_name(self, sim_name):
-        return f"{sim_name}.{self.file_extension}"
+        # sim_name may contain . character, replace this safely
+        safe_sim_name = sim_name.replace(".","_")
+        return f"{safe_sim_name}.{self.file_extension}"
 
     def get_local_cache_file(self, sim_name):
         if self.local_cache:
@@ -114,8 +116,6 @@ class DataDestination(ABC):
                 index=False,
             )
         elif file_extension == "csv.zip":
-            raise NotImplementedError("Pandas 1.2.0 has issue with writting zip files.")
-            # see
             _df.to_csv(
                 filepath_or_buffer,
                 compression="zip",

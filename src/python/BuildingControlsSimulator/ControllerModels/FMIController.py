@@ -29,5 +29,6 @@ class FMIController(ControllerModel):
     step_size_seconds = attr.ib()
 
     def get_model_name(self):
-        fmu_name = os.path.basename(self.fmu_path)
-        return f"FMU_{fmu_name}"
+        _model_name = os.path.basename(self.fmu_path)
+        _model_name = _model_name.replace(".", "_")
+        return _model_name

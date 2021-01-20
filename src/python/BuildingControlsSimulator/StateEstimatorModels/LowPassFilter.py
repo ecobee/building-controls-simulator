@@ -46,7 +46,9 @@ class LowPassFilter(StateEstimatorModel):
         ]
 
     def get_model_name(self):
-        return f"Deadband_{self.deadband}".replace(".", "-")
+        _model_name = "LowPass"
+        _model_name = _model_name.replace(".", "_")
+        return _model_name
 
     def initialize(
         self,
