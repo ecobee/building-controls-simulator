@@ -107,12 +107,8 @@ RUN curl -sL https://deb.nodesource.com/setup_12.x | sudo bash - \
     && sudo rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
 # copying will cause rebuild at minimum to start from here
-COPY ./src "${PACKAGE_DIR}/src"
-COPY ./scripts "${PACKAGE_DIR}/scripts"
-COPY ./requirements_fixed.txt "${PACKAGE_DIR}/requirements_fixed.txt"
-COPY ./requirements_unfixed.txt "${PACKAGE_DIR}/requirements_unfixed.txt"
-COPY ./setup.py "${PACKAGE_DIR}/setup.py"
-COPY ./pytest.ini "${PACKAGE_DIR}/pytest.ini"
+# use .dockerignore to add files to docker image
+COPY ./ "${PACKAGE_DIR}"
 
 # copied directory will not have user ownership by default
 # install energyplus versions desired in `scripts/setup/install_ep.sh`
@@ -135,7 +131,7 @@ RUN sudo chown -R "${USER_NAME}" "${PACKAGE_DIR}" \
     && wget "https://github.com/RJT1990/pyflux/archive/0.4.15.zip" \
     && unzip "0.4.15.zip" && rm "0.4.15.zip" \
     && cd "pyflux-0.4.15" \
-    && pip install --no-cache-dir -r .
+    && pip install --no-cache-dir .
 
 # install jupyter lab extensions for plotly
 # if jupyter lab build fails with webpack optimization, set --minimize=False

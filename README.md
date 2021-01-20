@@ -36,33 +36,58 @@ Copy the template files and fill in the variables mentioned below:
 ```bash
 cp .env.template .env
 cp docker-compose.yml.template docker-compose.yml
+# and if you want to run the tests
+# .test.env does not need to be editted, unless you want to inject creds
+cp .test.env.template .test.env
 ```
 Note: `docker-compose` behaviour may be slightly different on your host OS 
-(Windows, Mac OS, Linux) with respect to how the expansion of environment 
-variables works. If the base `docker-compose.yml` file fails on interpreting 
-variables, try inlining those specific variables, e.g. replacing `${LOCAL_PACKAGE_DIR}` 
-with `<where you cloned the repo to>/building-controls-simulator`.
+(Windows, Mac OS, Linux) and version of the CLI with respect to how the expansion of environment 
+variables works. Make sure you have the correct version (mentioned above).
 
 Edit in `.env.template`:
 ```bash
 ...
-LOCAL_PACKAGE_DIR=<where you cloned repo>
-...
-DYD_GCS_URI_BASE=<Donate your data Google Cloud Service bucket>
-DYD_METADATA_URI=<Donate your data meta_data file Google Cloud Service URI>
-NREL_DEV_API_KEY=<your key>
-NREL_DEV_EMAIL=<your email>
+LOCAL_PACKAGE_DIR=<where you cloned the repo>
 ...
 ```
 
-Now you're ready to build and launch the container!
+Now you're ready to get the image and launch the container!
 If you delete the docker image just go through the setup here again to rebuild it.
 
-##### Note: Docker images may use up to 12 GB of disk space - make sure you have this available before building.
-The size of the container image can be reduced to roughly 5 GB by not installing
+### Pull Docker image from Dockerhub
+
+You can access the latest release image from: https://hub.docker.com/r/tstesco/building-controls-simulator/tags via CLI:
+
+```bash
+docker pull tstesco/building-controls-simulator:0.3.3-alpha
+```
+
+If you are using the Dockerhub repository make sure that your `.env` file contains
+the line
+```bash
+DOCKERHUB_REPOSITORY=tstesco
+```
+
+This allows `docker-compose.yml` to find and use the correct image. Change this
+line in `docker-compose.yml` if you want to use a locally built image.
+
+```yml
+    # change this if want to build your own image
+    image: ${DOCKERHUB_REPOSITORY}/${DOCKER_IMAGE}:${VERSION_TAG}
+```
+
+to
+
+```yml
+    # change this if want to build your own image
+    image: ${DOCKER_IMAGE}:${VERSION_TAG}
+```
+
+##### Note: Locally built Docker images may use up to 10 GB of disk space - make sure you have this available before building.
+The size of the container image can be reduced to below 5 GB by not installing
 every EnergyPlus version in `scripts/setup/install_ep.sh` and not downloading 
 all IECC 2018 IDF files in `scripts/setup/download_IECC_idfs.sh`. Simply comment
-out the files you do not need.
+out the versions/files you do not need in the respective files.
 
 ## Run BCS with Jupyter Lab Server (recommended: option 1)
 
@@ -289,15 +314,15 @@ python -m pytest src/python
 The dependencies are pinned to exact versions in the `requirements_fixed.txt` file.
 To change this simply change line (approx) 124 in the `Dockerfile` from:
 ```
-    && pip install -r "requirements_fixed.txt" \
-    # && pip install -r "requirements_unfixed.txt" \
+    && pip install --no-cache-dir -r "requirements_fixed.txt" \
+    # && pip install --no-cache-dir -r "requirements_unfixed.txt" \
 ```
 
 to
 
 ```
-    # && pip install -r "requirements_fixed.txt" \
-    && pip install -r "requirements_unfixed.txt" \
+    # && pip install --no-cache-dir -r "requirements_fixed.txt" \
+    && pip install --no-cache-dir -r "requirements_unfixed.txt" \
 ```
 
 This will install the latest satisfying versions of all dependencies. After testing that
