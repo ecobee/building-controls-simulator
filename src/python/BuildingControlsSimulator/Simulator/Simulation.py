@@ -140,7 +140,7 @@ class Simulation:
         _building_model_name = self.building_model.get_model_name()
         _controller_model_name = self.controller_model.get_model_name()
 
-        return "_".join(
+        _sim_name = "_".join(
             [
                 _prefix,
                 _sim_run_identifier,
@@ -150,6 +150,9 @@ class Simulation:
                 _controller_model_name,
             ]
         )
+        # safely remove any errant . characters breaking extension handling
+        _sim_name.replace(".", "_")
+        return _sim_name
 
     def create_models(self, preprocess_check=False):
         # TODO: only have the building model that requires dynamic building

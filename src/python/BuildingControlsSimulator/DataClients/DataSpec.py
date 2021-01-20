@@ -17,10 +17,6 @@ logger = logging.getLogger(__name__)
 def spec_unit_conversion(df, src_spec, dest_spec):
     """This method must be able to evaluate multiple sources should
     a channel be composed from multiple sources."""
-    if src_spec == dest_spec:
-        logger.info("spec_unit_conversion: src_spec is equal to dest_spec.")
-        return df
-
     for k, v in src_spec.full.spec.items():
         if k in df.columns:
             src_unit = v["unit"]
@@ -60,11 +56,38 @@ def spec_unit_conversion(df, src_spec, dest_spec):
     return df
 
 
-def get_dtype_mapper(df_cols, dest_spec):
+def get_dtype_mapper(df_cols, dest_spec, src_nullable=False, dest_nullable=False):
     # we only need to consider the destination spec
     dtype_mapper = {
         k: v["dtype"] for k, v in dest_spec.full.spec.items() if k in df_cols
     }
+
+    # convert between nullable columns and non-nullable for compatability
+    if dest_nullable:
+        for k,v in dtype_mapper.items():
+            if v == "bool":
+                dtype_mapper[k] = "boolean"
+            elif v == "int8":
+                dtype_mapper[k] = "Int8"
+            elif v == "int16":
+                dtype_mapper[k] = "Int16"
+            elif v == "int32":
+                dtype_mapper[k] = "Int32"
+            elif v == "int64":
+                dtype_mapper[k] = "Int64"
+    else:
+        for k,v in dtype_mapper.items():
+            if v == "boolean":
+                dtype_mapper[k] = "bool"
+            elif v == "Int8":
+                dtype_mapper[k] = "int8"
+            elif v == "Int16":
+                dtype_mapper[k] = "int16"
+            elif v == "Int32":
+                dtype_mapper[k] = "int32"
+            elif v == "Int64":
+                dtype_mapper[k] = "int64"
+
     return dtype_mapper
 
 
@@ -120,7 +143,9 @@ def project_spec_keys(src_spec, dest_spec):
     return projection
 
 
-def convert_spec(df, src_spec, dest_spec, copy=False):
+def convert_spec(df, src_spec, dest_spec, src_nullable=False, dest_nullable=False, copy=False):
+    # src_nullable: whether to use nullable int types
+    # dest_nullable: whether to use nullable int types
     if type(src_spec) == type(dest_spec):
         logger.info("convert_spec: src_spec is equal to dest_spec.")
         return df
@@ -148,7 +173,7 @@ def convert_spec(df, src_spec, dest_spec, copy=False):
     _df = _df.rename(columns=get_rename_mapper(src_spec=src_spec, dest_spec=dest_spec))
 
     _df = _df.astype(
-        dtype=get_dtype_mapper(df_cols=_df.columns, dest_spec=dest_spec),
+        dtype=get_dtype_mapper(df_cols=_df.columns, dest_spec=dest_spec, src_nullable=src_nullable, dest_nullable=dest_nullable),
     )
     _df = _df.sort_values(dest_spec.datetime_column, ascending=True)
     return _df
@@ -174,6 +199,10 @@ class Spec:
             "Int16",
             "Int32",
             "Int64",
+            "int8",
+            "int16",
+            "int32",
+            "int64",
             "UInt8",
             "UInt16",
             "UInt32",
@@ -294,91 +323,91 @@ class Internal:
             spec={
                 STATES.AUXHEAT1: {
                     "name": "auxHeat1",
-                    "dtype": "Int16",
+                    "dtype": "int16",
                     "channel": CHANNELS.EQUIPMENT,
                     "unit": UNITS.SECONDS,
                 },
                 STATES.AUXHEAT2: {
                     "name": "auxHeat2",
-                    "dtype": "Int16",
+                    "dtype": "int16",
                     "channel": CHANNELS.EQUIPMENT,
                     "unit": UNITS.SECONDS,
                 },
                 STATES.AUXHEAT3: {
                     "name": "auxHeat3",
-                    "dtype": "Int16",
+                    "dtype": "int16",
                     "channel": CHANNELS.EQUIPMENT,
                     "unit": UNITS.SECONDS,
                 },
                 STATES.COMPCOOL1: {
                     "name": "compCool1",
-                    "dtype": "Int16",
+                    "dtype": "int16",
                     "channel": CHANNELS.EQUIPMENT,
                     "unit": UNITS.SECONDS,
                 },
                 STATES.COMPCOOL2: {
                     "name": "compCool2",
-                    "dtype": "Int16",
+                    "dtype": "int16",
                     "channel": CHANNELS.EQUIPMENT,
                     "unit": UNITS.SECONDS,
                 },
                 STATES.COMPHEAT1: {
                     "name": "compHeat1",
-                    "dtype": "Int16",
+                    "dtype": "int16",
                     "channel": CHANNELS.EQUIPMENT,
                     "unit": UNITS.SECONDS,
                 },
                 STATES.COMPHEAT2: {
                     "name": "compHeat2",
-                    "dtype": "Int16",
+                    "dtype": "int16",
                     "channel": CHANNELS.EQUIPMENT,
                     "unit": UNITS.SECONDS,
                 },
                 STATES.DEHUMIDIFIER: {
                     "name": "dehumidifier",
-                    "dtype": "Int16",
+                    "dtype": "int16",
                     "channel": CHANNELS.EQUIPMENT,
                     "unit": UNITS.SECONDS,
                 },
                 STATES.ECONOMIZER: {
                     "name": "economizer",
-                    "dtype": "Int16",
+                    "dtype": "int16",
                     "channel": CHANNELS.EQUIPMENT,
                     "unit": UNITS.SECONDS,
                 },
                 STATES.FAN: {
                     "name": "fan",
-                    "dtype": "Int16",
+                    "dtype": "int16",
                     "channel": CHANNELS.EQUIPMENT,
                     "unit": UNITS.SECONDS,
                 },
                 STATES.FAN_STAGE_ONE: {
                     "name": "fan1",
-                    "dtype": "Int16",
+                    "dtype": "int16",
                     "channel": CHANNELS.EQUIPMENT,
                     "unit": UNITS.SECONDS,
                 },
                 STATES.FAN_STAGE_TWO: {
                     "name": "fan2",
-                    "dtype": "Int16",
+                    "dtype": "int16",
                     "channel": CHANNELS.EQUIPMENT,
                     "unit": UNITS.SECONDS,
                 },
                 STATES.FAN_STAGE_THREE: {
                     "name": "fan3",
-                    "dtype": "Int16",
+                    "dtype": "int16",
                     "channel": CHANNELS.EQUIPMENT,
                     "unit": UNITS.SECONDS,
                 },
                 STATES.HUMIDIFIER: {
                     "name": "humidifier",
-                    "dtype": "Int16",
+                    "dtype": "int16",
                     "channel": CHANNELS.EQUIPMENT,
                     "unit": UNITS.SECONDS,
                 },
                 STATES.VENTILATOR: {
                     "name": "ventilator",
-                    "dtype": "Int16",
+                    "dtype": "int16",
                     "channel": CHANNELS.EQUIPMENT,
                     "unit": UNITS.SECONDS,
                 },
@@ -616,73 +645,73 @@ class FlatFilesSpec:
             spec={
                 "auxHeat1": {
                     "internal_state": STATES.AUXHEAT1,
-                    "dtype": "Int16",
+                    "dtype": "int16",
                     "channel": CHANNELS.EQUIPMENT,
                     "unit": UNITS.SECONDS,
                 },
                 "auxHeat2": {
                     "internal_state": STATES.AUXHEAT2,
-                    "dtype": "Int16",
+                    "dtype": "int16",
                     "channel": CHANNELS.EQUIPMENT,
                     "unit": UNITS.SECONDS,
                 },
                 "auxHeat3": {
                     "internal_state": STATES.AUXHEAT3,
-                    "dtype": "Int16",
+                    "dtype": "int16",
                     "channel": CHANNELS.EQUIPMENT,
                     "unit": UNITS.SECONDS,
                 },
                 "compCool1": {
                     "internal_state": STATES.COMPCOOL1,
-                    "dtype": "Int16",
+                    "dtype": "int16",
                     "channel": CHANNELS.EQUIPMENT,
                     "unit": UNITS.SECONDS,
                 },
                 "compCool2": {
                     "internal_state": STATES.COMPCOOL2,
-                    "dtype": "Int16",
+                    "dtype": "int16",
                     "channel": CHANNELS.EQUIPMENT,
                     "unit": UNITS.SECONDS,
                 },
                 "compHeat1": {
                     "internal_state": STATES.COMPHEAT1,
-                    "dtype": "Int16",
+                    "dtype": "int16",
                     "channel": CHANNELS.EQUIPMENT,
                     "unit": UNITS.SECONDS,
                 },
                 "compHeat2": {
                     "internal_state": STATES.COMPHEAT2,
-                    "dtype": "Int16",
+                    "dtype": "int16",
                     "channel": CHANNELS.EQUIPMENT,
                     "unit": UNITS.SECONDS,
                 },
                 "dehumidifier": {
                     "internal_state": STATES.DEHUMIDIFIER,
-                    "dtype": "Int16",
+                    "dtype": "int16",
                     "channel": CHANNELS.EQUIPMENT,
                     "unit": UNITS.SECONDS,
                 },
                 "economizer": {
                     "internal_state": STATES.ECONOMIZER,
-                    "dtype": "Int16",
+                    "dtype": "int16",
                     "channel": CHANNELS.EQUIPMENT,
                     "unit": UNITS.SECONDS,
                 },
                 "fan": {
                     "internal_state": STATES.FAN,
-                    "dtype": "Int16",
+                    "dtype": "int16",
                     "channel": CHANNELS.EQUIPMENT,
                     "unit": UNITS.SECONDS,
                 },
                 "humidifier": {
                     "internal_state": STATES.HUMIDIFIER,
-                    "dtype": "Int16",
+                    "dtype": "int16",
                     "channel": CHANNELS.EQUIPMENT,
                     "unit": UNITS.SECONDS,
                 },
                 "ventilator": {
                     "internal_state": STATES.VENTILATOR,
-                    "dtype": "Int16",
+                    "dtype": "int16",
                     "channel": CHANNELS.EQUIPMENT,
                     "unit": UNITS.SECONDS,
                 },
@@ -860,49 +889,49 @@ class DonateYourDataSpec:
             spec={
                 "auxHeat1": {
                     "internal_state": STATES.AUXHEAT1,
-                    "dtype": "Int16",
+                    "dtype": "int16",
                     "channel": CHANNELS.EQUIPMENT,
                     "unit": UNITS.SECONDS,
                 },
                 "auxHeat2": {
                     "internal_state": STATES.AUXHEAT2,
-                    "dtype": "Int16",
+                    "dtype": "int16",
                     "channel": CHANNELS.EQUIPMENT,
                     "unit": UNITS.SECONDS,
                 },
                 "auxHeat3": {
                     "internal_state": STATES.AUXHEAT3,
-                    "dtype": "Int16",
+                    "dtype": "int16",
                     "channel": CHANNELS.EQUIPMENT,
                     "unit": UNITS.SECONDS,
                 },
                 "compCool1": {
                     "internal_state": STATES.COMPCOOL1,
-                    "dtype": "Int16",
+                    "dtype": "int16",
                     "channel": CHANNELS.EQUIPMENT,
                     "unit": UNITS.SECONDS,
                 },
                 "compCool2": {
                     "internal_state": STATES.COMPCOOL2,
-                    "dtype": "Int16",
+                    "dtype": "int16",
                     "channel": CHANNELS.EQUIPMENT,
                     "unit": UNITS.SECONDS,
                 },
                 "compHeat1": {
                     "internal_state": STATES.COMPHEAT1,
-                    "dtype": "Int16",
+                    "dtype": "int16",
                     "channel": CHANNELS.EQUIPMENT,
                     "unit": UNITS.SECONDS,
                 },
                 "compHeat2": {
                     "internal_state": STATES.COMPHEAT2,
-                    "dtype": "Int16",
+                    "dtype": "int16",
                     "channel": CHANNELS.EQUIPMENT,
                     "unit": UNITS.SECONDS,
                 },
                 "fan": {
                     "internal_state": STATES.FAN,
-                    "dtype": "Int16",
+                    "dtype": "int16",
                     "channel": CHANNELS.EQUIPMENT,
                     "unit": UNITS.SECONDS,
                 },

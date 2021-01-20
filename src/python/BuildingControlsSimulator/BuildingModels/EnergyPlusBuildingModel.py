@@ -95,7 +95,9 @@ class EnergyPlusBuildingModel(BuildingModel):
     def get_model_name(self):
         # only need the idf file name because the weather is determined from
         # the combination of idf file and data_source-identifier
-        return f"EnergyPlus_{self.idf.idf_name.rstrip('.idf')}"
+        _model_name = f"EnergyPlus_{self.idf.idf_name.rstrip('.idf')}"
+        _model_name = _model_name.replace(".", "_")
+        return _model_name
 
     @property
     def timesteps_per_hour(self):
