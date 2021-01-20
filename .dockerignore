@@ -3,6 +3,6 @@
 !src/
 !scripts/
 !setup.py
-!requirements_fixed.txt
+!requirements.txt
 !requirements_unfixed.txt
 !pytest.ini
