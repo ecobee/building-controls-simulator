@@ -311,29 +311,29 @@ python -m pytest src/python
 
 ## Changing dependency versions
 
-The dependencies are pinned to exact versions in the `requirements_fixed.txt` file.
+The dependencies are pinned to exact versions in the `requirements.txt` file.
 To change this simply change line (approx) 124 in the `Dockerfile` from:
 ```
-    && pip install --no-cache-dir -r "requirements_fixed.txt" \
+    && pip install --no-cache-dir -r "requirements.txt" \
     # && pip install --no-cache-dir -r "requirements_unfixed.txt" \
 ```
 
 to
 
 ```
-    # && pip install --no-cache-dir -r "requirements_fixed.txt" \
+    # && pip install --no-cache-dir -r "requirements.txt" \
     && pip install --no-cache-dir -r "requirements_unfixed.txt" \
 ```
 
 This will install the latest satisfying versions of all dependencies. After testing that
-the dependencies are working freeze them into a new `requirements_fixed.txt` file.
+the dependencies are working freeze them into a new `requirements.txt` file.
 
 ```
-pip freeze > requirements_fixed.txt
+pip freeze > requirements.txt
 ```
 
 Several dependencies are installed from source so these must be removed from the
-`requirements_fixed.txt` file. These are:
+`requirements.txt` file. These are:
 
 ```
 PyFMI

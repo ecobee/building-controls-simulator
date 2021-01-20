@@ -116,8 +116,6 @@ class DataDestination(ABC):
                 index=False,
             )
         elif file_extension == "csv.zip":
-            raise NotImplementedError("Pandas 1.2.0 has issue with writting zip files.")
-            # see
             _df.to_csv(
                 filepath_or_buffer,
                 compression="zip",
