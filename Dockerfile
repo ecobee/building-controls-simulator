@@ -122,8 +122,8 @@ RUN sudo chown -R "${USER_NAME}" "${PACKAGE_DIR}" \
     && ${PYENV_ROOT}/versions/3.8.6/bin/python3.8 -m venv "${LIB_DIR}/${VENV_NAME}" \
     && . "${LIB_DIR}/${VENV_NAME}/bin/activate" \
     && pip install --no-cache-dir --upgrade setuptools pip \
-    # && pip install --no-cache-dir -r "requirements.txt" \
-    && pip install --no-cache-dir -r "requirements_unfixed.txt" \
+    && pip install --no-cache-dir -r "requirements.txt" \
+    # && pip install --no-cache-dir -r "requirements_unfixed.txt" \
     && pip install --editable . \
     && cd "${EXT_DIR}/PyFMI" \
     && python "setup.py" install --fmil-home="${FMIL_HOME}" \
