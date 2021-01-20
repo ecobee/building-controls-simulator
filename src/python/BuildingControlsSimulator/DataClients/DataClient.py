@@ -232,6 +232,16 @@ class DataClient:
                 [STATES.CALENDAR_EVENT],
             ] = pd.NA
 
+            # finally convert dtypes to final types now that nulls in 
+            # non-nullable columns have been properly filled or removed
+            _data = convert_spec(
+                _data,
+                src_spec=self.internal_spec,
+                dest_spec=self.internal_spec,
+                src_nullable=True,
+                dest_nullable=False
+            )
+
         else:
             raise ValueError(
                 f"ID={self.sim_config['identifier']} has no full_data_periods "

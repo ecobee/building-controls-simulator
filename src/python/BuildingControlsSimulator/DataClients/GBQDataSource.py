@@ -45,7 +45,7 @@ class GBQDataSource(DataSource, ABC):
         if _data.empty:
             _data = self.get_gbq_data(sim_config, local_cache_file)
         _data = self.drop_unused_columns(_data=_data)
-        _data = convert_spec(df=_data, src_spec=self.data_spec, dest_spec=Internal())
+        _data = convert_spec(df=_data, src_spec=self.data_spec, dest_spec=Internal(), src_nullable=True, dest_nullable=True)
         return _data
 
     def get_gbq_data(self, sim_config, local_cache_file):

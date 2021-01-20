@@ -108,5 +108,7 @@ class TestGCSDestination:
             r_df,
             src_spec=self.data_client.destination.data_spec,
             dest_spec=Internal(),
+            src_nullable=True,
+            dest_nullable=True,
         )
         assert _df.equals(cr_df)
