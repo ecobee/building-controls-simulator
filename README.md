@@ -15,6 +15,8 @@ git clone
 cd building-controls-simulator
 ```
 
+**Note for Windows users**: It is recommended that you clone the repository to a directory that is as short as possible and does not contain spaces or other special characters. For example, clone to `c:\devel\building-controls-simulator`.
+
 ### Local Docker Setup
 
 You're going to need Docker Desktop installed, if not see https://www.docker.com/. Docker Compose CLI is used to manage the containers and is included by default in the desktop versions of docker for all systems.
@@ -37,7 +39,7 @@ Copy the template files and fill in the variables mentioned below:
 cp .env.template .env
 cp docker-compose.yml.template docker-compose.yml
 ```
-Note: `docker-compose` behaviour may be slightly different on your host OS 
+**Note**: `docker-compose` behaviour may be slightly different on your host OS 
 (Windows, Mac OS, Linux) with respect to how the expansion of environment 
 variables works. If the base `docker-compose.yml` file fails on interpreting 
 variables, try inlining those specific variables, e.g. replacing `${LOCAL_PACKAGE_DIR}` 
@@ -54,6 +56,8 @@ NREL_DEV_API_KEY=<your key>
 NREL_DEV_EMAIL=<your email>
 ...
 ```
+
+**Note for Windows users**: For the `LOCAL_PACKAGE_DIR` variable, you have to specify the path with unix syntax. For example, if you cloned the git repository to `c:\devel\building-controls-simulator` then set `LOCAL_PACKAGE_DIR` to `/c/devel/building-controls-simulator/`.
 
 Now you're ready to build and launch the container!
 If you delete the docker image just go through the setup here again to rebuild it.
