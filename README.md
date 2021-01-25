@@ -187,6 +187,7 @@ sudo chown "bcs":"bcs" ~/.config/application_default_credentials.json
 
 Instead of using GCP access to download data you can use a locally cached
 DYD files following the format: `data/input/local/<hashed ID>.csv.zip`.
+These data files are the time series measurements for an individual building.
 
 Simply save the files using this format and you can use them in local simulations.
 
