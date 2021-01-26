@@ -44,7 +44,7 @@ Note: `docker-compose` behaviour may be slightly different on your host OS
 (Windows, Mac OS, Linux) and version of the CLI with respect to how the expansion of environment 
 variables works. Make sure you have the correct version (mentioned above).
 
-Edit in `.env.template`:
+Edit in `.env`:
 ```bash
 ...
 LOCAL_PACKAGE_DIR=<where you cloned the repo>
