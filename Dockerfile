@@ -116,7 +116,7 @@ COPY ./ "${PACKAGE_DIR}"
 # copy .bashrc file to user home for use on startup. This can be further configured by user.
 RUN sudo chown -R "${USER_NAME}" "${PACKAGE_DIR}" \
     && cd "${PACKAGE_DIR}" \
-    && mv ".vscode" "${LIB_DIR}/.vscode"
+    && mv ".vscode" "${LIB_DIR}/.vscode" \
     && sudo chmod +x "./scripts/setup/install_ep.sh" \
     && sudo ./scripts/setup/install_ep.sh "${ENERGYPLUS_INSTALL_DIR}" \
     && cd "${PACKAGE_DIR}" \
