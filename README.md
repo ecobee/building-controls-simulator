@@ -44,7 +44,7 @@ Note: `docker-compose` behaviour may be slightly different on your host OS
 (Windows, Mac OS, Linux) and version of the CLI with respect to how the expansion of environment 
 variables works. Make sure you have the correct version (mentioned above).
 
-Edit in `.env.template`:
+Edit in `.env`:
 ```bash
 ...
 LOCAL_PACKAGE_DIR=<where you cloned the repo>
@@ -187,6 +187,7 @@ sudo chown "bcs":"bcs" ~/.config/application_default_credentials.json
 
 Instead of using GCP access to download data you can use a locally cached
 DYD files following the format: `data/input/local/<hashed ID>.csv.zip`.
+These data files are the time series measurements for an individual building.
 
 Simply save the files using this format and you can use them in local simulations.
 
