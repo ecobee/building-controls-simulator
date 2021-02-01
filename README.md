@@ -354,9 +354,12 @@ add the pinned dependencies to the Pipfile, discard those changes.
 
 ## Making a Release
 
-1. On GitHub use the releases/new wizard (https://github.com/ecobee/building-controls-simulator/releases/new). Use semver (https://semver.org/) convention for release versioning.
-2. Make docker image locally
-3. Push docker image to dockerhub (https://hub.docker.com/repository/docker/tstesco/building-controls-simulator)
+1. Commit changes to master, reference new version number.
+2. Increment version number in `.env.template` and `setup.py`. Use semver (https://semver.org/) convention for release versioning.
+3. On GitHub use the releases/new wizard (https://github.com/ecobee/building-controls-simulator/releases/new). 
+4. Build docker image locally.
+5. Run tests.
+6. Push docker image to dockerhub (https://hub.docker.com/repository/docker/tstesco/building-controls-simulator)
 
 ## Weather Data
 
