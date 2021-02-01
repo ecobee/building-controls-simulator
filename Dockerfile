@@ -65,6 +65,7 @@ RUN sudo apt-get update && sudo apt-get upgrade -y \
     python3-distutils \
     subversion \
     p7zip-full \
+    bc \
     && sudo rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
 # install nodejs and npm (for plotly)
@@ -147,4 +148,4 @@ RUN cd "${PACKAGE_DIR}" \
     && cp "${PACKAGE_DIR}/scripts/setup/.bashrc" "$HOME/.bashrc" \
     && chmod +x "${PACKAGE_DIR}/scripts/setup/jupyter_lab_bkgrnd.sh"
 
-WORKDIR "${PACKAGE_DIR}"
+WORKDIR "${LIB_DIR}"
