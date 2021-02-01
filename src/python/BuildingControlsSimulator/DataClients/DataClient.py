@@ -51,16 +51,12 @@ class DataClient:
 
     # input variables
     source = attr.ib(validator=attr.validators.instance_of(DataSource))
-    destination = attr.ib(
-        validator=attr.validators.instance_of(DataDestination)
-    )
+    destination = attr.ib(validator=attr.validators.instance_of(DataDestination))
     nrel_dev_api_key = attr.ib(default=None)
     nrel_dev_email = attr.ib(default=None)
     archive_tmy3_dir = attr.ib(default=os.environ.get("ARCHIVE_TMY3_DIR"))
     archive_tmy3_meta = attr.ib(default=None)
-    archive_tmy3_data_dir = attr.ib(
-        default=os.environ.get("ARCHIVE_TMY3_DATA_DIR")
-    )
+    archive_tmy3_data_dir = attr.ib(default=os.environ.get("ARCHIVE_TMY3_DATA_DIR"))
     ep_tmy3_cache_dir = attr.ib(default=os.environ.get("EP_TMY3_CACHE_DIR"))
     simulation_epw_dir = attr.ib(default=os.environ.get("SIMULATION_EPW_DIR"))
     weather_dir = attr.ib(default=os.environ.get("WEATHER_DIR"))
@@ -103,9 +99,7 @@ class DataClient:
     def get_data(self):
         # check for invalid start/end combination
         if self.sim_config["end_utc"] <= self.sim_config["start_utc"]:
-            raise ValueError(
-                "sim_config contains invalid start_utc >= end_utc."
-            )
+            raise ValueError("sim_config contains invalid start_utc >= end_utc.")
         # load from cache or download data from source
         _data = self.source.get_data(self.sim_config)
         if _data.empty:
@@ -139,14 +133,8 @@ class DataClient:
 
         # truncate the data to desired simulation start and end time
         _data = _data[
-            (
-                _data[self.internal_spec.datetime_column]
-                >= self.sim_config["start_utc"]
-            )
-            & (
-                _data[self.internal_spec.datetime_column]
-                <= self.sim_config["end_utc"]
-            )
+            (_data[self.internal_spec.datetime_column] >= self.sim_config["start_utc"])
+            & (_data[self.internal_spec.datetime_column] <= self.sim_config["end_utc"])
         ].reset_index(drop=True)
 
         # remove unused categories from categorical columns after date range
@@ -156,7 +144,7 @@ class DataClient:
             for _col in _data.columns
             if isinstance(_data[_col].dtype, pd.api.types.CategoricalDtype)
         ]:
-            _data[_cat_col].cat.remove_unused_categories(inplace=True)
+            _data[_cat_col].cat = _data[_cat_col].cat.remove_unused_categories()
 
         # run settings change point detection before filling missing data
         # the fill data would create false positive change points
@@ -243,6 +231,16 @@ class DataClient:
                 _data[STATES.CALENDAR_EVENT] == na_code_name,
                 [STATES.CALENDAR_EVENT],
             ] = pd.NA
+
+            # finally convert dtypes to final types now that nulls in 
+            # non-nullable columns have been properly filled or removed
+            _data = convert_spec(
+                _data,
+                src_spec=self.internal_spec,
+                dest_spec=self.internal_spec,
+                src_nullable=True,
+                dest_nullable=False
+            )
 
         else:
             raise ValueError(
@@ -347,10 +345,7 @@ class DataClient:
             )
 
         # fill additional day before simulation and up end of day end of simulation
-        (
-            self.start_utc,
-            self.end_utc,
-        ) = DataClient.eplus_day_fill_simulation_time(
+        (self.start_utc, self.end_utc,) = DataClient.eplus_day_fill_simulation_time(
             start_utc=self.start_utc,
             end_utc=self.end_utc,
             expected_period=expected_period,
@@ -360,9 +355,7 @@ class DataClient:
         return self.start_utc, self.end_utc
 
     def store_output(self, output, sim_name, src_spec):
-        self.destination.put_data(
-            df=output, sim_name=sim_name, src_spec=src_spec
-        )
+        self.destination.put_data(df=output, sim_name=sim_name, src_spec=src_spec)
 
     def store_input(
         self,
@@ -498,14 +491,12 @@ class DataClient:
             return []
 
         # compute time deltas between records
-        diffs = full_data.dropna(
-            axis="rows", subset=data_spec.full.null_check_columns
-        )[data_spec.datetime_column].diff()
+        diffs = full_data.dropna(axis="rows", subset=data_spec.full.null_check_columns)[
+            data_spec.datetime_column
+        ].diff()
 
         # seperate periods by missing data
-        periods_df = diffs[
-            diffs > pd.to_timedelta(expected_period)
-        ].reset_index()
+        periods_df = diffs[diffs > pd.to_timedelta(expected_period)].reset_index()
 
         # make df of periods
         periods_df["start"] = full_data.loc[
@@ -522,17 +513,14 @@ class DataClient:
             full_data.loc[len(full_data) - 1, data_spec.datetime_column],
         ]
         periods_df["start"] = periods_df["start"].shift(1)
-        periods_df.loc[0, "start"] = full_data.loc[
-            0, data_spec.datetime_column
-        ]
+        periods_df.loc[0, "start"] = full_data.loc[0, data_spec.datetime_column]
 
         # only include full_data_periods that are geq min_sim_period
         # convert all np.arrays to lists for ease of use
         _full_data_periods = [
             list(rec)
             for rec in periods_df[
-                periods_df["end"] - periods_df["start"]
-                >= pd.Timedelta(min_sim_period)
+                periods_df["end"] - periods_df["start"] >= pd.Timedelta(min_sim_period)
             ].to_numpy()
         ]
 
@@ -557,18 +545,16 @@ class DataClient:
             "S": "S",
         }
         # replace last char using format conversion dict
-        resample_freq = (
-            expected_period[0:-1] + _str_format_dict[expected_period[-1]]
-        )
+        resample_freq = expected_period[0:-1] + _str_format_dict[expected_period[-1]]
         # resample to add any timesteps that are fully missing
         full_data = full_data.set_index(data_spec.datetime_column)
         full_data = full_data.resample(resample_freq).asfreq()
         full_data = full_data.reset_index()
 
         # compute timesteps between steps of data
-        diffs = full_data.dropna(
-            axis="rows", subset=data_spec.full.null_check_columns
-        )[data_spec.datetime_column].diff()
+        diffs = full_data.dropna(axis="rows", subset=data_spec.full.null_check_columns)[
+            data_spec.datetime_column
+        ].diff()
 
         fill_start_df = (
             (
@@ -587,14 +573,10 @@ class DataClient:
             # for ffill and bfill methods to work generally
             fill_idxs = []
             for idx, num_missing in fill_start_df.to_numpy():
-                fill_idxs = fill_idxs + [
-                    i for i in range(idx - (num_missing), idx + 1)
-                ]
+                fill_idxs = fill_idxs + [i for i in range(idx - (num_missing), idx + 1)]
 
             # fill exact idxs that are missing using method
-            full_data.iloc[fill_idxs] = full_data.iloc[fill_idxs].fillna(
-                method=method
-            )
+            full_data.iloc[fill_idxs] = full_data.iloc[fill_idxs].fillna(method=method)
 
         return full_data
 
@@ -638,14 +620,10 @@ class DataClient:
 
         if cur_sample_period < step_size_seconds:
             # downsample data to lower frequency
-            df = DataClient.downsample_to_step_size(
-                df, step_size_seconds, data_spec
-            )
+            df = DataClient.downsample_to_step_size(df, step_size_seconds, data_spec)
         elif cur_sample_period > step_size_seconds:
             # upsample data to higher frequency
-            df = DataClient.upsample_to_step_size(
-                df, step_size_seconds, data_spec
-            )
+            df = DataClient.upsample_to_step_size(df, step_size_seconds, data_spec)
 
         return df
 
@@ -680,6 +658,7 @@ class DataClient:
             )
             and (_state not in linear_columns_exclude)
         ]
+        # Note: must have numpy `float32` or `float64` dtypes for interpolation
         df.loc[:, linear_columns] = df.loc[:, linear_columns].interpolate(
             axis="rows", method="linear"
         )

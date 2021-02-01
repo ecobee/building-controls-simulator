@@ -33,18 +33,10 @@ class OutputAnalysis(object):
             lambda t: pd.Timestamp("2019-01-01") + pd.Timedelta(seconds=t)
         )
         self.df["total_heating"] = self.df[
-            [
-                c
-                for c in self.df.columns
-                if "Air_System_Sensible_Heating_Rate" in c
-            ]
+            [c for c in self.df.columns if "Air_System_Sensible_Heating_Rate" in c]
         ].sum(axis=1)
         self.df["total_cooling"] = self.df[
-            [
-                c
-                for c in self.df.columns
-                if "Air_System_Sensible_Cooling_Rate" in c
-            ]
+            [c for c in self.df.columns if "Air_System_Sensible_Cooling_Rate" in c]
         ].sum(axis=1)
         self.df["total_internal_gains"] = self.df[
             [
@@ -192,9 +184,7 @@ class OutputAnalysis(object):
                 y=output_df[STATES.THERMOSTAT_HUMIDITY],
                 mode="lines",
                 line=dict(color="blue"),
-                name=self.data_spec.full.spec[STATES.THERMOSTAT_HUMIDITY][
-                    "name"
-                ],
+                name=self.data_spec.full.spec[STATES.THERMOSTAT_HUMIDITY]["name"],
                 hoverlabel={"namelength": -1},
             ),
             row=row,
@@ -207,9 +197,7 @@ class OutputAnalysis(object):
                 x=input_df[STATES.DATE_TIME],
                 y=input_df[STATES.OUTDOOR_TEMPERATURE],
                 mode="lines",
-                name=self.data_spec.full.spec[STATES.OUTDOOR_TEMPERATURE][
-                    "name"
-                ],
+                name=self.data_spec.full.spec[STATES.OUTDOOR_TEMPERATURE]["name"],
                 hoverlabel={"namelength": -1},
             ),
             row=row,
@@ -222,9 +210,7 @@ class OutputAnalysis(object):
                 x=input_df[STATES.DATE_TIME],
                 y=input_df[STATES.OUTDOOR_RELATIVE_HUMIDITY],
                 mode="lines",
-                name=self.data_spec.full.spec[
-                    STATES.OUTDOOR_RELATIVE_HUMIDITY
-                ]["name"],
+                name=self.data_spec.full.spec[STATES.OUTDOOR_RELATIVE_HUMIDITY]["name"],
                 hoverlabel={"namelength": -1},
             ),
             row=row,
@@ -237,9 +223,7 @@ class OutputAnalysis(object):
                 y=output_df[STATES.TEMPERATURE_STP_HEAT],
                 mode="lines",
                 line=dict(color="firebrick", width=1, dash="dash"),
-                name=self.data_spec.full.spec[STATES.TEMPERATURE_STP_HEAT][
-                    "name"
-                ],
+                name=self.data_spec.full.spec[STATES.TEMPERATURE_STP_HEAT]["name"],
                 hoverlabel={"namelength": -1},
             ),
             row=row,
@@ -253,9 +237,7 @@ class OutputAnalysis(object):
                 y=output_df[STATES.TEMPERATURE_STP_COOL],
                 mode="lines",
                 line=dict(color="blue", width=1, dash="dash"),
-                name=self.data_spec.full.spec[STATES.TEMPERATURE_STP_COOL][
-                    "name"
-                ],
+                name=self.data_spec.full.spec[STATES.TEMPERATURE_STP_COOL]["name"],
                 hoverlabel={"namelength": -1},
             ),
             row=row,
@@ -286,9 +268,7 @@ class OutputAnalysis(object):
                     x=chg_event[STATES.DATE_TIME],
                     y=chg_event[STATES.TEMPERATURE_STP_COOL] + 2.0,
                     mode="markers+text",
-                    name=self.data_spec.full.spec[STATES.CALENDAR_EVENT][
-                        "name"
-                    ],
+                    name=self.data_spec.full.spec[STATES.CALENDAR_EVENT]["name"],
                     text=chg_event[STATES.CALENDAR_EVENT],
                     textposition="bottom center",
                     hoverlabel={"namelength": -1},

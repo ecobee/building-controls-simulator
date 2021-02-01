@@ -56,7 +56,9 @@ class Deadband(ControllerModel):
         ]
 
     def get_model_name(self):
-        return f"Deadband_{self.deadband}".replace(".", "-")
+        _model_name = f"Deadband_{self.deadband}"
+        _model_name = _model_name.replace(".", "_")
+        return _model_name
 
     def initialize(
         self,
@@ -151,33 +153,25 @@ class Deadband(ControllerModel):
             step_thermostat_input[STATES.TEMPERATURE_STP_HEAT],
         )
 
-        if t_ctrl < (
-            self.step_output[STATES.TEMPERATURE_STP_HEAT] - self.deadband
-        ):
+        if t_ctrl < (self.step_output[STATES.TEMPERATURE_STP_HEAT] - self.deadband):
             # turn on heat
             self.step_output[STATES.AUXHEAT1] = self.step_size_seconds
             self.step_output[STATES.FAN_STAGE_ONE] = self.step_size_seconds
             # turn off cool
             self.step_output[STATES.COMPCOOL1] = 0
-        elif t_ctrl > (
-            self.step_output[STATES.TEMPERATURE_STP_HEAT] + self.deadband
-        ):
+        elif t_ctrl > (self.step_output[STATES.TEMPERATURE_STP_HEAT] + self.deadband):
             # turn off heat
             self.step_output[STATES.FAN_STAGE_ONE] = 0
             self.step_output[STATES.AUXHEAT1] = 0
 
         # cooling mode
-        if t_ctrl > (
-            self.step_output[STATES.TEMPERATURE_STP_COOL] + self.deadband
-        ):
+        if t_ctrl > (self.step_output[STATES.TEMPERATURE_STP_COOL] + self.deadband):
             # turn on cool
             self.step_output[STATES.COMPCOOL1] = self.step_size_seconds
             self.step_output[STATES.FAN_STAGE_ONE] = self.step_size_seconds
             # turn off heat
             self.step_output[STATES.AUXHEAT1] = 0
-        elif t_ctrl < (
-            self.step_output[STATES.TEMPERATURE_STP_COOL] - self.deadband
-        ):
+        elif t_ctrl < (self.step_output[STATES.TEMPERATURE_STP_COOL] - self.deadband):
             # turn off cool
             self.step_output[STATES.FAN_STAGE_ONE] = 0
             self.step_output[STATES.COMPCOOL1] = 0

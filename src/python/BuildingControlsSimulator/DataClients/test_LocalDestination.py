@@ -98,9 +98,7 @@ class TestLocalDestination:
     def test_put_data(self):
         sim_name = self.get_sim_name()
         _df = self.data_client.get_full_input()
-        self.data_client.destination.put_data(
-            _df, sim_name, src_spec=Internal()
-        )
+        self.data_client.destination.put_data(_df, sim_name, src_spec=Internal())
         _fpath = os.path.join(
             self.data_client.destination.local_cache,
             self.data_client.destination.operator_name,
@@ -111,5 +109,7 @@ class TestLocalDestination:
             r_df,
             src_spec=self.data_client.destination.data_spec,
             dest_spec=Internal(),
+            src_nullable=True,
+            dest_nullable=True,
         )
         assert _df.equals(cr_df)

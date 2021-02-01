@@ -4,7 +4,8 @@ services:
     build: 
       context: ./
       dockerfile: ./Dockerfile
-    image: ${DOCKER_IMAGE}:${VERSION_TAG}
+    # change this if want to build your own image
+    image: ${DOCKERHUB_REPOSITORY}/${DOCKER_IMAGE}:${VERSION_TAG}
     container_name: ${DOCKER_IMAGE}-v${VERSION_TAG}
     ports:
       - "8888-8890:8888-8890" # map 8888 to 8890 port for jupyter lab

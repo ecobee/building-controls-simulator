@@ -39,13 +39,11 @@ class LocalSource(DataSource):
                     extensions.append(_ext)
 
             if len(extensions) == 0:
-                raise ValueError(
-                    f"{self.local_cache_source} contains no data files."
-                )
+                raise ValueError(f"{self.local_cache_source} contains no data files.")
             elif len(extensions) == 1:
                 self.file_extension = extensions[0]
             elif len(extensions) > 1:
-                ValueError(
+                raise ValueError(
                     f"{self.local_cache_source} contains more than one file"
                     + f" extension type, extensions: {extensions}."
                 )
@@ -63,6 +61,6 @@ class LocalSource(DataSource):
         _data = self.get_local_cache(local_cache_file)
         _data = self.drop_unused_columns(_data=_data)
         _data = convert_spec(
-            df=_data, src_spec=self.data_spec, dest_spec=Internal(), copy=False
+            df=_data, src_spec=self.data_spec, dest_spec=Internal(), copy=False, src_nullable=True, dest_nullable=True
         )
         return _data

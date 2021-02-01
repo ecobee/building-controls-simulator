@@ -17,10 +17,6 @@ logger = logging.getLogger(__name__)
 def spec_unit_conversion(df, src_spec, dest_spec):
     """This method must be able to evaluate multiple sources should
     a channel be composed from multiple sources."""
-    if src_spec == dest_spec:
-        logger.info("spec_unit_conversion: src_spec is equal to dest_spec.")
-        return df
-
     for k, v in src_spec.full.spec.items():
         if k in df.columns:
             src_unit = v["unit"]
@@ -38,25 +34,17 @@ def spec_unit_conversion(df, src_spec, dest_spec):
                         dest_unit = d_v["unit"]
 
             if dest_unit and src_unit != dest_unit:
-                if (src_unit == UNITS.FARHENHEIT) and (
-                    dest_unit == UNITS.CELSIUS
-                ):
+                if (src_unit == UNITS.FARHENHEIT) and (dest_unit == UNITS.CELSIUS):
                     df[k] = Conversions.F2C(df[k])
-                elif (src_unit == UNITS.CELSIUS) and (
-                    dest_unit == UNITS.FARHENHEIT
-                ):
+                elif (src_unit == UNITS.CELSIUS) and (dest_unit == UNITS.FARHENHEIT):
                     df[k] = Conversions.C2F(df[k])
                 elif (src_unit == UNITS.FARHENHEITx10) and (
                     dest_unit == UNITS.FARHENHEIT
                 ):
                     df[k] = df[k] / 10.0
-                elif (src_unit == UNITS.FARHENHEITx10) and (
-                    dest_unit == UNITS.CELSIUS
-                ):
+                elif (src_unit == UNITS.FARHENHEITx10) and (dest_unit == UNITS.CELSIUS):
                     df[k] = Conversions.F2C(df[k] / 10.0)
-                elif (src_unit == UNITS.CELSIUS) and (
-                    dest_unit == UNITS.FARHENHEITx10
-                ):
+                elif (src_unit == UNITS.CELSIUS) and (dest_unit == UNITS.FARHENHEITx10):
                     df[k] = Conversions.C2F(df[k]) * 10.0
                 else:
                     logger.error(
@@ -68,20 +56,45 @@ def spec_unit_conversion(df, src_spec, dest_spec):
     return df
 
 
-def get_dtype_mapper(df_cols, dest_spec):
+def get_dtype_mapper(df_cols, dest_spec, src_nullable=False, dest_nullable=False):
     # we only need to consider the destination spec
     dtype_mapper = {
         k: v["dtype"] for k, v in dest_spec.full.spec.items() if k in df_cols
     }
+
+    # convert between nullable columns and non-nullable for compatability
+    if dest_nullable:
+        for k,v in dtype_mapper.items():
+            if v == "bool":
+                dtype_mapper[k] = "boolean"
+            elif v == "int8":
+                dtype_mapper[k] = "Int8"
+            elif v == "int16":
+                dtype_mapper[k] = "Int16"
+            elif v == "int32":
+                dtype_mapper[k] = "Int32"
+            elif v == "int64":
+                dtype_mapper[k] = "Int64"
+    else:
+        for k,v in dtype_mapper.items():
+            if v == "boolean":
+                dtype_mapper[k] = "bool"
+            elif v == "Int8":
+                dtype_mapper[k] = "int8"
+            elif v == "Int16":
+                dtype_mapper[k] = "int16"
+            elif v == "Int32":
+                dtype_mapper[k] = "int32"
+            elif v == "Int64":
+                dtype_mapper[k] = "int64"
+
     return dtype_mapper
 
 
 def get_rename_mapper(src_spec, dest_spec):
     # permutations on Internal spec usage
     if isinstance(dest_spec, Internal):
-        rename_mapper = {
-            k: v["internal_state"] for k, v in src_spec.full.spec.items()
-        }
+        rename_mapper = {k: v["internal_state"] for k, v in src_spec.full.spec.items()}
     elif isinstance(src_spec, Internal):
         rename_mapper = {}
         for k, v in src_spec.full.spec.items():
@@ -130,7 +143,9 @@ def project_spec_keys(src_spec, dest_spec):
     return projection
 
 
-def convert_spec(df, src_spec, dest_spec, copy=False):
+def convert_spec(df, src_spec, dest_spec, src_nullable=False, dest_nullable=False, copy=False):
+    # src_nullable: whether to use nullable int types
+    # dest_nullable: whether to use nullable int types
     if type(src_spec) == type(dest_spec):
         logger.info("convert_spec: src_spec is equal to dest_spec.")
         return df
@@ -155,12 +170,10 @@ def convert_spec(df, src_spec, dest_spec, copy=False):
         src_spec=src_spec,
         dest_spec=dest_spec,
     )
-    _df = _df.rename(
-        columns=get_rename_mapper(src_spec=src_spec, dest_spec=dest_spec)
-    )
+    _df = _df.rename(columns=get_rename_mapper(src_spec=src_spec, dest_spec=dest_spec))
 
     _df = _df.astype(
-        dtype=get_dtype_mapper(df_cols=_df.columns, dest_spec=dest_spec),
+        dtype=get_dtype_mapper(df_cols=_df.columns, dest_spec=dest_spec, src_nullable=src_nullable, dest_nullable=dest_nullable),
     )
     _df = _df.sort_values(dest_spec.datetime_column, ascending=True)
     return _df
@@ -186,6 +199,10 @@ class Spec:
             "Int16",
             "Int32",
             "Int64",
+            "int8",
+            "int16",
+            "int32",
+            "int64",
             "UInt8",
             "UInt16",
             "UInt32",
@@ -204,7 +221,6 @@ class Spec:
         return list(self.spec.keys())
 
 
-# @attr.s(kw_only=True, frozen=True, slots=True)
 class Internal:
     """Definition of internal data fields and types.
     For details of string dtype aliases see:
@@ -264,37 +280,37 @@ class Internal:
                 },
                 STATES.TEMPERATURE_CTRL: {
                     "name": "temperature_ctrl",
-                    "dtype": "Float32",
+                    "dtype": "float32",
                     "channel": CHANNELS.THERMOSTAT_SETTING,
                     "unit": UNITS.CELSIUS,
                 },
                 STATES.TEMPERATURE_STP_COOL: {
                     "name": "temperature_stp_cool",
-                    "dtype": "Float32",
+                    "dtype": "float32",
                     "channel": CHANNELS.THERMOSTAT_SETTING,
                     "unit": UNITS.CELSIUS,
                 },
                 STATES.TEMPERATURE_STP_HEAT: {
                     "name": "temperature_stp_heat",
-                    "dtype": "Float32",
+                    "dtype": "float32",
                     "channel": CHANNELS.THERMOSTAT_SETTING,
                     "unit": UNITS.CELSIUS,
                 },
                 STATES.HUMIDITY: {
                     "name": "humidity",
-                    "dtype": "Float32",
+                    "dtype": "float32",
                     "channel": CHANNELS.THERMOSTAT_SETTING,
                     "unit": UNITS.RELATIVE_HUMIDITY,
                 },
                 STATES.HUMIDITY_EXPECTED_LOW: {
                     "name": "humidity_expected_low",
-                    "dtype": "Float32",
+                    "dtype": "float32",
                     "channel": CHANNELS.THERMOSTAT_SETTING,
                     "unit": UNITS.RELATIVE_HUMIDITY,
                 },
                 STATES.HUMIDITY_EXPECTED_HIGH: {
                     "name": "humidity_expected_high",
-                    "dtype": "Float32",
+                    "dtype": "float32",
                     "channel": CHANNELS.THERMOSTAT_SETTING,
                     "unit": UNITS.RELATIVE_HUMIDITY,
                 },
@@ -307,91 +323,91 @@ class Internal:
             spec={
                 STATES.AUXHEAT1: {
                     "name": "auxHeat1",
-                    "dtype": "Int16",
+                    "dtype": "int16",
                     "channel": CHANNELS.EQUIPMENT,
                     "unit": UNITS.SECONDS,
                 },
                 STATES.AUXHEAT2: {
                     "name": "auxHeat2",
-                    "dtype": "Int16",
+                    "dtype": "int16",
                     "channel": CHANNELS.EQUIPMENT,
                     "unit": UNITS.SECONDS,
                 },
                 STATES.AUXHEAT3: {
                     "name": "auxHeat3",
-                    "dtype": "Int16",
+                    "dtype": "int16",
                     "channel": CHANNELS.EQUIPMENT,
                     "unit": UNITS.SECONDS,
                 },
                 STATES.COMPCOOL1: {
                     "name": "compCool1",
-                    "dtype": "Int16",
+                    "dtype": "int16",
                     "channel": CHANNELS.EQUIPMENT,
                     "unit": UNITS.SECONDS,
                 },
                 STATES.COMPCOOL2: {
                     "name": "compCool2",
-                    "dtype": "Int16",
+                    "dtype": "int16",
                     "channel": CHANNELS.EQUIPMENT,
                     "unit": UNITS.SECONDS,
                 },
                 STATES.COMPHEAT1: {
                     "name": "compHeat1",
-                    "dtype": "Int16",
+                    "dtype": "int16",
                     "channel": CHANNELS.EQUIPMENT,
                     "unit": UNITS.SECONDS,
                 },
                 STATES.COMPHEAT2: {
                     "name": "compHeat2",
-                    "dtype": "Int16",
+                    "dtype": "int16",
                     "channel": CHANNELS.EQUIPMENT,
                     "unit": UNITS.SECONDS,
                 },
                 STATES.DEHUMIDIFIER: {
                     "name": "dehumidifier",
-                    "dtype": "Int16",
+                    "dtype": "int16",
                     "channel": CHANNELS.EQUIPMENT,
                     "unit": UNITS.SECONDS,
                 },
                 STATES.ECONOMIZER: {
                     "name": "economizer",
-                    "dtype": "Int16",
+                    "dtype": "int16",
                     "channel": CHANNELS.EQUIPMENT,
                     "unit": UNITS.SECONDS,
                 },
                 STATES.FAN: {
                     "name": "fan",
-                    "dtype": "Int16",
+                    "dtype": "int16",
                     "channel": CHANNELS.EQUIPMENT,
                     "unit": UNITS.SECONDS,
                 },
                 STATES.FAN_STAGE_ONE: {
                     "name": "fan1",
-                    "dtype": "Int16",
+                    "dtype": "int16",
                     "channel": CHANNELS.EQUIPMENT,
                     "unit": UNITS.SECONDS,
                 },
                 STATES.FAN_STAGE_TWO: {
                     "name": "fan2",
-                    "dtype": "Int16",
+                    "dtype": "int16",
                     "channel": CHANNELS.EQUIPMENT,
                     "unit": UNITS.SECONDS,
                 },
                 STATES.FAN_STAGE_THREE: {
                     "name": "fan3",
-                    "dtype": "Int16",
+                    "dtype": "int16",
                     "channel": CHANNELS.EQUIPMENT,
                     "unit": UNITS.SECONDS,
                 },
                 STATES.HUMIDIFIER: {
                     "name": "humidifier",
-                    "dtype": "Int16",
+                    "dtype": "int16",
                     "channel": CHANNELS.EQUIPMENT,
                     "unit": UNITS.SECONDS,
                 },
                 STATES.VENTILATOR: {
                     "name": "ventilator",
-                    "dtype": "Int16",
+                    "dtype": "int16",
                     "channel": CHANNELS.EQUIPMENT,
                     "unit": UNITS.SECONDS,
                 },
@@ -404,25 +420,25 @@ class Internal:
             spec={
                 STATES.THERMOSTAT_TEMPERATURE: {
                     "name": "thermostat_temperature",
-                    "dtype": "Float32",
+                    "dtype": "float32",
                     "channel": CHANNELS.THERMOSTAT_SENSOR,
                     "unit": UNITS.CELSIUS,
                 },
                 STATES.THERMOSTAT_TEMPERATURE_ESTIMATE: {
                     "name": "thermostat_temperature_estimate",
-                    "dtype": "Float32",
+                    "dtype": "float32",
                     "channel": CHANNELS.THERMOSTAT_SENSOR,
                     "unit": UNITS.CELSIUS,
                 },
                 STATES.THERMOSTAT_HUMIDITY: {
                     "name": "thermostat_humidity",
-                    "dtype": "Float32",
+                    "dtype": "float32",
                     "channel": CHANNELS.THERMOSTAT_SENSOR,
                     "unit": UNITS.RELATIVE_HUMIDITY,
                 },
                 STATES.THERMOSTAT_HUMIDITY_ESTIMATE: {
                     "name": "thermostat_humidity_estimate",
-                    "dtype": "Float32",
+                    "dtype": "float32",
                     "channel": CHANNELS.THERMOSTAT_SENSOR,
                     "unit": UNITS.RELATIVE_HUMIDITY,
                 },
@@ -441,7 +457,7 @@ class Internal:
                 **{
                     STATES["RS{}_TEMPERATURE".format(i)]: {
                         "name": "rs{}_temperature".format(i),
-                        "dtype": "Float32",
+                        "dtype": "float32",
                         "channel": CHANNELS.REMOTE_SENSOR,
                         "unit": UNITS.CELSIUS,
                     }
@@ -450,7 +466,7 @@ class Internal:
                 **{
                     STATES["RS{}_TEMPERATURE_ESTIMATE".format(i)]: {
                         "name": "rs{}_temperature_estimate".format(i),
-                        "dtype": "Float32",
+                        "dtype": "float32",
                         "channel": CHANNELS.REMOTE_SENSOR,
                         "unit": UNITS.CELSIUS,
                     }
@@ -474,13 +490,13 @@ class Internal:
             spec={
                 STATES.OUTDOOR_TEMPERATURE: {
                     "name": "outdoor_temperature",
-                    "dtype": "Float32",
+                    "dtype": "float32",
                     "channel": CHANNELS.WEATHER,
                     "unit": UNITS.CELSIUS,
                 },
                 STATES.OUTDOOR_RELATIVE_HUMIDITY: {
                     "name": "outdoor_relative_humidity",
-                    "dtype": "Float32",
+                    "dtype": "float32",
                     "channel": CHANNELS.WEATHER,
                     "unit": UNITS.RELATIVE_HUMIDITY,
                 },
@@ -586,37 +602,37 @@ class FlatFilesSpec:
                 },
                 "Temperature_ctrl": {
                     "internal_state": STATES.TEMPERATURE_CTRL,
-                    "dtype": "Float32",
+                    "dtype": "float32",
                     "channel": CHANNELS.THERMOSTAT_SETTING,
                     "unit": UNITS.FARHENHEITx10,
                 },
                 "TemperatureExpectedCool": {
                     "internal_state": STATES.TEMPERATURE_STP_COOL,
-                    "dtype": "Float32",
+                    "dtype": "float32",
                     "channel": CHANNELS.THERMOSTAT_SETTING,
                     "unit": UNITS.FARHENHEITx10,
                 },
                 "TemperatureExpectedHeat": {
                     "internal_state": STATES.TEMPERATURE_STP_HEAT,
-                    "dtype": "Float32",
+                    "dtype": "float32",
                     "channel": CHANNELS.THERMOSTAT_SETTING,
                     "unit": UNITS.FARHENHEITx10,
                 },
                 "Humidity": {
                     "internal_state": STATES.HUMIDITY,
-                    "dtype": "Float32",
+                    "dtype": "float32",
                     "channel": CHANNELS.THERMOSTAT_SETTING,
                     "unit": UNITS.RELATIVE_HUMIDITY,
                 },
                 "HumidityExpectedLow": {
                     "internal_state": STATES.HUMIDITY_EXPECTED_LOW,
-                    "dtype": "Float32",
+                    "dtype": "float32",
                     "channel": CHANNELS.THERMOSTAT_SETTING,
                     "unit": UNITS.RELATIVE_HUMIDITY,
                 },
                 "HumidityExpectedHigh": {
                     "internal_state": STATES.HUMIDITY_EXPECTED_HIGH,
-                    "dtype": "Float32",
+                    "dtype": "float32",
                     "channel": CHANNELS.THERMOSTAT_SETTING,
                     "unit": UNITS.RELATIVE_HUMIDITY,
                 },
@@ -629,73 +645,73 @@ class FlatFilesSpec:
             spec={
                 "auxHeat1": {
                     "internal_state": STATES.AUXHEAT1,
-                    "dtype": "Int16",
+                    "dtype": "int16",
                     "channel": CHANNELS.EQUIPMENT,
                     "unit": UNITS.SECONDS,
                 },
                 "auxHeat2": {
                     "internal_state": STATES.AUXHEAT2,
-                    "dtype": "Int16",
+                    "dtype": "int16",
                     "channel": CHANNELS.EQUIPMENT,
                     "unit": UNITS.SECONDS,
                 },
                 "auxHeat3": {
                     "internal_state": STATES.AUXHEAT3,
-                    "dtype": "Int16",
+                    "dtype": "int16",
                     "channel": CHANNELS.EQUIPMENT,
                     "unit": UNITS.SECONDS,
                 },
                 "compCool1": {
                     "internal_state": STATES.COMPCOOL1,
-                    "dtype": "Int16",
+                    "dtype": "int16",
                     "channel": CHANNELS.EQUIPMENT,
                     "unit": UNITS.SECONDS,
                 },
                 "compCool2": {
                     "internal_state": STATES.COMPCOOL2,
-                    "dtype": "Int16",
+                    "dtype": "int16",
                     "channel": CHANNELS.EQUIPMENT,
                     "unit": UNITS.SECONDS,
                 },
                 "compHeat1": {
                     "internal_state": STATES.COMPHEAT1,
-                    "dtype": "Int16",
+                    "dtype": "int16",
                     "channel": CHANNELS.EQUIPMENT,
                     "unit": UNITS.SECONDS,
                 },
                 "compHeat2": {
                     "internal_state": STATES.COMPHEAT2,
-                    "dtype": "Int16",
+                    "dtype": "int16",
                     "channel": CHANNELS.EQUIPMENT,
                     "unit": UNITS.SECONDS,
                 },
                 "dehumidifier": {
                     "internal_state": STATES.DEHUMIDIFIER,
-                    "dtype": "Int16",
+                    "dtype": "int16",
                     "channel": CHANNELS.EQUIPMENT,
                     "unit": UNITS.SECONDS,
                 },
                 "economizer": {
                     "internal_state": STATES.ECONOMIZER,
-                    "dtype": "Int16",
+                    "dtype": "int16",
                     "channel": CHANNELS.EQUIPMENT,
                     "unit": UNITS.SECONDS,
                 },
                 "fan": {
                     "internal_state": STATES.FAN,
-                    "dtype": "Int16",
+                    "dtype": "int16",
                     "channel": CHANNELS.EQUIPMENT,
                     "unit": UNITS.SECONDS,
                 },
                 "humidifier": {
                     "internal_state": STATES.HUMIDIFIER,
-                    "dtype": "Int16",
+                    "dtype": "int16",
                     "channel": CHANNELS.EQUIPMENT,
                     "unit": UNITS.SECONDS,
                 },
                 "ventilator": {
                     "internal_state": STATES.VENTILATOR,
-                    "dtype": "Int16",
+                    "dtype": "int16",
                     "channel": CHANNELS.EQUIPMENT,
                     "unit": UNITS.SECONDS,
                 },
@@ -708,13 +724,13 @@ class FlatFilesSpec:
             spec={
                 "SensorTemp000": {
                     "internal_state": STATES.THERMOSTAT_TEMPERATURE,
-                    "dtype": "Float32",
+                    "dtype": "float32",
                     "channel": CHANNELS.THERMOSTAT_SENSOR,
                     "unit": UNITS.FARHENHEITx10,
                 },
                 "SensorHum000": {
                     "internal_state": STATES.THERMOSTAT_HUMIDITY,
-                    "dtype": "Float32",
+                    "dtype": "float32",
                     "channel": CHANNELS.THERMOSTAT_SENSOR,
                     "unit": UNITS.RELATIVE_HUMIDITY,
                 },
@@ -727,7 +743,7 @@ class FlatFilesSpec:
                 **{
                     "SensorTemp1{}".format(str(i).zfill(2)): {
                         "internal_state": STATES["RS{}_TEMPERATURE".format(i)],
-                        "dtype": "Float32",
+                        "dtype": "float32",
                         "channel": CHANNELS.REMOTE_SENSOR,
                         "unit": UNITS.FARHENHEITx10,
                     }
@@ -751,13 +767,13 @@ class FlatFilesSpec:
             spec={
                 "Temperature": {
                     "internal_state": STATES.OUTDOOR_TEMPERATURE,
-                    "dtype": "Float32",
+                    "dtype": "float32",
                     "channel": CHANNELS.WEATHER,
                     "unit": UNITS.FARHENHEITx10,
                 },
                 "RelativeHumidity": {
                     "internal_state": STATES.OUTDOOR_RELATIVE_HUMIDITY,
-                    "dtype": "Float32",
+                    "dtype": "float32",
                     "channel": CHANNELS.WEATHER,
                     "unit": UNITS.RELATIVE_HUMIDITY,
                 },
@@ -836,31 +852,31 @@ class DonateYourDataSpec:
                 },
                 "T_ctrl": {
                     "internal_state": STATES.TEMPERATURE_CTRL,
-                    "dtype": "Float32",
+                    "dtype": "float32",
                     "channel": CHANNELS.THERMOSTAT_SETTING,
                     "unit": UNITS.FARHENHEIT,
                 },
                 "T_stp_cool": {
                     "internal_state": STATES.TEMPERATURE_STP_COOL,
-                    "dtype": "Float32",
+                    "dtype": "float32",
                     "channel": CHANNELS.THERMOSTAT_SETTING,
                     "unit": UNITS.FARHENHEIT,
                 },
                 "T_stp_heat": {
                     "internal_state": STATES.TEMPERATURE_STP_HEAT,
-                    "dtype": "Float32",
+                    "dtype": "float32",
                     "channel": CHANNELS.THERMOSTAT_SETTING,
                     "unit": UNITS.FARHENHEIT,
                 },
                 "HumidityExpectedLow": {
                     "internal_state": STATES.HUMIDITY_EXPECTED_LOW,
-                    "dtype": "Float32",
+                    "dtype": "float32",
                     "channel": CHANNELS.THERMOSTAT_SETTING,
                     "unit": UNITS.RELATIVE_HUMIDITY,
                 },
                 "HumidityExpectedHigh": {
                     "internal_state": STATES.HUMIDITY_EXPECTED_HIGH,
-                    "dtype": "Float32",
+                    "dtype": "float32",
                     "channel": CHANNELS.THERMOSTAT_SETTING,
                     "unit": UNITS.RELATIVE_HUMIDITY,
                 },
@@ -873,49 +889,49 @@ class DonateYourDataSpec:
             spec={
                 "auxHeat1": {
                     "internal_state": STATES.AUXHEAT1,
-                    "dtype": "Int16",
+                    "dtype": "int16",
                     "channel": CHANNELS.EQUIPMENT,
                     "unit": UNITS.SECONDS,
                 },
                 "auxHeat2": {
                     "internal_state": STATES.AUXHEAT2,
-                    "dtype": "Int16",
+                    "dtype": "int16",
                     "channel": CHANNELS.EQUIPMENT,
                     "unit": UNITS.SECONDS,
                 },
                 "auxHeat3": {
                     "internal_state": STATES.AUXHEAT3,
-                    "dtype": "Int16",
+                    "dtype": "int16",
                     "channel": CHANNELS.EQUIPMENT,
                     "unit": UNITS.SECONDS,
                 },
                 "compCool1": {
                     "internal_state": STATES.COMPCOOL1,
-                    "dtype": "Int16",
+                    "dtype": "int16",
                     "channel": CHANNELS.EQUIPMENT,
                     "unit": UNITS.SECONDS,
                 },
                 "compCool2": {
                     "internal_state": STATES.COMPCOOL2,
-                    "dtype": "Int16",
+                    "dtype": "int16",
                     "channel": CHANNELS.EQUIPMENT,
                     "unit": UNITS.SECONDS,
                 },
                 "compHeat1": {
                     "internal_state": STATES.COMPHEAT1,
-                    "dtype": "Int16",
+                    "dtype": "int16",
                     "channel": CHANNELS.EQUIPMENT,
                     "unit": UNITS.SECONDS,
                 },
                 "compHeat2": {
                     "internal_state": STATES.COMPHEAT2,
-                    "dtype": "Int16",
+                    "dtype": "int16",
                     "channel": CHANNELS.EQUIPMENT,
                     "unit": UNITS.SECONDS,
                 },
                 "fan": {
                     "internal_state": STATES.FAN,
-                    "dtype": "Int16",
+                    "dtype": "int16",
                     "channel": CHANNELS.EQUIPMENT,
                     "unit": UNITS.SECONDS,
                 },
@@ -928,13 +944,13 @@ class DonateYourDataSpec:
             spec={
                 "Thermostat_Temperature": {
                     "internal_state": STATES.THERMOSTAT_TEMPERATURE,
-                    "dtype": "Float32",
+                    "dtype": "float32",
                     "channel": CHANNELS.THERMOSTAT_SENSOR,
                     "unit": UNITS.FARHENHEIT,
                 },
                 "Humidity": {
                     "internal_state": STATES.THERMOSTAT_HUMIDITY,
-                    "dtype": "Float32",
+                    "dtype": "float32",
                     "channel": CHANNELS.THERMOSTAT_SENSOR,
                     "unit": UNITS.RELATIVE_HUMIDITY,
                 },
@@ -947,7 +963,7 @@ class DonateYourDataSpec:
                 **{
                     "Remote_Sensor_{}_Temperature".format(i): {
                         "internal_state": STATES[f"RS{i}_TEMPERATURE"],
-                        "dtype": "Float32",
+                        "dtype": "float32",
                         "channel": CHANNELS.REMOTE_SENSOR,
                         "unit": UNITS.CELSIUS,
                     }
@@ -971,13 +987,13 @@ class DonateYourDataSpec:
             spec={
                 "T_out": {
                     "internal_state": STATES.OUTDOOR_TEMPERATURE,
-                    "dtype": "Float32",
+                    "dtype": "float32",
                     "channel": CHANNELS.WEATHER,
                     "unit": UNITS.FARHENHEIT,
                 },
                 "RH_out": {
                     "internal_state": STATES.OUTDOOR_RELATIVE_HUMIDITY,
-                    "dtype": "Float32",
+                    "dtype": "float32",
                     "channel": CHANNELS.WEATHER,
                     "unit": UNITS.RELATIVE_HUMIDITY,
                 },

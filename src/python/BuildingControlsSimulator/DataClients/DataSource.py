@@ -51,8 +51,7 @@ class DataSource(ABC):
             for _col in _data.columns
             if (
                 _data[_col].isnull().all()
-                and self.data_spec.full.spec[_col]["channel"]
-                == CHANNELS.REMOTE_SENSOR
+                and self.data_spec.full.spec[_col]["channel"] == CHANNELS.REMOTE_SENSOR
             )
         ]
         return _data.drop(axis="columns", columns=_all_null_columns)
@@ -64,9 +63,7 @@ class DataSource(ABC):
                 f"{identifier}.{self.file_extension}",
             )
         else:
-            logger.info(
-                "No local_cache provided. To enable set env LOCAL_CACHE_DIR."
-            )
+            logger.info("No local_cache provided. To enable set env LOCAL_CACHE_DIR.")
             return None
 
     def get_local_cache(self, local_cache_file):
@@ -96,9 +93,7 @@ class DataSource(ABC):
         return _df
 
     @staticmethod
-    def read_data_static(
-        filepath_or_buffer, data_spec, extension="parquet.gzip"
-    ):
+    def read_data_static(filepath_or_buffer, data_spec, extension="parquet.gzip"):
         _df = None
         if extension.startswith("parquet"):
             # read_parquet does not take dtype info
@@ -120,6 +115,8 @@ class DataSource(ABC):
                         if _col != data_spec.datetime_column
                     ],
                     data_spec,
+                    src_nullable=True,
+                    dest_nullable=True,
                 ),
             )
         elif extension == "csv.zip":
@@ -134,6 +131,8 @@ class DataSource(ABC):
                         if _col != data_spec.datetime_column
                     ],
                     data_spec,
+                    src_nullable=True,
+                    dest_nullable=True,
                 ),
             )
         elif extension in ["csv.gzip", "csv.gz"]:
@@ -148,6 +147,8 @@ class DataSource(ABC):
                         if _col != data_spec.datetime_column
                     ],
                     data_spec,
+                    src_nullable=True,
+                    dest_nullable=True,
                 ),
             )
         else:

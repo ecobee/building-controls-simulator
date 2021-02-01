@@ -1,0 +1,9 @@
+*
+!Dockerfile
+!src/
+!scripts/
+!setup.py
+!requirements.txt
+!requirements_unfixed.txt
+!pytest.ini
+!.vscode/

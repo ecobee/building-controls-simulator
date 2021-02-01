@@ -76,9 +76,7 @@ class TestEnergyPlusBuildingModel:
     def building_model(self, request):
         # if dummy files don't exist copy them from E+ installations
         dummy_epw_name = request.param[1]
-        dummy_epw_path = os.path.join(
-            os.environ.get("WEATHER_DIR"), dummy_epw_name
-        )
+        dummy_epw_path = os.path.join(os.environ.get("WEATHER_DIR"), dummy_epw_name)
         if not os.path.isfile(dummy_epw_path):
             _fpath = os.path.join(
                 os.environ.get("EPLUS_DIR"),
@@ -89,9 +87,7 @@ class TestEnergyPlusBuildingModel:
 
         # if dummy files don't exist copy them from E+ installations
         dummy_idf_name = request.param[0]
-        dummy_idf_path = os.path.join(
-            os.environ.get("IDF_DIR"), dummy_idf_name
-        )
+        dummy_idf_path = os.path.join(os.environ.get("IDF_DIR"), dummy_idf_name)
         if not os.path.isfile(dummy_idf_path):
             _fpath = os.path.join(
                 os.environ.get("EPLUS_DIR"), "ExampleFiles", dummy_idf_name
@@ -141,9 +137,7 @@ class TestEnergyPlusBuildingModel:
         elif self.eplus_version == "9-4-0":
             assert out.stdout == "EnergyPlus, Version 9.4.0-998c4b761e\n"
         else:
-            raise ValueError(
-                f"Untested version of energyplus: {self.eplus_version}"
-            )
+            raise ValueError(f"Untested version of energyplus: {self.eplus_version}")
 
     @pytest.mark.skip(reason="Redundant with test_simulator.py")
     @pytest.mark.usefixtures("building_model")
@@ -325,7 +319,5 @@ class TestEnergyPlusBuildingModel:
             )
         assert (
             pytest.approx(33.394825, 0.01)
-            == building_model.fmu_output[
-                "EAST_ZONE_zone_air_temperature"
-            ].mean()
+            == building_model.fmu_output["EAST_ZONE_zone_air_temperature"].mean()
         )

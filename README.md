@@ -38,35 +38,63 @@ Copy the template files and fill in the variables mentioned below:
 ```bash
 cp .env.template .env
 cp docker-compose.yml.template docker-compose.yml
+# and if you want to run the tests
+# .test.env does not need to be editted, unless you want to inject creds
+cp .test.env.template .test.env
 ```
+
 **Note**: `docker-compose` behaviour may be slightly different on your host OS 
 (Windows, Mac OS, Linux) with respect to how the expansion of environment 
 variables works. If the base `docker-compose.yml` file fails on interpreting 
 variables, try inlining those specific variables, e.g. replacing `${LOCAL_PACKAGE_DIR}` 
 with `<where you cloned the repo to>/building-controls-simulator`.
 
-Edit in `.env.template`:
+
+Edit in `.env`:
 ```bash
 ...
-LOCAL_PACKAGE_DIR=<where you cloned repo>
-...
-DYD_GCS_URI_BASE=<Donate your data Google Cloud Service bucket>
-DYD_METADATA_URI=<Donate your data meta_data file Google Cloud Service URI>
-NREL_DEV_API_KEY=<your key>
-NREL_DEV_EMAIL=<your email>
+LOCAL_PACKAGE_DIR=<where you cloned the repo>
 ...
 ```
 
-**Note for Windows users**: For the `LOCAL_PACKAGE_DIR` variable, you have to specify the path with unix syntax. For example, if you cloned the git repository to `c:\devel\building-controls-simulator` then set `LOCAL_PACKAGE_DIR` to `/c/devel/building-controls-simulator/`.
-
 Now you're ready to build and launch the container!
+
 If you delete the docker image just go through the setup here again to rebuild it.
 
-##### Note: Docker images may use up to 12 GB of disk space - make sure you have this available before building.
-The size of the container image can be reduced to roughly 5 GB by not installing
+### Pull Docker image from Dockerhub
+
+You can access the latest release image from: https://hub.docker.com/r/tstesco/building-controls-simulator/tags via CLI:
+
+```bash
+docker pull tstesco/building-controls-simulator:0.3.3-alpha
+```
+
+If you are using the Dockerhub repository make sure that your `.env` file contains
+the line
+```bash
+DOCKERHUB_REPOSITORY=tstesco
+```
+
+This allows `docker-compose.yml` to find and use the correct image. Change this
+line in `docker-compose.yml` if you want to use a locally built image.
+
+```yml
+    # change this if want to build your own image
+    image: ${DOCKERHUB_REPOSITORY}/${DOCKER_IMAGE}:${VERSION_TAG}
+```
+
+to
+
+```yml
+    # change this if want to build your own image
+    image: ${DOCKER_IMAGE}:${VERSION_TAG}
+```
+
+##### Note: Locally built Docker images may use up to 10 GB of disk space - make sure you have this available before building.
+The size of the container image can be reduced to below 5 GB by not installing
 every EnergyPlus version in `scripts/setup/install_ep.sh` and not downloading 
 all IECC 2018 IDF files in `scripts/setup/download_IECC_idfs.sh`. Simply comment
-out the files you do not need.
+out the versions/files you do not need in the respective files.
 
 ## Run BCS with Jupyter Lab Server (recommended: option 1)
 
@@ -166,6 +194,7 @@ sudo chown "bcs":"bcs" ~/.config/application_default_credentials.json
 
 Instead of using GCP access to download data you can use a locally cached
 DYD files following the format: `data/input/local/<hashed ID>.csv.zip`.
+These data files are the time series measurements for an individual building.
 
 Simply save the files using this format and you can use them in local simulations.
 
@@ -287,6 +316,47 @@ Finally, run all the tests:
 ```bash
 python -m pytest src/python
 ```
+
+## Changing dependency versions
+
+The dependencies are pinned to exact versions in the `requirements.txt` file.
+To change this simply change line (approx) 124 in the `Dockerfile` from:
+```
+    && pip install --no-cache-dir -r "requirements.txt" \
+    # && pip install --no-cache-dir -r "requirements_unfixed.txt" \
+```
+
+to
+
+```
+    # && pip install --no-cache-dir -r "requirements.txt" \
+    && pip install --no-cache-dir -r "requirements_unfixed.txt" \
+```
+
+This will install the latest satisfying versions of all dependencies. After testing that
+the dependencies are working freeze them into a new `requirements.txt` file.
+
+```
+pip freeze > requirements.txt
+```
+
+Several dependencies are installed from source so these must be removed from the
+`requirements.txt` file. These are:
+
+```
+PyFMI
+pyflux
+```
+
+Then change line 124 in the `Dockerfile` back to use the `requirements.txt` file.
+Note that when building the image using the `requirements.txt` file it will 
+add the pinned dependencies to the Pipfile, discard those changes.
+
+## Making a Release
+
+1. On GitHub use the releases/new wizard (https://github.com/ecobee/building-controls-simulator/releases/new). Use semver (https://semver.org/) convention for release versioning.
+2. Make docker image locally
+3. Push docker image to dockerhub (https://hub.docker.com/repository/docker/tstesco/building-controls-simulator)
 
 ## Weather Data
 

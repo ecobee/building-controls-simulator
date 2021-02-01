@@ -1,0 +1,56 @@
+{
+    "files.exclude": {
+        "**/.DS_Store": true,
+        "**/.ipynb": true,
+        "**/__pycache__": true,
+        "**/.pytest_cache": true,
+        "build": true,
+        "BuildingControlsSimulator-*": true,
+        "src/python/BuildingControlsSimulator.egg-info": true,
+        "notebooks": true,
+        ".ipynb_checkpoints": true,
+        "util-get-address-size.exe": true,
+    },
+    "search.exclude": {
+        "**/.git": true,
+        "**/*.csv": true,
+        "**/*.epw": true,
+        "**/*.fmu": true,
+        "**/*.exe": true,
+        "**/*.txt": true,
+        "src/python/.pytype": true,
+        "notebooks": true,
+        "notes": true,
+        "build": true,
+        "data": true,
+        "output": true,
+        "Output_EPExport_Slave": true,
+        "Output_EPExport_Test FMI 1.0 CS": true,
+        "test/data": true
+    },
+    "python.linting.pylintEnabled": false,
+    "python.linting.flake8Enabled": true,
+    "python.linting.enabled": true,
+    "python.testing.unittestEnabled": false,
+    "python.testing.nosetestsEnabled": false,
+    "python.testing.pytestEnabled": true,
+    "python.envFile": "${workspaceFolder}/.test.env",
+    "python.testing.pytestArgs": [
+        "-c",
+        "${workspaceFolder}/pytest.ini"
+    ],
+    "python.formatting.provider": "black",
+    "python.formatting.blackArgs": [
+        "--line-length",
+        "79"
+    ],
+    "python.jediEnabled": true,
+    "editor.rulers": [
+        80,
+        90
+    ],
+    "python.languageServer": "Jedi",
+    "spellright.language": [
+        "English"
+    ],
+}

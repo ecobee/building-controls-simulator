@@ -95,7 +95,9 @@ class EnergyPlusBuildingModel(BuildingModel):
     def get_model_name(self):
         # only need the idf file name because the weather is determined from
         # the combination of idf file and data_source-identifier
-        return f"EnergyPlus_{self.idf.idf_name.rstrip('.idf')}"
+        _model_name = f"EnergyPlus_{self.idf.idf_name.rstrip('.idf')}"
+        _model_name = _model_name.replace(".", "_")
+        return _model_name
 
     @property
     def timesteps_per_hour(self):
@@ -123,9 +125,7 @@ class EnergyPlusBuildingModel(BuildingModel):
     @property
     def fmu_name(self):
         if not self.epw_path:
-            raise ValueError(
-                "Cannot name FMU without specifying weather file."
-            )
+            raise ValueError("Cannot name FMU without specifying weather file.")
 
         # the full fmu name is unique per combination of:
         # 1. IDF file
@@ -197,9 +197,7 @@ class EnergyPlusBuildingModel(BuildingModel):
 
         proc = subprocess.run(shlex.split(cmd), stdout=subprocess.PIPE)
         if not proc.stdout:
-            raise ValueError(
-                f"Empty STDOUT. Invalid EnergyPlusToFMU cmd={cmd}"
-            )
+            raise ValueError(f"Empty STDOUT. Invalid EnergyPlusToFMU cmd={cmd}")
 
         # EnergyPlusToFMU puts fmu in cwd always, move out of cwd
         shutil.move(
@@ -218,9 +216,7 @@ class EnergyPlusBuildingModel(BuildingModel):
     ):
         """"""
         logger.info(f"Initializing EnergyPlusBuildingModel: {self.fmu_path}")
-        self.allocate_output_memory(
-            t_start, t_end, t_step, data_spec, categories_dict
-        )
+        self.allocate_output_memory(t_start, t_end, t_step, data_spec, categories_dict)
         self.init_step_output()
         self.fmu = pyfmi.load_fmu(fmu=self.fmu_path)
         # EnergyPlusToFMU requires that FMU is initialized for multiples of
@@ -285,9 +281,7 @@ class EnergyPlusBuildingModel(BuildingModel):
 
         # add fmu state variables
         self.fmu_output[STATES.STEP_STATUS] = np.full(n_s, False, dtype="bool")
-        self.fmu_output[STATES.SIMULATION_TIME] = self.output[
-            STATES.SIMULATION_TIME
-        ]
+        self.fmu_output[STATES.SIMULATION_TIME] = self.output[STATES.SIMULATION_TIME]
 
         for k, v in self.idf.output_spec.items():
             (
@@ -344,15 +338,13 @@ class EnergyPlusBuildingModel(BuildingModel):
         self.output[STATES.THERMOSTAT_HUMIDITY][
             self.current_t_idx
         ] = Conversions.relative_humidity_from_dewpoint(
-            temperature=self.output[STATES.THERMOSTAT_TEMPERATURE][
-                self.current_t_idx
-            ],
+            temperature=self.output[STATES.THERMOSTAT_TEMPERATURE][self.current_t_idx],
             dewpoint=self.get_tstat_dewpoint(),
         )
         # pass through outputs
-        self.output[STATES.THERMOSTAT_MOTION][
-            self.current_t_idx
-        ] = step_sensor_input[STATES.THERMOSTAT_MOTION]
+        self.output[STATES.THERMOSTAT_MOTION][self.current_t_idx] = step_sensor_input[
+            STATES.THERMOSTAT_MOTION
+        ]
 
         # get step_output
         for state in self.output_states:
@@ -360,9 +352,7 @@ class EnergyPlusBuildingModel(BuildingModel):
 
     def get_fmu_output_keys(self, eplus_key):
         return [
-            k
-            for k, v in self.idf.output_spec.items()
-            if v["eplus_name"] == eplus_key
+            k for k, v in self.idf.output_spec.items() if v["eplus_name"] == eplus_key
         ]
 
     def get_mean_temperature(self):
@@ -383,18 +373,14 @@ class EnergyPlusBuildingModel(BuildingModel):
 
     def get_tstat_dewpoint(self):
         """tstat temperature is air temperature from zone containing tstat"""
-        fmu_name = (
-            f"{self.idf.thermostat_zone}_zone_mean_air_dewpoint_temperature"
-        )
+        fmu_name = f"{self.idf.thermostat_zone}_zone_mean_air_dewpoint_temperature"
         return self.fmu_output[fmu_name][self.current_t_idx]
 
     def get_mean_dewpoint(self):
         return np.mean(
             [
                 self.fmu_output[k][self.current_t_idx]
-                for k in self.get_fmu_output_keys(
-                    "Zone Mean Air Dewpoint Temperature"
-                )
+                for k in self.get_fmu_output_keys("Zone Mean Air Dewpoint Temperature")
             ]
         )
 
@@ -452,14 +438,10 @@ class EnergyPlusBuildingModel(BuildingModel):
         _weather_dir = os.environ.get("WEATHER_DIR")
 
         if not _idf_dir:
-            raise ValueError(
-                "Required environment variable: IDF_DIR is not defined."
-            )
+            raise ValueError("Required environment variable: IDF_DIR is not defined.")
 
         if not _fmu_dir:
-            raise ValueError(
-                "Required environment variable: FMU_DIR is not defined."
-            )
+            raise ValueError("Required environment variable: FMU_DIR is not defined.")
 
         if not _weather_dir:
             raise ValueError(
