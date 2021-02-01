@@ -5,8 +5,8 @@ REQUIRES = []
 
 # Semantic Versioning (https://semver.org/)
 _MAJOR_VERSION = "0"
-_MINOR_VERSION = "2"
-_PATCH_VERSION = "0"
+_MINOR_VERSION = "3"
+_PATCH_VERSION = "4"
 
 _VERSION_SUFFIX = "dev"
 
@@ -24,11 +24,11 @@ if _VERSION_SUFFIX:
 
 setup(
     name="BuildingControlsSimulator",
-    keywords="residential building simulator simulation controls research HVAC thermal heating air conditioning",
+    keywords="building simulator simulation controls EnergyPlus research HVAC thermal heating air conditioning",
     version=__version__,
     author="Tom Stesco",
     author_email="tom.s@ecobee.com",
-    description="building simulation for controls research",
+    description="building co-simulations for controls research",
     package_dir={"": "src/python"},
     packages=find_namespace_packages(where="src/python"),
     install_requires=REQUIRES,
