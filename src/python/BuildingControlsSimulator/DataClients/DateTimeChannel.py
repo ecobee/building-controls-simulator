@@ -1,9 +1,9 @@
 # created by Tom Stesco tom.s@ecobee.com
 import logging
-from pprint import pprint
 import pytz
 
-from tzwhere import tzwhere
+from timezonefinder import TimezoneFinder
+
 import attr
 import pandas as pd
 
@@ -33,11 +33,7 @@ class DateTimeChannel(DataChannel):
     @staticmethod
     def get_timezone(latitude, longitude):
         """Get pytz timezone object given latitude and longitude."""
-        tzw = tzwhere.tzwhere(forceTZ=True)
+        tf = TimezoneFinder()
         return pytz.timezone(
-            tzw.tzNameAt(
-                latitude=latitude,
-                longitude=longitude,
-                forceTZ=True,
-            )
+            tf.timezone_at(lng=longitude, lat=latitude)
         )

@@ -27,7 +27,8 @@
         "**/Output_EPExport_Slave": true,
         "**/Output_EPExport_Test FMI 1.0 CS": true,
         "**/test/data": true,
-        "external": true
+        "external": true,
+        "bcs_venv": true,
     },
     "python.linting.pylintEnabled": false,
     "python.linting.flake8Enabled": true,
