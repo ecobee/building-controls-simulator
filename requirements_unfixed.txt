@@ -2,6 +2,7 @@ google-cloud-bigquery==2.3.1
 jupyterlab==2.2.9
 pytest
 pytest-ordering
+pytest-profiling
 black
 coverage
 sphinx
@@ -28,7 +29,7 @@ dask
 requests
 scikit-learn
 statsmodels
-tzwhere
+timezonefinder
 numexpr
 bottleneck
 casadi
