@@ -359,7 +359,14 @@ add the pinned dependencies to the Pipfile, discard those changes.
 3. On GitHub use the releases/new wizard (https://github.com/ecobee/building-controls-simulator/releases/new). 
 4. Build docker image locally.
 5. Run tests.
-6. Push docker image to dockerhub (https://hub.docker.com/repository/docker/tstesco/building-controls-simulator)
+6. Tag release
+    ```bash
+    docker tag <IMAGE_ID> tstesco/building-controls-simulator:<VERSION>
+    ```
+7. Push docker image to dockerhub (https://hub.docker.com/repository/docker/tstesco/building-controls-simulator)
+    ```bash
+    docker push tstesco/building-controls-simulator:<VERSION>
+    ```
 
 ## Weather Data
 
