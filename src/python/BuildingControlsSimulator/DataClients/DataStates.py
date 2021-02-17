@@ -99,3 +99,6 @@ class STATES(enum.IntEnum):
     FAN_STAGE_THREE = enum.auto()
     STEP_STATUS = enum.auto()
     SIMULATION_TIME = enum.auto()
+
+    # final state enum value
+    MAX_VALUE = enum.auto()

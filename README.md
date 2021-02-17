@@ -158,7 +158,8 @@ pipenv shell
 # then start jupyter lab server in background
 . scripts/setup/jupyter_lab_bkgrnd.sh
 ```
-
+RegressionTestExperiment
+RegressionTestExperiment
 ### Open bash shell in running container
 
 If you've run the container with `docker-compose up` or `docker-compose run` 
@@ -292,6 +293,19 @@ docker images
 
 # remove docker image
 docker rmi <image ID>
+```
+
+### Run container without docker-compose
+
+Keep in mind this will not mount volumes.
+
+```bash
+docker run -it -p 127.0.0.1:8888:8888 <IMAGE_ID> bash
+```
+
+Jupyterlab needs to be run with:
+```bash
+jupyter-lab --ip="0.0.0.0" --no-browser
 ```
 
 ### Run the tests
