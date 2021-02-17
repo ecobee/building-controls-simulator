@@ -350,7 +350,7 @@ if os.environ.get("FLATFILES_GBQ_TABLE"):
             "config": {
                 "identifier": os.environ.get("TEST_GBQ_FF_IDENTIFIER_2"),
                 "latitude": 51.217373,
-                "longitude": -114.296019 ,
+                "longitude": -114.296019,
                 "start_utc": "2019-03-09",
                 "end_utc": "2019-03-15",
                 "min_sim_period": "1D",
