@@ -29,6 +29,7 @@ class WeatherChannel(DataChannel):
     epw_data = attr.ib(factory=dict)
     epw_meta = attr.ib(factory=dict)
     fill_epw_data = attr.ib(default=None)
+    epw_step_size_seconds = attr.ib(default=None)
 
     # env variables
     ep_tmy3_cache_dir = attr.ib()
@@ -45,7 +46,13 @@ class WeatherChannel(DataChannel):
     epw_meta_keys = attr.ib(default=EnergyPlusWeather.epw_meta)
     epw_column_map = attr.ib(default=EnergyPlusWeather.output_rename_dict)
 
-    def make_epw_file(self, sim_config, datetime_channel, fill_epw_path=None):
+    def make_epw_file(
+        self,
+        sim_config,
+        datetime_channel,
+        fill_epw_path=None,
+        epw_step_size_seconds=None,
+    ):
         """Generate epw file in local time"""
         if fill_epw_path:
             if os.path.exists(fill_epw_path):
@@ -57,6 +64,11 @@ class WeatherChannel(DataChannel):
             fill_epw_path, fill_epw_fname = self.get_tmy_fill_epw(
                 sim_config["latitude"], sim_config["longitude"]
             )
+
+        if epw_step_size_seconds:
+            self.epw_step_size_seconds = epw_step_size_seconds
+        else:
+            self.epw_step_size_seconds = sim_config["sim_step_size_seconds"]
 
         (fill_epw_data, self.epw_meta, meta_lines,) = self.read_epw(
             fill_epw_path,
@@ -142,7 +154,7 @@ class WeatherChannel(DataChannel):
 
         # these are the fields required in DATA PERIODS
         _num_data_periods = 1
-        _records_per_hour = int(3600 / sim_config["sim_step_size_seconds"])
+        _records_per_hour = int(3600 / self.epw_step_size_seconds)
         _data_period_name = "data"
         _start_day_of_week = _starting_timestamp.day_name()
         _start_day = f"{_starting_timestamp.month}/{_starting_timestamp.day}/{_starting_timestamp.year}"
@@ -475,19 +487,19 @@ class WeatherChannel(DataChannel):
             fill_epw_data[self.datetime_column].diff().mode()[0].total_seconds()
         )
 
-        if _cur_fill_epw_data_period < sim_config["sim_step_size_seconds"]:
+        if _cur_fill_epw_data_period < self.epw_step_size_seconds:
             # downsample data
             fill_epw_data = (
                 fill_epw_data.set_index(fill_epw_data[self.datetime_column])
-                .resample(f"{sim_config['sim_step_size_seconds']}S")
+                .resample(f"{self.epw_step_size_seconds}S")
                 .mean()
                 .reset_index()
             )
-        elif _cur_fill_epw_data_period > sim_config["sim_step_size_seconds"]:
+        elif _cur_fill_epw_data_period > self.epw_step_size_seconds:
             # upsample data
             fill_epw_data = fill_epw_data.set_index(self.datetime_column)
             fill_epw_data = fill_epw_data.resample(
-                f"{sim_config['sim_step_size_seconds']}S"
+                f"{self.epw_step_size_seconds}S"
             ).asfreq()
             # ffill is only method that works on all types
             fill_epw_data = fill_epw_data.interpolate(axis="rows", method="ffill")
@@ -601,8 +613,10 @@ class WeatherChannel(DataChannel):
         )
         epw_data_full = epw_data_full.append(_fill, ignore_index=True)
         epw_data_full = epw_data_full.set_index(self.datetime_column)
+
+        # resample to building frequency
         epw_data_full = epw_data_full.resample(
-            f"{sim_config['sim_step_size_seconds']}S"
+            f"{self.epw_step_size_seconds}S"
         ).asfreq()
         # first ffill then bfill will fill both sides padding data
         epw_data_full = epw_data_full.fillna(method="ffill")

@@ -15,10 +15,14 @@ class ControllerModel(ABC):
 
     input_states = attr.ib()
     output_states = attr.ib()
+    step_size_seconds = attr.ib()
+    discretization_size_seconds = attr.ib()
 
     output = attr.ib(factory=dict)
     step_output = attr.ib(factory=dict)
     settings = attr.ib(factory=dict)
+
+    log_level = attr.ib(default=0)
 
     @abstractmethod
     def initialize(self, start_utc, t_start, t_end, t_step, data_spec, categories_dict):
