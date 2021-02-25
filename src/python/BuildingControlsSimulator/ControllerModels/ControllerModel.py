@@ -8,6 +8,8 @@ import attr
 import pandas as pd
 import numpy as np
 
+from BuildingControlsSimulator.ControllerModels.ControllerStatus import CONTROLLERSTATUS
+
 
 @attr.s
 class ControllerModel(ABC):
@@ -19,6 +21,9 @@ class ControllerModel(ABC):
     output = attr.ib(factory=dict)
     step_output = attr.ib(factory=dict)
     settings = attr.ib(factory=dict)
+
+    status = attr.ib(default=CONTROLLERSTATUS.DEFAULT)
+    log_level = attr.ib(default=0)
 
     @abstractmethod
     def initialize(self, start_utc, t_start, t_end, t_step, data_spec, categories_dict):

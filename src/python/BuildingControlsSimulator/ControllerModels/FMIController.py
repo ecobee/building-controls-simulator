@@ -10,6 +10,7 @@ import pyfmi
 from BuildingControlsSimulator.ControllerModels.ControllerModel import (
     ControllerModel,
 )
+from BuildingControlsSimulator.ControllerModels.ControllerStatus import CONTROLLERSTATUS
 
 
 @attr.s(kw_only=True)
