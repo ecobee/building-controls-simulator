@@ -199,7 +199,7 @@ class Simulation:
             data_spec=data_spec,
             categories_dict=self.data_client.thermostat.get_categories_dict(),
         )
-        breakpoint()
+
         self.building_model.initialize(
             start_utc=self.start_utc,
             t_start=self.start_time_seconds,
