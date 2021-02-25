@@ -18,9 +18,15 @@ class ControllerModel(ABC):
     input_states = attr.ib()
     output_states = attr.ib()
 
+    discretization_size_seconds = attr.ib()
+    step_size_seconds = attr.ib()
+    
     output = attr.ib(factory=dict)
     step_output = attr.ib(factory=dict)
     settings = attr.ib(factory=dict)
+
+    current_t_idx = attr.ib(default=None)
+    current_t_start = attr.ib(default=None)
 
     status = attr.ib(default=CONTROLLERSTATUS.DEFAULT)
     log_level = attr.ib(default=0)

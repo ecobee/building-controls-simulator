@@ -26,8 +26,8 @@ class FMIController(ControllerModel):
 
     fmu_path = attr.ib()
 
-    current_t_idx = attr.ib(default=None)
-    step_size_seconds = attr.ib()
+    # current_t_idx = attr.ib(default=None)
+    # step_size_seconds = attr.ib()
 
     def get_model_name(self):
         _model_name = os.path.basename(self.fmu_path)
