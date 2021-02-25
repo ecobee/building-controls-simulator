@@ -157,7 +157,7 @@ class Simulation:
     def create_models(self, preprocess_check=False):
         # TODO: only have the building model that requires dynamic building
         # when other models exist that must be created generalize this interface
-        self.building_model.step_size_seconds = self.step_size_seconds
+        # self.building_model.step_size_seconds = self.step_size_seconds
         self.building_model.create_model_fmu(
             sim_config=self.config,
             weather_channel=self.data_client.weather,

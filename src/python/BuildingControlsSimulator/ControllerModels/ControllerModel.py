@@ -17,9 +17,8 @@ class ControllerModel(ABC):
 
     input_states = attr.ib()
     output_states = attr.ib()
-
-    discretization_size_seconds = attr.ib()
     step_size_seconds = attr.ib()
+    discretization_size_seconds = attr.ib()
     
     output = attr.ib(factory=dict)
     step_output = attr.ib(factory=dict)
