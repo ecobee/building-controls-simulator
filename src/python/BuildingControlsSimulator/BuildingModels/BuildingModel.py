@@ -21,6 +21,8 @@ class BuildingModel(ABC):
     input_states = attr.ib()
     output_states = attr.ib()
 
+    log_level = attr.ib(default=0)
+
     @abstractmethod
     def initialize(self, start_utc, t_start, t_end, t_step, data_spec, categories_dict):
         pass
