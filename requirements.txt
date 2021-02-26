@@ -1,4 +1,4 @@
-aiohttp==3.7.3
+aiohttp==3.7.4
 alabaster==0.7.12
 appdirs==1.4.4
 argon2-cffi==20.1.0
