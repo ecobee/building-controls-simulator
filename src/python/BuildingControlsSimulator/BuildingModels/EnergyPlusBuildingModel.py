@@ -52,8 +52,6 @@ class EnergyPlusBuildingModel(BuildingModel):
     epw_path = attr.ib(default=None)
     fill_epw_path = attr.ib(default=None)
     fmi_version = attr.ib(type=float, default=1.0)
-    step_size_seconds = attr.ib(default=300)
-    # timesteps_per_hour = attr.ib(default=12)
     fmu_output = attr.ib(factory=dict)
     output = attr.ib(factory=dict)
     step_output = attr.ib(factory=dict)
@@ -310,6 +308,9 @@ class EnergyPlusBuildingModel(BuildingModel):
         """
         # advance current time
         self.current_t_start = t_start
+
+        if not step_control_input:
+            raise ValueError("step_control_input={step_control_input} is empty.")
 
         # integrate over simulation step in building model steps
         # e.g. 300s simulation step in 5x 60s building model steps

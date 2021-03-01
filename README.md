@@ -158,8 +158,7 @@ pipenv shell
 # then start jupyter lab server in background
 . scripts/setup/jupyter_lab_bkgrnd.sh
 ```
-RegressionTestExperiment
-RegressionTestExperiment
+
 ### Open bash shell in running container
 
 If you've run the container with `docker-compose up` or `docker-compose run` 

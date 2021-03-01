@@ -54,10 +54,12 @@ if os.environ.get("LOCAL_CACHE_DIR"):
                 "idf_name": "Furnace.idf",
                 "epw_name": "USA_IL_Chicago-OHare.Intl.AP.725300_TMY3.epw",
                 "building_config": {},
+                "step_size_seconds": 900,
             },
             "controller_model": {
                 "is_deadband": True,
                 "is_fmu": False,
+                "step_size_seconds": 900,
             },
             "state_estimator_model": {
                 "is_low_pass_filter": True,
@@ -101,10 +103,12 @@ if os.environ.get("LOCAL_CACHE_DIR"):
                 "idf_name": "Furnace.idf",
                 "epw_name": "USA_IL_Chicago-OHare.Intl.AP.725300_TMY3.epw",
                 "building_config": {},
+                "step_size_seconds": 60,
             },
             "controller_model": {
                 "is_deadband": True,
                 "is_fmu": False,
+                "step_size_seconds": 60,
             },
             "state_estimator_model": {
                 "is_low_pass_filter": True,
@@ -151,6 +155,7 @@ if os.environ.get("DYD_GCS_URI_BASE"):
                 "is_energyplus_building": True,
                 "idf_name": "heatedbsmt_2story_2300sqft_gasfurnace_AC.idf",
                 "epw_name": "USA_IL_Chicago-OHare.Intl.AP.725300_TMY3.epw",
+                "step_size_seconds": 60,
                 "building_config": {
                     "infiltration_ventilation": {
                         "ach50": 10,
@@ -182,6 +187,7 @@ if os.environ.get("DYD_GCS_URI_BASE"):
             "controller_model": {
                 "is_deadband": True,
                 "is_fmu": False,
+                "step_size_seconds": 60,
             },
             "state_estimator_model": {
                 "is_low_pass_filter": True,
@@ -224,6 +230,7 @@ if os.environ.get("DYD_GCS_URI_BASE"):
                 "is_energyplus_building": True,
                 "idf_name": "heatedbsmt_2story_2300sqft_gasfurnace_AC.idf",
                 "epw_name": "USA_IL_Chicago-OHare.Intl.AP.725300_TMY3.epw",
+                "step_size_seconds": 60,
                 "building_config": {
                     "infiltration_ventilation": {
                         "ach50": 10,
@@ -255,16 +262,17 @@ if os.environ.get("DYD_GCS_URI_BASE"):
             "controller_model": {
                 "is_deadband": True,
                 "is_fmu": False,
+                "step_size_seconds": 60,
             },
             "state_estimator_model": {
                 "is_low_pass_filter": True,
                 "low_pass_filter_alpha": 0.5,
             },
             "expected_result": {
-                "mean_thermostat_temperature": 24.974390029907227,
-                "mean_thermostat_humidity": 49.65201950073242,
-                "output_format_mean_thermostat_temperature": 76.9538803100586,
-                "output_format_mean_thermostat_humidity": 49.65201950073242,
+                "mean_thermostat_temperature": 32.04988479614258,
+                "mean_thermostat_humidity": 44.438236236572266,
+                "output_format_mean_thermostat_temperature": 89.6878433227539,
+                "output_format_mean_thermostat_humidity": 44.438236236572266,
             },
         },
     ]
@@ -301,6 +309,7 @@ if os.environ.get("FLATFILES_GBQ_TABLE"):
                 "is_energyplus_building": True,
                 "idf_name": "heatedbsmt_2story_2300sqft_gasfurnace_AC.idf",
                 "epw_name": "USA_IL_Chicago-OHare.Intl.AP.725300_TMY3.epw",
+                "step_size_seconds": 60,
                 "building_config": {
                     "infiltration_ventilation": {
                         "ach50": 10,
@@ -332,6 +341,7 @@ if os.environ.get("FLATFILES_GBQ_TABLE"):
             "controller_model": {
                 "is_deadband": True,
                 "is_fmu": False,
+                "step_size_seconds": 60,
             },
             "state_estimator_model": {
                 "is_low_pass_filter": True,
@@ -374,6 +384,7 @@ if os.environ.get("FLATFILES_GBQ_TABLE"):
                 "is_energyplus_building": True,
                 "idf_name": "heatedbsmt_2story_2300sqft_gasfurnace_AC.idf",
                 "epw_name": "USA_IL_Chicago-OHare.Intl.AP.725300_TMY3.epw",
+                "step_size_seconds": 60,
                 "building_config": {
                     "infiltration_ventilation": {
                         "ach50": 10,
@@ -405,6 +416,7 @@ if os.environ.get("FLATFILES_GBQ_TABLE"):
             "controller_model": {
                 "is_deadband": True,
                 "is_fmu": False,
+                "step_size_seconds": 60,
             },
             "state_estimator_model": {
                 "is_low_pass_filter": True,

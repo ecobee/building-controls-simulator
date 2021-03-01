@@ -633,6 +633,7 @@ class DataClient:
         types into smaller time steps"""
         # resample to desired frequency
         _resample_period = f"{step_size_seconds}S"
+        current_step_size = int(df[data_spec.datetime_column].diff().mode()[0].total_seconds())
 
         # runtime_columns can be filled with zeros because they are not used
         runtime_columns = [
@@ -703,27 +704,26 @@ class DataClient:
 
         # run time columns must be disaggregated using minimum runtime
         # rules to determin if runtime happens in beginning or end of step
-
         # step idx used to determin leftover runtime
+        upsample_ratio = int(current_step_size / step_size_seconds)
         df["inner_step_idx"] = np.hstack(
-            ([5], np.tile(np.arange(1, 6), (int((len(df) - 1) / 5), 1)).flatten())
+            ([upsample_ratio], np.tile(np.arange(1, upsample_ratio+1), (int((len(df) - 1) / upsample_ratio), 1)).flatten())
         )
-
         for _col in runtime_columns:
             df[f"{_col}_step_end_off"] = df[f"{_col}_step_end_off"].bfill()
 
             # runtime sum over step
-            df["step_runtime"] = df[_col].shift(-5).ffill().shift(1)
+            df["step_runtime"] = df[_col].shift(-upsample_ratio).ffill().shift(1)
 
             # runtime at beginning of step
-            df["b_upsample"] = df["step_runtime"] - ((df["inner_step_idx"] - 1) * 60)
-            df.loc[df["b_upsample"] > 60, ["b_upsample"]] = 60
+            df["b_upsample"] = df["step_runtime"] - ((df["inner_step_idx"] - 1) * step_size_seconds)
+            df.loc[df["b_upsample"] > step_size_seconds, ["b_upsample"]] = step_size_seconds
 
             # runtime at end of step
-            df["e_upsample"] = df["step_runtime"] - ((5 - df["inner_step_idx"]) * 60)
-            df.loc[df["e_upsample"] > 60, ["e_upsample"]] = 60
+            df["e_upsample"] = df["step_runtime"] - ((upsample_ratio - df["inner_step_idx"]) * step_size_seconds)
+            df.loc[df["e_upsample"] > step_size_seconds, ["e_upsample"]] = step_size_seconds
 
-            # steps ending with off-cycle has
+            # steps ending with off-cycle
             df.loc[df[f"{_col}_step_end_off"], [_col]] = df["b_upsample"]
             df.loc[~df[f"{_col}_step_end_off"], [_col]] = df["e_upsample"]
             df.loc[df[_col] < 0, [_col]] = 0

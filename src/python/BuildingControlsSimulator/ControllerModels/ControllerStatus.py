@@ -7,6 +7,7 @@ class CONTROLLERSTATUS(enum.IntEnum):
     DEFAULT = enum.auto()
     INITIALIZED = enum.auto()
     STEP_BEGAN = enum.auto()
+    MISSING_INFERENCE_DATA = enum.auto()
     MISSING_TRAINING_DATA = enum.auto()
     MODEL_VALID = enum.auto()
     MODEL_VALIDATION_FAILED = enum.auto()

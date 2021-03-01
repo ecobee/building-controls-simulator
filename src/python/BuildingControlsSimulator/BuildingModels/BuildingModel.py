@@ -20,10 +20,9 @@ class BuildingModel(ABC):
 
     input_states = attr.ib()
     output_states = attr.ib()
-    step_size_seconds = attr.ib(default=None)
+    step_size_seconds = attr.ib()
 
-    log_level = attr.ib(default=0)
-
+    status = attr.ib(default=0)
     log_level = attr.ib(default=0)
 
     @abstractmethod
