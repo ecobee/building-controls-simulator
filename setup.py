@@ -1,16 +1,14 @@
 from setuptools import setup, find_namespace_packages
 
-# TODO add requirements
 REQUIRES = []
 
 # Semantic Versioning (https://semver.org/)
 _MAJOR_VERSION = "0"
 _MINOR_VERSION = "3"
-_PATCH_VERSION = "4"
+_PATCH_VERSION = "5"
 
-_VERSION_SUFFIX = "dev"
+_VERSION_SUFFIX = "alpha"
 
-# Example, '0.1.0-dev' or '1.0.0'
 __version__ = ".".join(
     [
         _MAJOR_VERSION,

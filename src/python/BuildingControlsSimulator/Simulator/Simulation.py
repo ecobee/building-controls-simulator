@@ -157,7 +157,7 @@ class Simulation:
     def create_models(self, preprocess_check=False):
         # TODO: only have the building model that requires dynamic building
         # when other models exist that must be created generalize this interface
-        self.building_model.step_size_seconds = self.step_size_seconds
+        # self.building_model.step_size_seconds = self.step_size_seconds
         self.building_model.create_model_fmu(
             sim_config=self.config,
             weather_channel=self.data_client.weather,
@@ -237,17 +237,17 @@ class Simulation:
             dtype="int64",
         )
         for i in range(0, len(_sim_time)):
+            self.state_estimator_model.do_step(
+                t_start=_sim_time[i],
+                t_step=self.step_size_seconds,
+                step_sensor_input=self.building_model.step_output,
+            )
+
             self.controller_model.update_settings(
                 change_points_schedule=self.data_client.thermostat.change_points_schedule,
                 change_points_comfort_prefs=self.data_client.thermostat.change_points_comfort_prefs,
                 change_points_hvac_mode=self.data_client.thermostat.change_points_hvac_mode,
                 time_utc=self.data_client.datetime.data.iloc[i][STATES.DATE_TIME],
-            )
-
-            self.state_estimator_model.do_step(
-                t_start=_sim_time[i],
-                t_step=self.step_size_seconds,
-                step_sensor_input=self.building_model.step_output,
             )
 
             self.controller_model.do_step(

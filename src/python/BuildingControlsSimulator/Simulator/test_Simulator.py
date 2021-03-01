@@ -157,6 +157,7 @@ class TestSimulator:
                     building_config=building_model_params["building_config"],
                     debug=True,
                 ),
+                step_size_seconds=building_model_params["step_size_seconds"],
                 fill_epw_path=self.get_epw_path(building_model_params["epw_name"]),
             )
 
@@ -165,7 +166,11 @@ class TestSimulator:
     def get_controller_model(self, controller_model_params):
         _controller = None
         if controller_model_params["is_deadband"]:
-            _controller = Deadband(deadband=1.0)
+            _controller = Deadband(
+                deadband=1.0,
+                step_size_seconds=controller_model_params["step_size_seconds"],
+                discretization_size_seconds=60,
+            )
 
         return _controller
 

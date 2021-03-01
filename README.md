@@ -294,6 +294,19 @@ docker images
 docker rmi <image ID>
 ```
 
+### Run container without docker-compose
+
+Keep in mind this will not mount volumes.
+
+```bash
+docker run -it -p 127.0.0.1:8888:8888 <IMAGE_ID> bash
+```
+
+Jupyterlab needs to be run with:
+```bash
+jupyter-lab --ip="0.0.0.0" --no-browser
+```
+
 ### Run the tests
 
 Test files are found in src/python directory alongside source code, they are identified by the naming convention `test_*.py`.
@@ -359,7 +372,14 @@ add the pinned dependencies to the Pipfile, discard those changes.
 3. On GitHub use the releases/new wizard (https://github.com/ecobee/building-controls-simulator/releases/new). 
 4. Build docker image locally.
 5. Run tests.
-6. Push docker image to dockerhub (https://hub.docker.com/repository/docker/tstesco/building-controls-simulator)
+6. Tag release
+    ```bash
+    docker tag <IMAGE_ID> tstesco/building-controls-simulator:<VERSION>
+    ```
+7. Push docker image to dockerhub (https://hub.docker.com/repository/docker/tstesco/building-controls-simulator)
+    ```bash
+    docker push tstesco/building-controls-simulator:<VERSION>
+    ```
 
 ## Weather Data
 

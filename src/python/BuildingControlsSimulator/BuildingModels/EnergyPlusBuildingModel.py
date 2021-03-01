@@ -52,8 +52,6 @@ class EnergyPlusBuildingModel(BuildingModel):
     epw_path = attr.ib(default=None)
     fill_epw_path = attr.ib(default=None)
     fmi_version = attr.ib(type=float, default=1.0)
-    step_size_seconds = attr.ib(default=300)
-    timesteps_per_hour = attr.ib(default=12)
     fmu_output = attr.ib(factory=dict)
     output = attr.ib(factory=dict)
     step_output = attr.ib(factory=dict)
@@ -63,6 +61,8 @@ class EnergyPlusBuildingModel(BuildingModel):
     eplustofmu_path = attr.ib(default=os.environ.get("ENERGYPLUSTOFMUSCRIPT"))
     weather_dir = attr.ib(default=os.environ.get("WEATHER_DIR"))
     fmu_dir = attr.ib(default=os.environ.get("FMU_DIR"))
+    heat_on = attr.ib(default=False)
+    cool_on = attr.ib(default=False)
 
     # for reference on how attr defaults wor for mutable types (e.g. list) see:
     # https://www.attrs.org/en/stable/init.html#defaults
@@ -167,11 +167,11 @@ class EnergyPlusBuildingModel(BuildingModel):
         if running in parallel. Need to fix scripts to be able to run in parallel.
         """
         # pre-processing of weather data for EnergyPlus usage
-
         self.epw_path = weather_channel.make_epw_file(
             sim_config=sim_config,
             datetime_channel=datetime_channel,
             fill_epw_path=self.fill_epw_path,
+            epw_step_size_seconds=self.step_size_seconds,
         )
 
         self.idf.timesteps_per_hour = self.timesteps_per_hour
@@ -309,14 +309,24 @@ class EnergyPlusBuildingModel(BuildingModel):
         # advance current time
         self.current_t_start = t_start
 
-        # set input
-        self.actuate_HVAC_equipment(step_control_input)
+        if not step_control_input:
+            raise ValueError("step_control_input={step_control_input} is empty.")
 
-        status = self.fmu.do_step(
-            current_t=t_start,
-            step_size=t_step,
-            new_step=True,
-        )
+        # integrate over simulation step in building model steps
+        # e.g. 300s simulation step in 5x 60s building model steps
+        for _iter in range(t_step // self.step_size_seconds):
+            # set HVAC input
+            _iter_step_control_input = self.get_iter_step_control_input(
+                t_step, _iter, step_control_input
+            )
+            self.actuate_HVAC_equipment(_iter_step_control_input)
+
+            status = self.fmu.do_step(
+                current_t=t_start + _iter * self.step_size_seconds,
+                step_size=self.step_size_seconds,
+                new_step=True,
+            )
+
         self.update_output(status, step_sensor_input)
 
         # finally increment t_idx
@@ -341,7 +351,8 @@ class EnergyPlusBuildingModel(BuildingModel):
             temperature=self.output[STATES.THERMOSTAT_TEMPERATURE][self.current_t_idx],
             dewpoint=self.get_tstat_dewpoint(),
         )
-        # pass through outputs
+
+        # pass through motion
         self.output[STATES.THERMOSTAT_MOTION][self.current_t_idx] = step_sensor_input[
             STATES.THERMOSTAT_MOTION
         ]
@@ -384,6 +395,53 @@ class EnergyPlusBuildingModel(BuildingModel):
             ]
         )
 
+    def get_iter_step_control_input(self, t_step, _iter, step_control_input):
+        iter_step_control_input = {}
+        n_iter = t_step // self.step_size_seconds - 1
+        for heat_col in [
+            STATES.AUXHEAT1,
+            STATES.AUXHEAT2,
+            STATES.AUXHEAT3,
+            STATES.COMPHEAT1,
+            STATES.COMPHEAT2,
+        ]:
+            if self.heat_on:
+                iter_step_control_input[heat_col] = min(
+                    max(
+                        step_control_input[heat_col] - self.step_size_seconds * _iter, 0
+                    ),
+                    self.step_size_seconds,
+                )
+            else:
+                iter_step_control_input[heat_col] = min(
+                    max(
+                        step_control_input[heat_col]
+                        - self.step_size_seconds * (n_iter - _iter),
+                        0,
+                    ),
+                    self.step_size_seconds,
+                )
+
+        for cool_col in [STATES.COMPCOOL1, STATES.COMPCOOL2]:
+            if self.cool_on:
+                iter_step_control_input[cool_col] = min(
+                    max(
+                        step_control_input[cool_col] - self.step_size_seconds * _iter, 0
+                    ),
+                    self.step_size_seconds,
+                )
+            else:
+                iter_step_control_input[cool_col] = min(
+                    max(
+                        step_control_input[heat_col]
+                        - self.step_size_seconds * (n_iter - _iter),
+                        0,
+                    ),
+                    self.step_size_seconds,
+                )
+
+        return iter_step_control_input
+
     def actuate_HVAC_equipment(self, step_control_input):
         """
         passes actuation to building model with minimal validation.
@@ -406,10 +464,13 @@ class EnergyPlusBuildingModel(BuildingModel):
             (step_control_input[STATES.COMPCOOL1] > 0)
             or (step_control_input[STATES.COMPCOOL2] > 0)
         )
+        self.heat_on = False
+        self.cool_on = False
 
         if run_heat and run_cool:
             logger.error("Cannot heat and cool at same time.")
         elif run_heat:
+            self.heat_on = True
             self.fmu.set(
                 self.idf.FMU_control_type_name,
                 int(EPLUS_THERMOSTAT_MODES.SINGLE_HEATING_SETPOINT),
@@ -417,6 +478,7 @@ class EnergyPlusBuildingModel(BuildingModel):
             self.fmu.set(self.idf.FMU_control_heating_stp_name, T_heat_on)
             self.fmu.set(self.idf.FMU_control_cooling_stp_name, T_cool_off)
         elif run_cool:
+            self.cool_on = True
             self.fmu.set(
                 self.idf.FMU_control_type_name,
                 int(EPLUS_THERMOSTAT_MODES.SINGLE_COOLING_SETPOINT),

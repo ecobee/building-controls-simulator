@@ -34,6 +34,4 @@ class DateTimeChannel(DataChannel):
     def get_timezone(latitude, longitude):
         """Get pytz timezone object given latitude and longitude."""
         tf = TimezoneFinder()
-        return pytz.timezone(
-            tf.timezone_at(lng=longitude, lat=latitude)
-        )
+        return pytz.timezone(tf.timezone_at(lng=longitude, lat=latitude))

@@ -61,6 +61,11 @@ class LocalSource(DataSource):
         _data = self.get_local_cache(local_cache_file)
         _data = self.drop_unused_columns(_data=_data)
         _data = convert_spec(
-            df=_data, src_spec=self.data_spec, dest_spec=Internal(), copy=False, src_nullable=True, dest_nullable=True
+            df=_data,
+            src_spec=self.data_spec,
+            dest_spec=Internal(),
+            copy=False,
+            src_nullable=True,
+            dest_nullable=True,
         )
         return _data

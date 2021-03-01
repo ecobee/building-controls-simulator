@@ -35,7 +35,7 @@ class DataDestination(ABC):
 
     def get_file_name(self, sim_name):
         # sim_name may contain . character, replace this safely
-        safe_sim_name = sim_name.replace(".","_")
+        safe_sim_name = sim_name.replace(".", "_")
         return f"{safe_sim_name}.{self.file_extension}"
 
     def get_local_cache_file(self, sim_name):

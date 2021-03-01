@@ -20,6 +20,10 @@ class BuildingModel(ABC):
 
     input_states = attr.ib()
     output_states = attr.ib()
+    step_size_seconds = attr.ib()
+
+    status = attr.ib(default=0)
+    log_level = attr.ib(default=0)
 
     @abstractmethod
     def initialize(self, start_utc, t_start, t_end, t_step, data_spec, categories_dict):

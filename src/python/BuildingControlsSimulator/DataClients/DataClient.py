@@ -232,14 +232,14 @@ class DataClient:
                 [STATES.CALENDAR_EVENT],
             ] = pd.NA
 
-            # finally convert dtypes to final types now that nulls in 
+            # finally convert dtypes to final types now that nulls in
             # non-nullable columns have been properly filled or removed
             _data = convert_spec(
                 _data,
                 src_spec=self.internal_spec,
                 dest_spec=self.internal_spec,
                 src_nullable=True,
-                dest_nullable=False
+                dest_nullable=False,
             )
 
         else:
@@ -633,6 +633,32 @@ class DataClient:
         types into smaller time steps"""
         # resample to desired frequency
         _resample_period = f"{step_size_seconds}S"
+        current_step_size = int(df[data_spec.datetime_column].diff().mode()[0].total_seconds())
+
+        # runtime_columns can be filled with zeros because they are not used
+        runtime_columns = [
+            _state
+            for _state, _v in data_spec.full.spec.items()
+            if ((_v["unit"] == UNITS.SECONDS) and (_state in df.columns))
+        ]
+
+        # before resampling generate step_end_on column for runtime columns
+        # we must know if the end of the step cycle is one or off
+        for _col in runtime_columns:
+            # TODO: define min cycle time for all equipment
+            min_cycle_time = 300
+            df[f"{_col}_step_end_off"] = (
+                (
+                    ((df[_col] + df[_col].shift(1)) >= min_cycle_time)
+                    & ((df[_col] + df[_col].shift(-1)) <= min_cycle_time)
+                )
+                & ~(
+                    ((df[_col].shift(1) + df[_col].shift(2)) >= min_cycle_time)
+                    & ((df[_col] + df[_col].shift(1)) <= min_cycle_time)
+                )
+                | ((df[_col] + df[_col].shift(-1)) < min_cycle_time)
+            ).astype("boolean")
+
         # we need to set a datetime index to resample
         df = df.set_index(data_spec.datetime_column)
         df = df.resample(_resample_period).asfreq()
@@ -676,7 +702,39 @@ class DataClient:
             axis="rows", method="ffill"
         )
 
-        # runtime_columns can be filled with zeros because they are not used
+        # run time columns must be disaggregated using minimum runtime
+        # rules to determin if runtime happens in beginning or end of step
+        # step idx used to determin leftover runtime
+        upsample_ratio = int(current_step_size / step_size_seconds)
+        df["inner_step_idx"] = np.hstack(
+            ([upsample_ratio], np.tile(np.arange(1, upsample_ratio+1), (int((len(df) - 1) / upsample_ratio), 1)).flatten())
+        )
+        for _col in runtime_columns:
+            df[f"{_col}_step_end_off"] = df[f"{_col}_step_end_off"].bfill()
+
+            # runtime sum over step
+            df["step_runtime"] = df[_col].shift(-upsample_ratio).ffill().shift(1)
+
+            # runtime at beginning of step
+            df["b_upsample"] = df["step_runtime"] - ((df["inner_step_idx"] - 1) * step_size_seconds)
+            df.loc[df["b_upsample"] > step_size_seconds, ["b_upsample"]] = step_size_seconds
+
+            # runtime at end of step
+            df["e_upsample"] = df["step_runtime"] - ((upsample_ratio - df["inner_step_idx"]) * step_size_seconds)
+            df.loc[df["e_upsample"] > step_size_seconds, ["e_upsample"]] = step_size_seconds
+
+            # steps ending with off-cycle
+            df.loc[df[f"{_col}_step_end_off"], [_col]] = df["b_upsample"]
+            df.loc[~df[f"{_col}_step_end_off"], [_col]] = df["e_upsample"]
+            df.loc[df[_col] < 0, [_col]] = 0
+            df[_col] = df[_col].fillna(0)
+
+            df = df.drop(columns=[f"{_col}_step_end_off"])
+
+        df = df.drop(
+            columns=["e_upsample", "b_upsample", "step_runtime", "inner_step_idx"]
+        )
+
         # as inputs and will just be re-aggregated into output
         zero_fill_columns = [
             _state

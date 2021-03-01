@@ -64,7 +64,7 @@ def get_dtype_mapper(df_cols, dest_spec, src_nullable=False, dest_nullable=False
 
     # convert between nullable columns and non-nullable for compatability
     if dest_nullable:
-        for k,v in dtype_mapper.items():
+        for k, v in dtype_mapper.items():
             if v == "bool":
                 dtype_mapper[k] = "boolean"
             elif v == "int8":
@@ -76,7 +76,7 @@ def get_dtype_mapper(df_cols, dest_spec, src_nullable=False, dest_nullable=False
             elif v == "int64":
                 dtype_mapper[k] = "Int64"
     else:
-        for k,v in dtype_mapper.items():
+        for k, v in dtype_mapper.items():
             if v == "boolean":
                 dtype_mapper[k] = "bool"
             elif v == "Int8":
@@ -143,7 +143,9 @@ def project_spec_keys(src_spec, dest_spec):
     return projection
 
 
-def convert_spec(df, src_spec, dest_spec, src_nullable=False, dest_nullable=False, copy=False):
+def convert_spec(
+    df, src_spec, dest_spec, src_nullable=False, dest_nullable=False, copy=False
+):
     # src_nullable: whether to use nullable int types
     # dest_nullable: whether to use nullable int types
     if type(src_spec) == type(dest_spec):
@@ -173,7 +175,12 @@ def convert_spec(df, src_spec, dest_spec, src_nullable=False, dest_nullable=Fals
     _df = _df.rename(columns=get_rename_mapper(src_spec=src_spec, dest_spec=dest_spec))
 
     _df = _df.astype(
-        dtype=get_dtype_mapper(df_cols=_df.columns, dest_spec=dest_spec, src_nullable=src_nullable, dest_nullable=dest_nullable),
+        dtype=get_dtype_mapper(
+            df_cols=_df.columns,
+            dest_spec=dest_spec,
+            src_nullable=src_nullable,
+            dest_nullable=dest_nullable,
+        ),
     )
     _df = _df.sort_values(dest_spec.datetime_column, ascending=True)
     return _df
