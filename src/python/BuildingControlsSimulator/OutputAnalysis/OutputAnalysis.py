@@ -2,6 +2,7 @@
 
 import os
 import logging
+import textwrap
 
 import pandas as pd
 import numpy as np
@@ -24,8 +25,7 @@ class OutputAnalysis(object):
     ```
     """
 
-    input_df = attr.ib()
-    output_df = attr.ib()
+    simulations = attr.ib()
     data_spec = attr.ib()
 
     def postprocess(self):
@@ -46,43 +46,29 @@ class OutputAnalysis(object):
             ]
         ].sum(axis=1)
 
-    def diagnostic_plot(self, show=False, actuals=True, local_time=True):
+    def comparison_plot(self, show=False, actuals=True, local_time=True):
         """"""
-        if actuals:
-            _titles = (
-                "Thermal Response",
-                "Equipment Run-time",
-                "Actual Thermal Response",
-                "Actual Equipment Run-time",
-            )
-            _rows = 4
-            _row_heights = [2, 1, 2, 1]
-            _specs = [
-                [
-                    {"secondary_y": True},
-                ],
-                [
-                    {"secondary_y": False},
-                ],
-                [
-                    {"secondary_y": True},
-                ],
-                [
-                    {"secondary_y": False},
-                ],
-            ]
-        else:
-            _titles = ("Thermal Response", "Equipment Run-time")
-            _rows = 2
-            _row_heights = [2, 1]
-            _specs = [
-                [
-                    {"secondary_y": True},
-                ],
-                [
-                    {"secondary_y": False},
-                ],
-            ]
+        n_simulations = len(self.simulations)
+        _titles = sum(
+            [
+                (
+                    f"{'<br>'.join(textwrap.wrap(_sim.sim_name, 120))}<br>Thermal Response",
+                    "Equipment Run-time",
+                )
+                for _sim in self.simulations
+            ],
+            (),
+        )
+        _rows = 2 * n_simulations
+        _row_heights = [2, 1] * n_simulations
+        _specs = [
+            [
+                {"secondary_y": True},
+            ],
+            [
+                {"secondary_y": False},
+            ],
+        ] * n_simulations
 
         fig = plotly.subplots.make_subplots(
             subplot_titles=_titles,
@@ -94,40 +80,42 @@ class OutputAnalysis(object):
             vertical_spacing=0.05,
             specs=_specs,
         )
+        for _idx, _simulation in enumerate(self.simulations):
+            row_idx = _idx * 2 + 1
 
-        self.thermal_plot(
-            output_df=self.output_df,
-            input_df=self.input_df,
-            fig=fig,
-            row=1,
-            col=1,
-        )
-        self.control_actuation_plot(
-            output_df=self.output_df,
-            input_df=self.input_df,
-            fig=fig,
-            row=2,
-            col=1,
-        )
+            _output_df = _simulation.output
+            _input_df = _simulation.full_input
 
-        if actuals:
             self.thermal_plot(
-                output_df=self.input_df,
-                input_df=self.input_df,
+                output_df=_output_df,
+                input_df=_input_df,
                 fig=fig,
-                row=3,
+                row=row_idx,
                 col=1,
             )
             self.control_actuation_plot(
-                output_df=self.input_df,
-                input_df=self.input_df,
+                output_df=_output_df,
+                input_df=_input_df,
                 fig=fig,
-                row=4,
+                row=row_idx + 1,
                 col=1,
             )
 
+        # _min_date_time = _output_df[STATES.DATE_TIME].min()
+        # _min_temperature = min(
+        #     _output_df[STATES.THERMOSTAT_TEMPERATURE].min(),
+        #     _input_df[STATES.OUTDOOR_TEMPERATURE].min()
+        # )
+
+        # fig.add_annotation(
+        #     x=_min_date_time, y=_min_temperature,
+        #     text=_simulation.sim_name,
+        #     showarrow=False,
+        #     yshift=10
+        # )
+
         layout = go.Layout(
-            title_text="Diagnostic Plots",
+            title_text="Comparison Plots",
             autosize=False,
             width=1500,
             height=1000,
@@ -138,6 +126,103 @@ class OutputAnalysis(object):
 
         if show:
             fig.show()
+
+    def diagnostic_plot(self, show=False, actuals=True, local_time=True):
+        """"""
+        for _simulation in self.simulations:
+
+            _output_df = _simulation.output
+            _input_df = _simulation.full_input
+            if actuals:
+                _titles = (
+                    "Thermal Response",
+                    "Equipment Run-time",
+                    "Actual Thermal Response",
+                    "Actual Equipment Run-time",
+                )
+                _rows = 4
+                _row_heights = [2, 1, 2, 1]
+                _specs = [
+                    [
+                        {"secondary_y": True},
+                    ],
+                    [
+                        {"secondary_y": False},
+                    ],
+                    [
+                        {"secondary_y": True},
+                    ],
+                    [
+                        {"secondary_y": False},
+                    ],
+                ]
+            else:
+                _titles = ("Thermal Response", "Equipment Run-time")
+                _rows = 2
+                _row_heights = [2, 1]
+                _specs = [
+                    [
+                        {"secondary_y": True},
+                    ],
+                    [
+                        {"secondary_y": False},
+                    ],
+                ]
+
+            fig = plotly.subplots.make_subplots(
+                subplot_titles=_titles,
+                rows=_rows,
+                cols=1,
+                shared_xaxes=True,
+                x_title="Time",
+                row_heights=_row_heights,  # relative heights
+                vertical_spacing=0.05,
+                specs=_specs,
+            )
+
+            self.thermal_plot(
+                output_df=_output_df,
+                input_df=_input_df,
+                fig=fig,
+                row=1,
+                col=1,
+            )
+            self.control_actuation_plot(
+                output_df=_output_df,
+                input_df=_input_df,
+                fig=fig,
+                row=2,
+                col=1,
+            )
+
+            if actuals:
+                self.thermal_plot(
+                    output_df=_input_df,
+                    input_df=_input_df,
+                    fig=fig,
+                    row=3,
+                    col=1,
+                )
+                self.control_actuation_plot(
+                    output_df=_input_df,
+                    input_df=_input_df,
+                    fig=fig,
+                    row=4,
+                    col=1,
+                )
+
+            layout = go.Layout(
+                title_text="Diagnostic Plots",
+                autosize=False,
+                width=1500,
+                height=1000,
+                hovermode="x unified",
+            )
+
+            fig.update_layout(layout)
+
+            if show:
+                fig.show()
 
     def thermal_plot(self, output_df, input_df, fig, row, col):
         """"""
