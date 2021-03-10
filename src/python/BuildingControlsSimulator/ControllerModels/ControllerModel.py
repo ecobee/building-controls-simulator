@@ -19,7 +19,7 @@ class ControllerModel(ABC):
     output_states = attr.ib()
     step_size_seconds = attr.ib()
     discretization_size_seconds = attr.ib()
-    
+
     output = attr.ib(factory=dict)
     step_output = attr.ib(factory=dict)
     settings = attr.ib(factory=dict)
@@ -49,6 +49,14 @@ class ControllerModel(ABC):
     def get_model_name(self):
         """Defines human readable uniquely identifing name"""
         pass
+
+    def set_status(self, status, min_log_level):
+        self.status = status
+        self.log_status(min_log_level=min_log_level)
+
+    def log_status(self, min_log_level):
+        if self.log_level >= min_log_level:
+            logging.info(f"{type(self)}: status:{str(self.status)}")
 
     def update_settings(
         self,

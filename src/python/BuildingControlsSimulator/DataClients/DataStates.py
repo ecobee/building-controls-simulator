@@ -12,6 +12,7 @@ class UNITS(enum.IntEnum):
     RELATIVE_HUMIDITY = enum.auto()
     DATETIME = enum.auto()
     SECONDS = enum.auto()
+    WATTS_PER_METER_SQUARED = enum.auto()
 
 
 @enum.unique
@@ -55,6 +56,7 @@ class STATES(enum.IntEnum):
     FAN = enum.auto()
     HUMIDIFIER = enum.auto()
     VENTILATOR = enum.auto()
+
     # Sensor states
     THERMOSTAT_TEMPERATURE = enum.auto()
     THERMOSTAT_HUMIDITY = enum.auto()
@@ -68,6 +70,7 @@ class STATES(enum.IntEnum):
     RS7_TEMPERATURE = enum.auto()
     RS8_TEMPERATURE = enum.auto()
     RS9_TEMPERATURE = enum.auto()
+    RS10_TEMPERATURE = enum.auto()
     RS1_OCCUPANCY = enum.auto()
     RS2_OCCUPANCY = enum.auto()
     RS3_OCCUPANCY = enum.auto()
@@ -77,6 +80,8 @@ class STATES(enum.IntEnum):
     RS7_OCCUPANCY = enum.auto()
     RS8_OCCUPANCY = enum.auto()
     RS9_OCCUPANCY = enum.auto()
+    RS10_OCCUPANCY = enum.auto()
+
     # state estimates
     THERMOSTAT_TEMPERATURE_ESTIMATE = enum.auto()
     THERMOSTAT_HUMIDITY_ESTIMATE = enum.auto()
@@ -90,9 +95,14 @@ class STATES(enum.IntEnum):
     RS7_TEMPERATURE_ESTIMATE = enum.auto()
     RS8_TEMPERATURE_ESTIMATE = enum.auto()
     RS9_TEMPERATURE_ESTIMATE = enum.auto()
+    RS10_TEMPERATURE_ESTIMATE = enum.auto()
+
     # Weather states
     OUTDOOR_TEMPERATURE = enum.auto()
     OUTDOOR_RELATIVE_HUMIDITY = enum.auto()
+    DIRECT_NORMAL_RADIATION = enum.auto()
+    GLOBAL_HORIZONTAL_RADIATION = enum.auto()
+
     # HVAC actuation states
     FAN_STAGE_ONE = enum.auto()
     FAN_STAGE_TWO = enum.auto()

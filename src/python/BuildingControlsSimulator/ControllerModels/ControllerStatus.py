@@ -1,5 +1,6 @@
 import enum
 
+
 @enum.unique
 class CONTROLLERSTATUS(enum.IntEnum):
     """Definition of ControllerModel status codes."""
@@ -14,6 +15,7 @@ class CONTROLLERSTATUS(enum.IntEnum):
     OPTIMIZATION_SUCCESSFUL = enum.auto()
     INFEASIBLE_OPTIMIZATION = enum.auto()
     STEP_SUCCESSFUL = enum.auto()
+    STEP_SKIPPED = enum.auto()
     STEP_FAILED = enum.auto()
     FMU_CRASHED = enum.auto()
 

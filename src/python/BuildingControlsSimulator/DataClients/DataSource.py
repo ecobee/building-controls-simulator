@@ -98,8 +98,6 @@ class DataSource(ABC):
         if extension.startswith("parquet"):
             # read_parquet does not take dtype info
             _df = pd.read_parquet(filepath_or_buffer)
-            # get intersection of columns
-            _df = _df[set(data_spec.full.columns) & set(_df.columns)]
         elif extension == "csv":
             # pandas cannot currently parse datetimes in read_csv
             # need to first remove from dtype map
@@ -107,7 +105,6 @@ class DataSource(ABC):
             _df = pd.read_csv(
                 filepath_or_buffer,
                 compression=None,
-                usecols=data_spec.full.columns,
                 dtype=get_dtype_mapper(
                     [
                         _col
@@ -123,7 +120,6 @@ class DataSource(ABC):
             _df = pd.read_csv(
                 filepath_or_buffer,
                 compression="zip",
-                usecols=data_spec.full.columns,
                 dtype=get_dtype_mapper(
                     [
                         _col
@@ -139,7 +135,6 @@ class DataSource(ABC):
             _df = pd.read_csv(
                 filepath_or_buffer,
                 compression="gzip",
-                usecols=data_spec.full.columns,
                 dtype=get_dtype_mapper(
                     [
                         _col
@@ -152,6 +147,9 @@ class DataSource(ABC):
                 ),
             )
         else:
-            logger.error(f"Unsupported extension: {extension}")
+            raise ValueError(f"Unsupported extension: {extension}")
+
+        # get intersection of columns
+        _df = _df[set(data_spec.full.columns) & set(_df.columns)]
 
         return _df

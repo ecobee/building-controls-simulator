@@ -468,7 +468,7 @@ class Internal:
                         "channel": CHANNELS.REMOTE_SENSOR,
                         "unit": UNITS.CELSIUS,
                     }
-                    for i in range(1, self.N_ROOM_SENSORS)
+                    for i in range(1, self.N_ROOM_SENSORS + 1)
                 },
                 **{
                     STATES["RS{}_TEMPERATURE_ESTIMATE".format(i)]: {
@@ -477,7 +477,7 @@ class Internal:
                         "channel": CHANNELS.REMOTE_SENSOR,
                         "unit": UNITS.CELSIUS,
                     }
-                    for i in range(1, self.N_ROOM_SENSORS)
+                    for i in range(1, self.N_ROOM_SENSORS + 1)
                 },
                 **{
                     STATES["RS{}_OCCUPANCY".format(i)]: {
@@ -486,7 +486,7 @@ class Internal:
                         "channel": CHANNELS.REMOTE_SENSOR,
                         "unit": UNITS.OTHER,
                     }
-                    for i in range(1, self.N_ROOM_SENSORS)
+                    for i in range(1, self.N_ROOM_SENSORS + 1)
                 },
             },
         )
@@ -506,6 +506,18 @@ class Internal:
                     "dtype": "float32",
                     "channel": CHANNELS.WEATHER,
                     "unit": UNITS.RELATIVE_HUMIDITY,
+                },
+                STATES.DIRECT_NORMAL_RADIATION: {
+                    "name": "direct_normal_radiation",
+                    "dtype": "float32",
+                    "channel": CHANNELS.WEATHER,
+                    "unit": UNITS.WATTS_PER_METER_SQUARED,
+                },
+                STATES.GLOBAL_HORIZONTAL_RADIATION: {
+                    "name": "global_horizontal_radiation",
+                    "dtype": "float32",
+                    "channel": CHANNELS.WEATHER,
+                    "unit": UNITS.WATTS_PER_METER_SQUARED,
                 },
             },
         )
@@ -754,7 +766,7 @@ class FlatFilesSpec:
                         "channel": CHANNELS.REMOTE_SENSOR,
                         "unit": UNITS.FARHENHEITx10,
                     }
-                    for i in range(1, self.N_ROOM_SENSORS)
+                    for i in range(1, self.N_ROOM_SENSORS + 1)
                 },
                 **{
                     "SensorOcc1{}".format(str(i).zfill(2)): {
@@ -763,7 +775,7 @@ class FlatFilesSpec:
                         "channel": CHANNELS.REMOTE_SENSOR,
                         "unit": UNITS.OTHER,
                     }
-                    for i in range(1, self.N_ROOM_SENSORS)
+                    for i in range(1, self.N_ROOM_SENSORS + 1)
                 },
             },
         )
@@ -974,7 +986,7 @@ class DonateYourDataSpec:
                         "channel": CHANNELS.REMOTE_SENSOR,
                         "unit": UNITS.CELSIUS,
                     }
-                    for i in range(1, self.N_ROOM_SENSORS)
+                    for i in range(1, self.N_ROOM_SENSORS + 1)
                 },
                 **{
                     "Remote_Sensor_{}_Motion".format(i): {
@@ -983,7 +995,7 @@ class DonateYourDataSpec:
                         "channel": CHANNELS.REMOTE_SENSOR,
                         "unit": UNITS.OTHER,
                     }
-                    for i in range(1, self.N_ROOM_SENSORS)
+                    for i in range(1, self.N_ROOM_SENSORS + 1)
                 },
             },
         )
@@ -1093,4 +1105,6 @@ class EnergyPlusWeather:
         datetime_column: datetime_column,
         STATES.OUTDOOR_TEMPERATURE: "temp_air",
         STATES.OUTDOOR_RELATIVE_HUMIDITY: "relative_humidity",
+        STATES.DIRECT_NORMAL_RADIATION: "dni",
+        STATES.GLOBAL_HORIZONTAL_RADIATION: "ghi",
     }

@@ -13,6 +13,7 @@ import attr
 import requests
 from sklearn.metrics.pairwise import haversine_distances
 
+from BuildingControlsSimulator.DataClients.DataStates import STATES
 from BuildingControlsSimulator.DataClients.DataSpec import EnergyPlusWeather
 from BuildingControlsSimulator.DataClients.DataChannel import DataChannel
 from BuildingControlsSimulator.Conversions.Conversions import Conversions
@@ -45,6 +46,12 @@ class WeatherChannel(DataChannel):
     epw_columns = attr.ib(default=EnergyPlusWeather.epw_columns)
     epw_meta_keys = attr.ib(default=EnergyPlusWeather.epw_meta)
     epw_column_map = attr.ib(default=EnergyPlusWeather.output_rename_dict)
+
+    epw_backfill_columns = attr.ib()
+
+    @epw_backfill_columns.default
+    def get_epw_backfill_columns(self):
+        return [STATES.DIRECT_NORMAL_RADIATION, STATES.GLOBAL_HORIZONTAL_RADIATION]
 
     def make_epw_file(
         self,
@@ -482,33 +489,9 @@ class WeatherChannel(DataChannel):
             axis="columns",
         ).rename(columns={datetime_channel.spec.datetime_column: self.datetime_column})
 
-        # get current period to check if resampling is needed
-        _cur_fill_epw_data_period = (
-            fill_epw_data[self.datetime_column].diff().mode()[0].total_seconds()
-        )
-
-        if _cur_fill_epw_data_period < self.epw_step_size_seconds:
-            # downsample data
-            fill_epw_data = (
-                fill_epw_data.set_index(fill_epw_data[self.datetime_column])
-                .resample(f"{self.epw_step_size_seconds}S")
-                .mean()
-                .reset_index()
-            )
-        elif _cur_fill_epw_data_period > self.epw_step_size_seconds:
-            # upsample data
-            fill_epw_data = fill_epw_data.set_index(self.datetime_column)
-            fill_epw_data = fill_epw_data.resample(
-                f"{self.epw_step_size_seconds}S"
-            ).asfreq()
-            # ffill is only method that works on all types
-            fill_epw_data = fill_epw_data.interpolate(axis="rows", method="ffill")
-            fill_epw_data = fill_epw_data.reset_index()
-
-        # using annual TMY there may be missing columns at beginning
+        # using annual TMY there may be missing rows at beginning
         # cycle from endtime to give full UTC year
         # wrap TMY data to fill any gaps
-
         if min(fill_epw_data[self.datetime_column]) > min(
             epw_data[self.datetime_column]
         ):
@@ -563,25 +546,82 @@ class WeatherChannel(DataChannel):
             )
             fill_epw_data.sort_values(self.datetime_column)
 
-        # epw_data left join fill_data will give fill data for every epw_data
-        # record
-        epw_data_full = epw_data[[self.datetime_column] + self.spec.columns].merge(
-            fill_epw_data,
-            how="left",
-            on=[self.datetime_column],
+        # get current period to check if resampling is needed
+        _cur_fill_epw_data_period = (
+            fill_epw_data[self.datetime_column].diff().mode()[0].total_seconds()
         )
 
-        # loop over spec columns and fill missing values
-        # then set them to epw names
-        for _col in self.spec.columns:
-            epw_data_full.loc[
-                epw_data_full[_col].isnull(),
-                _col,
-            ] = epw_data_full[EnergyPlusWeather.output_rename_dict[_col]]
-            epw_data_full[EnergyPlusWeather.output_rename_dict[_col]] = epw_data_full[
-                _col
-            ]
-            epw_data_full = epw_data_full.drop(columns=[_col])
+        # resample to input frequency
+        # the epw file may be at different step size than simulation due
+        # to EnergyPlus model discretization being decoupled
+        _input_data_period = (
+            datetime_channel.data[datetime_channel.spec.datetime_column]
+            .diff()
+            .mode()[0]
+            .total_seconds()
+        )
+
+        if _cur_fill_epw_data_period < _input_data_period:
+            # downsample data
+            fill_epw_data = (
+                fill_epw_data.set_index(fill_epw_data[self.datetime_column])
+                .resample(f"{_input_data_period}S")
+                .mean()
+                .reset_index()
+            )
+        elif _cur_fill_epw_data_period > _input_data_period:
+            # upsample data
+            fill_epw_data = fill_epw_data.set_index(self.datetime_column)
+            fill_epw_data = fill_epw_data.resample(f"{_input_data_period}S").asfreq()
+            # ffill is only method that works on all types
+            fill_epw_data = fill_epw_data.interpolate(axis="rows", method="ffill")
+            fill_epw_data = fill_epw_data.reset_index()
+
+        # trim unused fill_epw_data
+        fill_epw_data = fill_epw_data[
+            (fill_epw_data[self.datetime_column] >= min(epw_data[self.datetime_column]))
+            & (
+                fill_epw_data[self.datetime_column]
+                <= max(epw_data[self.datetime_column])
+            )
+        ].reset_index()
+
+        # overwrite epw fill with input cols
+        for _col, _epw_col in EnergyPlusWeather.output_rename_dict.items():
+            if _col in epw_data.columns:
+                if _epw_col in fill_epw_data.columns:
+                    fill_epw_data[_epw_col] = epw_data[_col]
+
+        # backfill missing input cols with epw fill
+        for _col in self.epw_backfill_columns:
+            if _col not in self.data.columns:
+                _epw_col = EnergyPlusWeather.output_rename_dict[_col]
+                if _epw_col in fill_epw_data.columns:
+                    self.data[_col] = fill_epw_data[_epw_col]
+
+        # resample to epw step size
+        _cur_fill_epw_data_period = (
+            fill_epw_data[self.datetime_column].diff().mode()[0].total_seconds()
+        )
+        if _cur_fill_epw_data_period < self.epw_step_size_seconds:
+            # downsample data
+            fill_epw_data = (
+                fill_epw_data.set_index(fill_epw_data[self.datetime_column])
+                .resample(f"{self.epw_step_size_seconds}S")
+                .mean()
+                .reset_index()
+            )
+        elif _cur_fill_epw_data_period > self.epw_step_size_seconds:
+            # upsample data
+            fill_epw_data = fill_epw_data.set_index(self.datetime_column)
+            fill_epw_data = fill_epw_data.resample(
+                f"{self.epw_step_size_seconds}S"
+            ).asfreq()
+            # ffill is only method that works on all types
+            fill_epw_data = fill_epw_data.interpolate(axis="rows", method="ffill")
+            fill_epw_data = fill_epw_data.reset_index()
+
+        epw_data_full = fill_epw_data
 
         # compute dewpoint from dry-bulb and relative humidity
         epw_data_full["temp_dew"] = Conversions.relative_humidity_to_dewpoint(
