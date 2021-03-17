@@ -7,6 +7,7 @@ import time
 import pandas as pd
 import numpy as np
 import attr
+from tqdm import trange
 
 from BuildingControlsSimulator.DataClients.DataStates import STATES
 from BuildingControlsSimulator.OutputAnalysis.OutputAnalysis import (
@@ -237,7 +238,9 @@ class Simulation:
             self.step_size_seconds,
             dtype="int64",
         )
-        for i in range(0, len(_sim_time)):
+
+        # main loop using optimzied tqdm iteration
+        for i in trange(len(_sim_time), desc="Simulation steps"):
             self.state_estimator_model.do_step(
                 t_start=_sim_time[i],
                 t_step=self.step_size_seconds,
