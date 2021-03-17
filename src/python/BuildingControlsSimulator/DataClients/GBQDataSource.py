@@ -72,8 +72,6 @@ class GBQDataSource(DataSource, ABC):
         query_str = f"SELECT {columns_str}\n"
         query_str += f"FROM `{self.gbq_table}`\n"
         query_str += f"WHERE Identifier = '{sim_config['identifier']}'\n"
-        # query_str += f"AND {self.data_spec.datetime_column} >= '{sim_config['start_utc']}'\n"
-        # query_str += f"AND {self.data_spec.datetime_column} <= '{sim_config['end_utc']}'"
 
         # we will use pandas-gbq to read data to df
         # https://pandas-gbq.readthedocs.io/en/latest/

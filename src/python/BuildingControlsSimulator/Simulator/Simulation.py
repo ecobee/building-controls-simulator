@@ -191,6 +191,7 @@ class Simulation:
             change_points_hvac_mode=self.data_client.thermostat.change_points_hvac_mode,
             init=True,
         )
+
         self.controller_model.initialize(
             start_utc=self.start_utc,
             t_start=self.start_time_seconds,

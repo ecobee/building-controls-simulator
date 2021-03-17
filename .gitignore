@@ -20,7 +20,10 @@ data/
 weather/
 idf/
 fmu/
-notebooks/
+notebooks/*
+!notebooks/demo_LocalSource.ipynb
+!notebooks/demo_GCSDYDSource.ipynb
+!notebooks/test_GCSDYD_chicago.ipynb
 notes/
 !test/idf/v8-9-0/AZ_Phoenix_gasfurnace_crawlspace_IECC_2018_cycles.idf
 !test/idf/v9-4-0/heatedbsmt_2story_2300sqft_gasfurnace_AC.idf
@@ -39,4 +42,3 @@ docs/source/generated/
 .test.env
 docker-compose.yml
 build/
-!notebooks/test_*
