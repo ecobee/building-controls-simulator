@@ -55,3 +55,10 @@ class TestWeatherChannel:
         cols = data.columns.to_list()
 
         assert cols == self.weather.epw_columns
+
+    def test_get_nsrdb(self):
+        """
+        test that we can pull nsrdb data
+        """
+        df_solar = self.weather.get_nsrdb(51.1739243, -114.1643148)
+        df_solar.info()
