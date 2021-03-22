@@ -61,4 +61,4 @@ class TestWeatherChannel:
         test that we can pull nsrdb data
         """
         df_solar = self.weather.get_nsrdb(51.1739243, -114.1643148)
-        df_solar.info()
+        assert df_solar.shape == (17520, 5)

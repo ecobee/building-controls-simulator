@@ -64,9 +64,8 @@ class WeatherChannel(DataChannel):
         fill_epw_path=None,
         epw_step_size_seconds=None,
     ):
-
         """get/open nsrdb file"""
-        #TODO:  I could add checks phere, but its already done within the method
+        #TODO:  I could add checks here, but its already done within the method
         fill_nsrdb_path, fill_nsrdb_data = self.get_nsrdb(
             sim_config["latitude"], sim_config["longitude"]
         )
@@ -745,7 +744,6 @@ class WeatherChannel(DataChannel):
         # hs_username = None
         # hs_password = None
         # hs_api_key = <your api key here>
-
     def get_nsrdb(self,lat,long):
         
         # Unlike the gridded WTK data the NSRDB is provided as sparse time-series dataset.
@@ -766,11 +764,11 @@ class WeatherChannel(DataChannel):
         #identify nearest weather station
         location_idx = nearest_site(tree, lat, long)
         
-        strPath = ''
+        strPath = '' #TODO:  Create environment variable for nsrdb cache
         strFile = 'nsrdb_2019_{0:.2f}_{1:.2f}.csv.gz'.format(dset_coords[location_idx][0],dset_coords[location_idx][1])
         
         if not os.path.exists(strFile):
-            print('Pulling data')
+            print('Pulling nsrdb data')
             # Extract datetime index for datasets
             time_index = pd.to_datetime(f['time_index'][...].astype(str), utc=True)# Temporal resolution is 30min
 
@@ -797,7 +795,7 @@ class WeatherChannel(DataChannel):
 
             df_solar.to_csv(strPath + strFile, index=False, compression='gzip')
         else:
-            print('Re-opening data')
+            print('Re-opening nsrdb data')
             df_solar = pd.read_csv(strFile, compression='gzip')
             df_solar.datetime = pd.to_datetime(df_solar.datetime)
         
