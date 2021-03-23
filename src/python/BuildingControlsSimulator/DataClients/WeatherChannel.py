@@ -708,7 +708,7 @@ class WeatherChannel(DataChannel):
 
 
     #BCS - For this to work you must:
-    # 1) install h5pyd:   pip install --user h5pyd
+    # 1) install h5pyd:   pip install h5pyd
     # 2) Get your own API key, visit https://developer.nrel.gov/signup/
     # 3) configure HSDS:  Add the following contents to a configuration file at ~/.hscfg:
         # #HDFCloud configuration file
@@ -716,7 +716,7 @@ class WeatherChannel(DataChannel):
         # hs_username = None
         # hs_password = None
         # hs_api_key = <your api key here>
-    def get_nsrdb(self,lat,long,year):
+    def get_nsrdb(self, sim_config):
         
         # Unlike the gridded WTK data the NSRDB is provided as sparse time-series dataset.
         # The quickest way to find the nearest site it using a KDtree
@@ -727,17 +727,21 @@ class WeatherChannel(DataChannel):
 
         # Open the desired year of nsrdb data
         # server endpoint, username, password is found via a config file
-        f = h5pyd.File("/nrel/nsrdb/v3/nsrdb_{}.h5".format(str(year)), 'r')
+        f = h5pyd.File("/nrel/nsrdb/v3/nsrdb_{}.h5".format(str(sim_config["start_utc"].year)), 'r')
         
         #create binary tree of coords for search
         dset_coords = f['coordinates'][...]
         tree = cKDTree(dset_coords)
         
         #identify nearest weather station
-        location_idx = nearest_site(tree, lat, long)
+        location_idx = nearest_site(tree, sim_config["latitude"], sim_config["longitude"])
         
         strPath = '' #TODO:  Create environment variable for nsrdb cache folder
-        strFile = 'nsrdb_{0}_{1:.2f}_{2:.2f}.csv.gz'.format(str(year),dset_coords[location_idx][0],dset_coords[location_idx][1])
+        strFile = 'nsrdb_{0}_{1:.2f}_{2:.2f}.csv.gz'.format(
+            str(sim_config["start_utc"].year),
+            dset_coords[location_idx][0],
+            dset_coords[location_idx][1],
+        )
 
         if not os.path.exists(strPath + strFile):
             print('Pulling nsrdb data')
