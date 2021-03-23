@@ -28,8 +28,6 @@ logger = logging.getLogger(__name__)
 @attr.s(kw_only=True)
 class WeatherChannel(DataChannel):
     """Client for weather data."""
-    fill_nsrdb_data = attr.ib(default=None)
-
     epw_path = attr.ib(default=None)
     epw_data = attr.ib(factory=dict)
     epw_meta = attr.ib(factory=dict)
@@ -772,8 +770,12 @@ class WeatherChannel(DataChannel):
             print('Re-opening nsrdb data')
             df_solar = pd.read_csv(strPath + strFile, compression='gzip')
             df_solar.datetime = pd.to_datetime(df_solar.datetime)
-        
-        return df_solar
+
+        if not df_solar.empty:
+            return df_solar
+        else:
+            logger.error("failed to retrieve nsrdb fill data.")
+            return 
 
     #fill_nsrdb_data = attr.ib(default=None)
     def fill_nsrdb(self, input_epw_data, datetime_channel, fill_nsrdb_data, sim_config):
