@@ -307,6 +307,21 @@ class DataClient:
             simulation_epw_dir=self.simulation_epw_dir,
         )
 
+        #add nsrdb solar data fields
+        self.weather.fill_nsrdb_data = self.weather.get_nsrdb(
+            self.sim_config["latitude"], self.sim_config["longitude"], self.sim_config["start_utc"].year
+        )
+        if not self.weather.fill_nsrdb_data.empty:
+            self.weather.fill_nsrdb(
+                input_epw_data=self.weather.data,
+                datetime_channel=self.datetime,
+                fill_nsrdb_data=self.weather.fill_nsrdb_data,
+                sim_config=self.sim_config,
+            )
+        else:
+            logger.error("failed to retrieve nsrdb fill data.")
+
+
     def get_simulation_period(self, expected_period, internal_timezone):
         # set start and end times from full_data_periods and simulation config
         # take limiting period as start_utc and end_utc

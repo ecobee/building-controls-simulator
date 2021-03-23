@@ -60,5 +60,8 @@ class TestWeatherChannel:
         """
         test that we can pull nsrdb data
         """
-        df_solar = self.weather.get_nsrdb(51.1739243, -114.1643148)
+        df_solar = self.weather.get_nsrdb(47.650447, -117.464061, 2019)
+        breakpoint()
         assert df_solar.shape == (17520, 5)
+        assert df_solar.at[17515,'dni'] == 18.0
+        assert df_solar.at[17519,'ghi'] == 4.0

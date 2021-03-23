@@ -28,6 +28,7 @@ logger = logging.getLogger(__name__)
 @attr.s(kw_only=True)
 class WeatherChannel(DataChannel):
     """Client for weather data."""
+    fill_nsrdb_data = attr.ib(default=None)
 
     epw_path = attr.ib(default=None)
     epw_data = attr.ib(factory=dict)
@@ -64,12 +65,6 @@ class WeatherChannel(DataChannel):
         fill_epw_path=None,
         epw_step_size_seconds=None,
     ):
-        """get/open nsrdb file"""
-        #TODO:  I could add checks here, but its already done within the method
-        fill_nsrdb_path, fill_nsrdb_data = self.get_nsrdb(
-            sim_config["latitude"], sim_config["longitude"]
-        )
-
         """Generate epw file in local time"""
         if fill_epw_path:
             if os.path.exists(fill_epw_path):
@@ -134,35 +129,14 @@ class WeatherChannel(DataChannel):
                 self.simulation_epw_dir,
                 "NREL_EPLUS" + f"_{sim_config['identifier']}" + f"_{fill_epw_fname}",
             )
-
-            # add nsrdb solar fields
+            # fill any missing fields in epw
             # need to pass in original dyd datetime column name
-            if not fill_nsrdb_data.empty:
-                nsrdb_data = self.fill_nsrdb(
-                    input_epw_data=self.data,
-                    datetime_channel=datetime_channel,
-                    fill_nsrdb_data=fill_nsrdb_data,
-                    sim_config=sim_config,
-                )
-                # follows from fill_nsrdb step
-                # fill any missing fields in epw
-                # need to pass in original dyd datetime column name
-                epw_data = self.fill_epw(
-                    input_epw_data=self.data,
-                    datetime_channel=datetime_channel,
-                    fill_epw_data=fill_epw_data,
-                    sim_config=sim_config,
-                )
-            else:
-                logger.error("failed to retrieve .epw fill data.")
-                # fill any missing fields in epw
-                # need to pass in original dyd datetime column name
-                epw_data = self.fill_epw(
-                    input_epw_data=self.data,
-                    datetime_channel=datetime_channel,
-                    fill_epw_data=fill_epw_data,
-                    sim_config=sim_config,
-                )
+            epw_data = self.fill_epw(
+                input_epw_data=self.data,
+                datetime_channel=datetime_channel,
+                fill_epw_data=fill_epw_data,
+                sim_config=sim_config,
+            )
 
             meta_lines = self.add_epw_data_periods(
                 epw_data=epw_data,
@@ -744,7 +718,7 @@ class WeatherChannel(DataChannel):
         # hs_username = None
         # hs_password = None
         # hs_api_key = <your api key here>
-    def get_nsrdb(self,lat,long):
+    def get_nsrdb(self,lat,long,year):
         
         # Unlike the gridded WTK data the NSRDB is provided as sparse time-series dataset.
         # The quickest way to find the nearest site it using a KDtree
@@ -752,10 +726,10 @@ class WeatherChannel(DataChannel):
             lat_lon = np.array([lat_coord, lon_coord])
             dist, pos = tree.query(lat_lon)
             return pos
-        
+
         # Open the desired year of nsrdb data
         # server endpoint, username, password is found via a config file
-        f = h5pyd.File("/nrel/nsrdb/v3/nsrdb_2019.h5", 'r')
+        f = h5pyd.File("/nrel/nsrdb/v3/nsrdb_{}.h5".format(str(year)), 'r')
         
         #create binary tree of coords for search
         dset_coords = f['coordinates'][...]
@@ -764,10 +738,10 @@ class WeatherChannel(DataChannel):
         #identify nearest weather station
         location_idx = nearest_site(tree, lat, long)
         
-        strPath = '' #TODO:  Create environment variable for nsrdb cache
-        strFile = 'nsrdb_2019_{0:.2f}_{1:.2f}.csv.gz'.format(dset_coords[location_idx][0],dset_coords[location_idx][1])
-        
-        if not os.path.exists(strFile):
+        strPath = '' #TODO:  Create environment variable for nsrdb cache folder
+        strFile = 'nsrdb_{0}_{1:.2f}_{2:.2f}.csv.gz'.format(str(year),dset_coords[location_idx][0],dset_coords[location_idx][1])
+
+        if not os.path.exists(strPath + strFile):
             print('Pulling nsrdb data')
             # Extract datetime index for datasets
             time_index = pd.to_datetime(f['time_index'][...].astype(str), utc=True)# Temporal resolution is 30min
@@ -796,16 +770,12 @@ class WeatherChannel(DataChannel):
             df_solar.to_csv(strPath + strFile, index=False, compression='gzip')
         else:
             print('Re-opening nsrdb data')
-            df_solar = pd.read_csv(strFile, compression='gzip')
+            df_solar = pd.read_csv(strPath + strFile, compression='gzip')
             df_solar.datetime = pd.to_datetime(df_solar.datetime)
         
-        return strFile, df_solar
-    # test:
-    # strFile, df_solar = get_nsrdb(51.1739243, -114.1643148)
-    # df_solar.info()
+        return df_solar
 
-
-    fill_nsrdb_data = attr.ib(default=None)
+    #fill_nsrdb_data = attr.ib(default=None)
     def fill_nsrdb(self, input_epw_data, datetime_channel, fill_nsrdb_data, sim_config):
         """Fill input data with NSRDB 2019 data as available.
         All data is internally in UTC.
@@ -837,63 +807,6 @@ class WeatherChannel(DataChannel):
             ],
             axis="columns",
         ).rename(columns={datetime_channel.spec.datetime_column: self.datetime_column})
-
-        # # using 2019 NSRDB data there may be missing rows at beginning
-        # # cycle from endtime to give full UTC year
-        # # wrap TMY data to fill any gaps
-        # if min(fill_epw_data[self.datetime_column]) > min(
-        #     epw_data[self.datetime_column]
-        # ):
-        #     # have data before fill data starts
-        #     # wrap fill data on year
-        #     time_diff = min(fill_epw_data[self.datetime_column]) - min(
-        #         epw_data[self.datetime_column]
-        #     )
-        #     years = math.ceil(time_diff.days / 365.0)
-        #     fill_epw_data_prev_years = []
-        #     for y in range(1, years):
-        #         _fill_epw_data_prev_year = fill_epw_data.copy(deep=True)
-        #         _fill_epw_data_prev_year["year"] = _fill_epw_data_prev_year["year"] - 1
-        #         _fill_epw_data_prev_year[
-        #             self.datetime_column
-        #         ] = _fill_epw_data_prev_year[
-        #             self.datetime_column
-        #         ] - pd.offsets.DateOffset(
-        #             years=1
-        #         )
-        #         fill_epw_data_prev_years.append(_fill_epw_data_prev_year)
-
-        #     fill_epw_data = pd.concat(
-        #         fill_epw_data_prev_years + [fill_epw_data], axis="rows"
-        #     )
-        #     fill_epw_data.sort_values(self.datetime_column)
-
-        # if max(fill_epw_data[self.datetime_column]) < max(
-        #     epw_data[self.datetime_column]
-        # ):
-        #     # have data before fill data starts
-        #     # wrap fill data on year
-        #     time_diff = max(epw_data[self.datetime_column]) - max(
-        #         fill_epw_data[self.datetime_column]
-        #     )
-        #     years = math.ceil(time_diff.days / 365.0)
-        #     fill_epw_data_prev_years = []
-        #     for y in range(1, years):
-        #         _fill_epw_data_prev_year = fill_epw_data.copy(deep=True)
-        #         _fill_epw_data_prev_year["year"] = _fill_epw_data_prev_year["year"] + 1
-        #         _fill_epw_data_prev_year[
-        #             self.datetime_column
-        #         ] = _fill_epw_data_prev_year[
-        #             self.datetime_column
-        #         ] + pd.offsets.DateOffset(
-        #             years=1
-        #         )
-        #         fill_epw_data_prev_years.append(_fill_epw_data_prev_year)
-
-        #     fill_epw_data = pd.concat(
-        #         [fill_epw_data] + fill_epw_data_prev_years, axis="rows"
-        #     )
-        #     fill_epw_data.sort_values(self.datetime_column)
 
         # get current period to check if resampling is needed
         _cur_fill_nsrdb_data_period = (
@@ -953,19 +866,19 @@ class WeatherChannel(DataChannel):
         _cur_fill_nsrdb_data_period = (
             fill_nsrdb_data[self.datetime_column].diff().mode()[0].total_seconds()
         )
-        if _cur_fill_nsrdb_data_period < self.epw_step_size_seconds:
+        if _cur_fill_nsrdb_data_period < sim_config['sim_step_size_seconds']:
             # downsample data
             fill_nsrdb_data = (
                 fill_nsrdb_data.set_index(fill_nsrdb_data[self.datetime_column])
-                .resample(f"{self.epw_step_size_seconds}S")
+                .resample(f"{sim_config['sim_step_size_seconds']}S")
                 .mean()
                 .reset_index()
             )
-        elif _cur_fill_nsrdb_data_period > self.epw_step_size_seconds:
+        elif _cur_fill_nsrdb_data_period > sim_config['sim_step_size_seconds']:
             # upsample data
             fill_nsrdb_data = fill_nsrdb_data.set_index(self.datetime_column)
             fill_nsrdb_data = fill_nsrdb_data.resample(
-                f"{self.epw_step_size_seconds}S"
+                f"{sim_config['sim_step_size_seconds']}S"
             ).asfreq()
             # ffill is only method that works on all types
             fill_nsrdb_data = fill_nsrdb_data.interpolate(axis="rows", method="linear")
@@ -1005,7 +918,7 @@ class WeatherChannel(DataChannel):
 
         # resample to building frequency
         nsrdb_data_full = nsrdb_data_full.resample(
-            f"{self.epw_step_size_seconds}S"
+            f"{sim_config['sim_step_size_seconds']}S"
         ).asfreq()
         # first ffill then bfill will fill both sides padding data
         nsrdb_data_full = nsrdb_data_full.fillna(method="ffill")
