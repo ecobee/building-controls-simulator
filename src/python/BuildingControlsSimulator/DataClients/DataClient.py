@@ -308,11 +308,9 @@ class DataClient:
         )
 
         #add nsrdb solar data fields
-        fill_nsrdb_data = self.weather.get_nsrdb(self.sim_config)
         self.weather.fill_nsrdb(
-            input_epw_data=self.weather.data,
+            input_data=self.weather.data,
             datetime_channel=self.datetime,
-            fill_nsrdb_data=fill_nsrdb_data,
             sim_config=self.sim_config,
         )
 

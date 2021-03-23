@@ -59,6 +59,7 @@ class TestWeatherChannel:
 
         assert cols == self.weather.epw_columns
 
+    #TODO:  Need to rework this test now that get_nsrdb has been absorbed into fill_nsrdb
     def test_get_nsrdb(self):
         """
         test that we can pull nsrdb data
