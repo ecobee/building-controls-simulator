@@ -53,6 +53,19 @@ class WeatherChannel(DataChannel):
     def get_epw_backfill_columns(self):
         return [STATES.DIRECT_NORMAL_RADIATION, STATES.GLOBAL_HORIZONTAL_RADIATION]
 
+    epw_radiation_columns = attr.ib()
+
+    @epw_radiation_columns.default
+    def get_epw_radiation_columns(self):
+        return [
+            "etr",
+            "etrn",
+            "ghi_infrared",
+            "ghi",
+            "dni",
+            "dhi",
+        ]
+
     def make_epw_file(
         self,
         sim_config,
@@ -577,6 +590,11 @@ class WeatherChannel(DataChannel):
             fill_epw_data = fill_epw_data.interpolate(axis="rows", method="ffill")
             fill_epw_data = fill_epw_data.reset_index()
 
+        # radiation columns unit converstion Wh/m2 -> W/m2
+        fill_epw_data.loc[:, self.epw_radiation_columns] = fill_epw_data.loc[
+            :, self.epw_radiation_columns
+        ] / (_cur_fill_epw_data_period / 3600.0)
+
         # trim unused fill_epw_data
         fill_epw_data = fill_epw_data[
             (fill_epw_data[self.datetime_column] >= min(epw_data[self.datetime_column]))
@@ -620,6 +638,11 @@ class WeatherChannel(DataChannel):
             # ffill is only method that works on all types
             fill_epw_data = fill_epw_data.interpolate(axis="rows", method="ffill")
             fill_epw_data = fill_epw_data.reset_index()
+
+        # radiation columns unit converstion W/m2 -> Wh/m2
+        fill_epw_data.loc[:, self.epw_radiation_columns] = fill_epw_data.loc[
+            :, self.epw_radiation_columns
+        ] * (self.epw_step_size_seconds / 3600.0)
 
         epw_data_full = fill_epw_data
 

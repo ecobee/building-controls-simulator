@@ -240,7 +240,7 @@ class Simulation:
         )
 
         # main loop using optimzied tqdm iteration
-        for i in trange(len(_sim_time), desc="Simulation steps"):
+        for i in trange(len(_sim_time), desc="Co-simulation steps"):
             self.state_estimator_model.do_step(
                 t_start=_sim_time[i],
                 t_step=self.step_size_seconds,
