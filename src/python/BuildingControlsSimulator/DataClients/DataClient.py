@@ -307,7 +307,7 @@ class DataClient:
             simulation_epw_dir=self.simulation_epw_dir,
         )
 
-        #add nsrdb solar data fields
+        # add nsrdb solar data fields
         self.weather.fill_nsrdb(
             input_data=self.weather.data,
             datetime_channel=self.datetime,
