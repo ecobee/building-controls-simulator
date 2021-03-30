@@ -7,6 +7,9 @@ import os
 
 from BuildingControlsSimulator.DataClients.WeatherChannel import WeatherChannel
 
+from pandas import Timestamp
+from pandas import Timedelta
+import pandas
 
 logger = logging.getLogger(__name__)
 
@@ -55,3 +58,25 @@ class TestWeatherChannel:
         cols = data.columns.to_list()
 
         assert cols == self.weather.epw_columns
+
+    #TODO:  Need to rework this test now that get_nsrdb has been absorbed into fill_nsrdb
+    def test_get_nsrdb(self):
+        """
+        test that we can pull nsrdb data
+        """
+        sim_config = {
+            'identifier': '511858737641', 
+            'latitude': 47.650447, 
+            'longitude': -117.464061, 
+            'start_utc': Timestamp('2019-04-16 00:00:00+0000', tz='UTC'), 
+            'end_utc': Timestamp('2019-04-24 00:00:00+0000', tz='UTC'), 
+            'min_sim_period': Timedelta('1 days 00:00:00'), 
+            'min_chunk_period': Timedelta('30 days 00:00:00'), 
+            'sim_step_size_seconds': 300, 
+            'output_step_size_seconds': 300
+        }
+
+        df_solar = self.weather.get_nsrdb(sim_config)
+        assert df_solar.shape == (17520, 5)
+        assert df_solar.at[17515,'dni'] == 18.0
+        assert df_solar.at[17519,'ghi'] == 4.0

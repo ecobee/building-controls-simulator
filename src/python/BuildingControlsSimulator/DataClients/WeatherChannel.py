@@ -18,6 +18,9 @@ from BuildingControlsSimulator.DataClients.DataSpec import EnergyPlusWeather
 from BuildingControlsSimulator.DataClients.DataChannel import DataChannel
 from BuildingControlsSimulator.Conversions.Conversions import Conversions
 
+import h5pyd
+from scipy.spatial import cKDTree
+
 
 logger = logging.getLogger(__name__)
 
@@ -25,7 +28,6 @@ logger = logging.getLogger(__name__)
 @attr.s(kw_only=True)
 class WeatherChannel(DataChannel):
     """Client for weather data."""
-
     epw_path = attr.ib(default=None)
     epw_data = attr.ib(factory=dict)
     epw_meta = attr.ib(factory=dict)
@@ -49,6 +51,7 @@ class WeatherChannel(DataChannel):
 
     epw_backfill_columns = attr.ib()
 
+    #QUESTION could this be used for backfilling missing temp and rh?
     @epw_backfill_columns.default
     def get_epw_backfill_columns(self):
         return [STATES.DIRECT_NORMAL_RADIATION, STATES.GLOBAL_HORIZONTAL_RADIATION]
@@ -137,7 +140,6 @@ class WeatherChannel(DataChannel):
                 self.simulation_epw_dir,
                 "NREL_EPLUS" + f"_{sim_config['identifier']}" + f"_{fill_epw_fname}",
             )
-
             # fill any missing fields in epw
             # need to pass in original dyd datetime column name
             epw_data = self.fill_epw(
@@ -726,3 +728,149 @@ class WeatherChannel(DataChannel):
             epw_data[self.epw_columns].to_csv(f, header=False, index=False)
 
         return fpath
+
+
+    #BCS - For this to work you must:
+    # 1) install h5pyd:   pip install h5pyd
+    # 2) Get your own API key, visit https://developer.nrel.gov/signup/
+    # 3) configure HSDS:  Add the following contents to a configuration file at ~/.hscfg:
+        # #HDFCloud configuration file
+        # hs_endpoint = https://developer.nrel.gov/api/hsds
+        # hs_username = None
+        # hs_password = None
+        # hs_api_key = <your api key here>
+    def fill_nsrdb(self, input_data, datetime_channel, sim_config):
+        """Fill input data with NSRDB 2019 data as available.
+        All data is internally in UTC.
+        """
+        # Unlike the gridded WTK data the NSRDB is provided as sparse time-series dataset.
+        # The quickest way to find the nearest site it using a KDtree
+        def nearest_site(tree, lat_coord, lon_coord):
+            lat_lon = np.array([lat_coord, lon_coord])
+            dist, pos = tree.query(lat_lon)
+            return pos
+
+        if input_data.empty:
+            raise ValueError(f"input_data is empty.")
+
+        # Open the desired year of nsrdb data
+        # server endpoint, username, password is found via a config file
+        f = h5pyd.File("/nrel/nsrdb/v3/nsrdb_{}.h5".format(str(sim_config["start_utc"].year)), 'r')
+        
+        #create binary tree of coords for search
+        dset_coords = f['coordinates'][...]
+        tree = cKDTree(dset_coords)
+        
+        #identify nearest weather station
+        location_idx = nearest_site(tree, sim_config["latitude"], sim_config["longitude"])
+        
+        strPath = '' #TODO:  Create environment variable for nsrdb cache folder
+        strFile = 'nsrdb_{0}_{1:.2f}_{2:.2f}.csv.gz'.format(
+            str(sim_config["start_utc"].year),
+            dset_coords[location_idx][0],
+            dset_coords[location_idx][1],
+        )
+
+        if not os.path.exists(strPath + strFile):
+            print('Pulling nsrdb data')
+            # Extract datetime index for datasets
+            time_index = pd.to_datetime(f['time_index'][...].astype(str), utc=True)# Temporal resolution is 30min
+
+            #get data sets
+            dset_dni  = f['dni']
+            dset_ghi  = f['ghi']
+            dset_temp = f['air_temperature']
+            dset_rh   = f['relative_humidity']
+            # list(f)  # for full list the datasets in the file
+
+            #filter on time series for given location
+            tseries_dni  = dset_dni[:,  location_idx] / dset_dni.attrs['psm_scale_factor']  
+            tseries_ghi  = dset_ghi[:,  location_idx] / dset_ghi.attrs['psm_scale_factor']  
+            tseries_temp = dset_temp[:, location_idx] / dset_temp.attrs['psm_scale_factor'] 
+            tseries_rh   = dset_rh[:,   location_idx] / dset_rh.attrs['psm_scale_factor']   
+
+            #combine into single DF int
+            fill_nsrdb_data = pd.DataFrame()
+            fill_nsrdb_data["datetime"]          = time_index   # datetime64
+            fill_nsrdb_data["dni"]               = tseries_dni  # W/m2, float
+            fill_nsrdb_data["ghi"]               = tseries_ghi  # W/m2, float
+            fill_nsrdb_data["temp_air"]          = tseries_temp # degC, float
+            fill_nsrdb_data["relative_humidity"] = tseries_rh   # %rh,  float
+
+            fill_nsrdb_data.to_csv(strPath + strFile, index=False, compression='gzip')
+        else:
+            print('Re-opening nsrdb data')
+            fill_nsrdb_data = pd.read_csv(strPath + strFile, compression='gzip')
+            fill_nsrdb_data.datetime = pd.to_datetime(fill_nsrdb_data.datetime)
+
+        if fill_nsrdb_data.empty:
+            raise ValueError(f"fill_nsrdb_data is empty.")
+
+        # save fill_nsrdb_data that was actually used to fill
+        self.fill_nsrdb_data = fill_nsrdb_data
+
+        # edit unique copy of input df
+        epw_data = input_data.copy(deep=True)
+
+        # add datetime column for merge with fill data
+        epw_data = pd.concat(
+            [
+                datetime_channel.data[datetime_channel.spec.datetime_column],
+                epw_data,
+            ],
+            axis="columns",
+        ).rename(columns={datetime_channel.spec.datetime_column: self.datetime_column})
+
+        # get current period to check if resampling is needed
+        _cur_fill_nsrdb_data_period = (
+            fill_nsrdb_data[self.datetime_column].diff().mode()[0].total_seconds()
+        )
+
+        # resample to input frequency
+        # the epw file may be at different step size than simulation due
+        # to EnergyPlus model discretization being decoupled
+        _input_data_period = (
+            datetime_channel.data[datetime_channel.spec.datetime_column]
+            .diff()
+            .mode()[0]
+            .total_seconds()
+        )
+
+        #TODO:  last nsrdb data point is dec 31, 23:30. Missing last half hr.
+        if _cur_fill_nsrdb_data_period < _input_data_period:
+            # downsample data
+            fill_nsrdb_data = (
+                fill_nsrdb_data.set_index(fill_nsrdb_data[self.datetime_column])
+                .resample(f"{_input_data_period}S")
+                .mean()
+                .reset_index()
+            )
+        elif _cur_fill_nsrdb_data_period > _input_data_period:
+            # upsample data
+            fill_nsrdb_data = fill_nsrdb_data.set_index(self.datetime_column)
+            fill_nsrdb_data = fill_nsrdb_data.resample(f"{_input_data_period}S").asfreq()
+            # ffill is only method that works on all types
+            fill_nsrdb_data = fill_nsrdb_data.interpolate(axis="rows", method="linear")
+            fill_nsrdb_data = fill_nsrdb_data.reset_index()
+
+        # trim unused fill_nsrdb_data
+        fill_nsrdb_data = fill_nsrdb_data[
+            (fill_nsrdb_data[self.datetime_column] >= min(epw_data[self.datetime_column]))
+            & (
+                fill_nsrdb_data[self.datetime_column]
+                <= max(epw_data[self.datetime_column])
+            )
+        ].reset_index()
+
+        # overwrite nsrdb fill with input cols
+        for _col, _epw_col in EnergyPlusWeather.output_rename_dict.items():
+            if _col in epw_data.columns:
+                if _epw_col in fill_nsrdb_data.columns:
+                    fill_nsrdb_data[_epw_col] = epw_data[_col]
+
+        # backfill missing input cols with epw fill
+        for _col in self.epw_backfill_columns:
+            if _col not in self.data.columns:
+                _epw_col = EnergyPlusWeather.output_rename_dict[_col]
+                if _epw_col in fill_nsrdb_data.columns:
+                    self.data[_col] = fill_nsrdb_data[_epw_col]
