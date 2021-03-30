@@ -730,6 +730,14 @@ class WeatherChannel(DataChannel):
 
         return fpath
 
+    # Unlike the gridded WTK data the NSRDB is provided as sparse time-series dataset.
+    # The quickest way to find the nearest site it using a KDtree
+    @staticmethod
+    def nearest_site(tree, lat_coord, lon_coord):
+        lat_lon = np.array([lat_coord, lon_coord])
+        dist, pos = tree.query(lat_lon)
+        return pos
+
     # BCS - For this to work you must:
     # 1) install h5pyd:   pip install h5pyd
     # 2) Get your own API key, visit https://developer.nrel.gov/signup/
@@ -743,12 +751,6 @@ class WeatherChannel(DataChannel):
         """Fill input data with NSRDB 2019 data as available.
         All data is internally in UTC.
         """
-        # Unlike the gridded WTK data the NSRDB is provided as sparse time-series dataset.
-        # The quickest way to find the nearest site it using a KDtree
-        def nearest_site(tree, lat_coord, lon_coord):
-            lat_lon = np.array([lat_coord, lon_coord])
-            dist, pos = tree.query(lat_lon)
-            return pos
 
         if input_data.empty:
             raise ValueError(f"input_data is empty.")
@@ -764,7 +766,7 @@ class WeatherChannel(DataChannel):
         tree = cKDTree(dset_coords)
 
         # identify nearest weather station
-        location_idx = nearest_site(
+        location_idx = WeatherChannel.nearest_site(
             tree, sim_config["latitude"], sim_config["longitude"]
         )
 
