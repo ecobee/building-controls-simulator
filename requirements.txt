@@ -62,7 +62,7 @@ jupyterlab-widgets==1.0.0
 kiwisolver==1.3.1
 libcst==0.3.16
 llvmlite==0.35.0
-lxml==4.6.2
+lxml==4.6.3
 MarkupSafe==1.1.1
 matplotlib==3.3.3
 mccabe==0.6.1
