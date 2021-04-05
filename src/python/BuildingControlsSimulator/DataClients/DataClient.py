@@ -52,14 +52,17 @@ class DataClient:
     # input variables
     source = attr.ib(validator=attr.validators.instance_of(DataSource))
     destination = attr.ib(validator=attr.validators.instance_of(DataDestination))
-    nrel_dev_api_key = attr.ib(default=None)
-    nrel_dev_email = attr.ib(default=None)
+    nrel_dev_api_key = attr.ib(default=os.environ.get("NREL_DEV_API_KEY"))
+    nrel_dev_email = attr.ib(default=os.environ.get("NREL_DEV_EMAIL"))
     archive_tmy3_dir = attr.ib(default=os.environ.get("ARCHIVE_TMY3_DIR"))
-    archive_tmy3_meta = attr.ib(default=None)
+    archive_tmy3_meta = attr.ib(default=os.environ.get("ARCHIVE_TMY3_META"))
     archive_tmy3_data_dir = attr.ib(default=os.environ.get("ARCHIVE_TMY3_DATA_DIR"))
     ep_tmy3_cache_dir = attr.ib(default=os.environ.get("EP_TMY3_CACHE_DIR"))
+    nsrdb_cache_dir = attr.ib(default=os.environ.get("NSRDB_CACHE_DIR"))
     simulation_epw_dir = attr.ib(default=os.environ.get("SIMULATION_EPW_DIR"))
     weather_dir = attr.ib(default=os.environ.get("WEATHER_DIR"))
+    weather_forecast_source = attr.ib(default="perfect")
+    epw_path = attr.ib(default=None)
 
     # state variables
     sim_config = attr.ib(default=None)
@@ -68,6 +71,7 @@ class DataClient:
     eplus_fill_to_day_seconds = attr.ib(default=None)
     eplus_warmup_seconds = attr.ib(default=None)
     internal_spec = attr.ib(factory=Internal)
+    forecast_from_measured = attr.ib(default=True)
 
     def __attrs_post_init__(self):
         # first, post init class specification
@@ -77,6 +81,7 @@ class DataClient:
         os.makedirs(self.weather_dir, exist_ok=True)
         os.makedirs(self.archive_tmy3_data_dir, exist_ok=True)
         os.makedirs(self.ep_tmy3_cache_dir, exist_ok=True)
+        os.makedirs(self.nsrdb_cache_dir, exist_ok=True)
         os.makedirs(self.simulation_epw_dir, exist_ok=True)
         if self.source.local_cache:
             os.makedirs(
@@ -131,6 +136,9 @@ class DataClient:
         )
         _data = _data.drop(columns=[_runtime_sum_column])
 
+        # the period data source is expected at
+        _expected_period = f"{self.internal_spec.data_period_seconds}S"
+
         # truncate the data to desired simulation start and end time
         _data = _data[
             (_data[self.internal_spec.datetime_column] >= self.sim_config["start_utc"])
@@ -158,7 +166,6 @@ class DataClient:
             _data, self.internal_spec.data_period_seconds
         )
 
-        _expected_period = f"{self.internal_spec.data_period_seconds}S"
         # ffill first 15 minutes of missing data periods
         _data = DataClient.fill_missing_data(
             full_data=_data,
@@ -182,6 +189,13 @@ class DataClient:
         # the fill data is present to run continuous simulations smoothly
         # in the presence of potentially many missing data periods
         if self.full_data_periods:
+            # compute the total sim steps for later use determining offset for
+            # weather forecasts idx
+            _total_sim_steps = (
+                _data[self.internal_spec.datetime_column].max()
+                - _data[self.internal_spec.datetime_column].min()
+            ) // pd.Timedelta(seconds=self.sim_config["sim_step_size_seconds"])
+
             # the simulation period must be full days starting at 0 hour to use
             # SimulationControl: Run Simulation for Weather File Run Periods
             _start_utc, _end_utc = self.get_simulation_period(
@@ -189,7 +203,7 @@ class DataClient:
                 internal_timezone=internal_timezone,
             )
 
-            # add records for warmup period
+            # add records for warm_up period
             _data = DataClient.add_fill_records(
                 df=_data,
                 data_spec=self.internal_spec,
@@ -294,6 +308,7 @@ class DataClient:
             spec=self.internal_spec.sensors,
         )
         self.sensors.drop_unused_room_sensors()
+
         self.weather = WeatherChannel(
             data=_data[
                 self.internal_spec.intersect_columns(
@@ -301,17 +316,37 @@ class DataClient:
                 )
             ],
             spec=self.internal_spec.weather,
+            weather_forecast_source=self.weather_forecast_source,
             archive_tmy3_dir=self.archive_tmy3_dir,
             archive_tmy3_data_dir=self.archive_tmy3_data_dir,
             ep_tmy3_cache_dir=self.ep_tmy3_cache_dir,
+            nrel_dev_api_key=self.nrel_dev_api_key,
+            nrel_dev_email=self.nrel_dev_email,
+            nsrdb_cache_dir=self.nsrdb_cache_dir,
             simulation_epw_dir=self.simulation_epw_dir,
         )
 
-        #add nsrdb solar data fields
-        self.weather.fill_nsrdb(
+        # add nsrdb solar data fields
+        self.weather.data = self.weather.fill_nsrdb(
             input_data=self.weather.data,
             datetime_channel=self.datetime,
             sim_config=self.sim_config,
+        )
+
+        # merge current weather data with epw
+        # backfill of any missing weather data here
+        self.weather.get_epw_data(
+            sim_config=self.sim_config,
+            datetime_channel=self.datetime,
+            epw_path=self.epw_path,
+        )
+
+        # TODO: this is an example implementation showing
+        # the anticapated structure of forecast data from
+        # an external source
+        self.weather.get_forecast_data(
+            sim_config=self.sim_config,
+            total_sim_steps=_total_sim_steps,
         )
 
     def get_simulation_period(self, expected_period, internal_timezone):
@@ -559,7 +594,12 @@ class DataClient:
         full_data = full_data.reset_index()
 
         # compute timesteps between steps of data
-        diffs = full_data.dropna(axis="rows", subset=data_spec.full.null_check_columns)[
+        _null_check_columns = [
+            _col
+            for _col in data_spec.full.null_check_columns
+            if _col in full_data.columns
+        ]
+        diffs = full_data.dropna(axis="rows", subset=_null_check_columns)[
             data_spec.datetime_column
         ].diff()
 
@@ -600,6 +640,18 @@ class DataClient:
         )
         # drop duplicated datetime columns
         full_input = full_input.loc[:, ~full_input.columns.duplicated()]
+
+        # remove warm up time and forecast time
+        full_input = full_input[
+            (
+                full_input[self.internal_spec.datetime_column]
+                >= self.sim_config["start_utc"]
+            )
+            & (
+                full_input[self.internal_spec.datetime_column]
+                <= self.sim_config["end_utc"]
+            )
+        ].reset_index(drop=True)
 
         # resample to output step size
         full_input = DataClient.resample_to_step_size(

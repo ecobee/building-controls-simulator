@@ -101,7 +101,9 @@ class TestGCSFlatFilesSource:
             if dc.weather and not dc.weather.data.empty:
                 # generate the epw file before checking it
                 _epw_path = dc.weather.make_epw_file(
-                    sim_config=dc.sim_config, datetime_channel=dc.datetime
+                    sim_config=dc.sim_config,
+                    datetime_channel=dc.datetime,
+                    epw_step_size_seconds=dc.sim_config["sim_step_size_seconds"],
                 )
                 data, meta, meta_lines = dc.weather.read_epw(_epw_path)
                 assert not data.empty

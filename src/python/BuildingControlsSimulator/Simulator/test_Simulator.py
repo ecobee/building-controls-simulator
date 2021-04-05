@@ -158,7 +158,6 @@ class TestSimulator:
                     debug=True,
                 ),
                 step_size_seconds=building_model_params["step_size_seconds"],
-                fill_epw_path=self.get_epw_path(building_model_params["epw_name"]),
             )
 
         return _building
@@ -197,16 +196,19 @@ class TestSimulator:
             sim_step_size_seconds=_config_params["sim_step_size_seconds"],
             output_step_size_seconds=_config_params["output_step_size_seconds"],
         )
+        _epw_path = None
+        if test_params["data_client"].get("epw_name"):
+            _epw_path = os.path.join(
+                os.environ.get("WEATHER_DIR"),
+                test_params["data_client"].get("epw_name"),
+            )
 
+        # do not use NREL data in test cases in case it changes or becomes unavailable
         dc = DataClient(
             source=self.get_data_source(test_params["data_client"]),
             destination=self.get_data_destination(test_params["data_client"]),
-            nrel_dev_api_key=os.environ.get("NREL_DEV_API_KEY"),
-            nrel_dev_email=os.environ.get("NREL_DEV_EMAIL"),
-            archive_tmy3_meta=os.environ.get("ARCHIVE_TMY3_META"),
-            archive_tmy3_data_dir=os.environ.get("ARCHIVE_TMY3_DATA_DIR"),
-            ep_tmy3_cache_dir=os.environ.get("EP_TMY3_CACHE_DIR"),
-            simulation_epw_dir=os.environ.get("SIMULATION_EPW_DIR"),
+            nrel_dev_api_key=None,
+            epw_path=_epw_path,
         )
 
         # test HVAC data returns dict of non-empty pd.DataFrame
