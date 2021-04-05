@@ -240,7 +240,7 @@ class Simulation:
         )
 
         # main loop using optimzied tqdm iteration
-        for i in trange(len(_sim_time), desc="Simulation steps"):
+        for i in trange(len(_sim_time), desc="Co-simulation steps"):
             self.state_estimator_model.do_step(
                 t_start=_sim_time[i],
                 t_step=self.step_size_seconds,
@@ -260,6 +260,7 @@ class Simulation:
                 step_thermostat_input=self.data_client.thermostat.data.iloc[i],
                 step_sensor_input=self.state_estimator_model.step_output,
                 step_weather_input=self.data_client.weather.data.iloc[i],
+                step_weather_forecast_input=self.get_step_weather_forecast(i),
             )
 
             self.building_model.do_step(
@@ -323,3 +324,41 @@ class Simulation:
     def show_plots(self):
         output_analysis = OutputAnalysis(df=self.output_df)
         output_analysis.diagnostic_plot(show=True)
+
+    def get_step_weather_forecast(self, i):
+        """
+        Do 1) OR 2)
+        1) generate perfect weather forecasts on-the-fly
+        2) prepend historic weather to external forecast to allow for lagged
+        feature calculation
+        """
+        if self.data_client.weather.weather_forecast_source == "perfect":
+            # perfect weather forecast can be generated on the fly
+            # this saves significant RAM
+            _max_horizon = 0
+            if hasattr(self.controller_model, "controllers"):
+                # if the controller_model is an ensemble model iterate through
+                # each model and take max horizon for generating forecast data
+                _max_horizon = max(
+                    [
+                        _c.horizon_steps if hasattr(_c, "horizon_steps") else 0
+                        for _c in self.controller_model.controllers
+                    ]
+                )
+            elif hasattr(self.controller_model, "horizon_steps"):
+                _max_horizon = self.controller_model.horizon_steps
+
+            _step_forecast = self.data_client.weather.data[i : (i + _max_horizon)]
+
+            # forward project last record at end of simulation when data runs out
+            if len(_step_forecast) < _max_horizon:
+                _step_forecast = pd.concat(
+                    [_step_forecast]
+                    + [_step_forecast.tail(1)] * (_max_horizon - len(_step_forecast))
+                ).reset_index(drop=True)
+
+        else:
+            # for external sourced forecasts all forecasts should be pre-loaded
+            _step_forecast = self.data_client.weather.forecasts[i]
+
+        return _step_forecast

@@ -111,4 +111,15 @@ class TestGCSDestination:
             src_nullable=True,
             dest_nullable=True,
         )
+
+        # remove states not in dest spec
+        for _col in _df.columns:
+            _state = [
+                v["internal_state"]
+                for k, v in self.data_client.destination.data_spec.full.spec.items()
+                if v["internal_state"] == _col
+            ]
+            if not _state:
+                _df = _df.drop(columns=[_col])
+
         assert _df.equals(cr_df)

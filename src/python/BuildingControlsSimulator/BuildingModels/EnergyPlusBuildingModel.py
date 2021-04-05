@@ -50,7 +50,6 @@ class EnergyPlusBuildingModel(BuildingModel):
     idf = attr.ib()
     # user must supply a weather file as either 1) full path, or 2) a file in self.idf_dir
     epw_path = attr.ib(default=None)
-    fill_epw_path = attr.ib(default=None)
     fmi_version = attr.ib(type=float, default=1.0)
     fmu_output = attr.ib(factory=dict)
     output = attr.ib(factory=dict)
@@ -170,7 +169,6 @@ class EnergyPlusBuildingModel(BuildingModel):
         self.epw_path = weather_channel.make_epw_file(
             sim_config=sim_config,
             datetime_channel=datetime_channel,
-            fill_epw_path=self.fill_epw_path,
             epw_step_size_seconds=self.step_size_seconds,
         )
 

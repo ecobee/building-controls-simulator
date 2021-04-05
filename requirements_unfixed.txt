@@ -33,3 +33,4 @@ timezonefinder
 numexpr
 bottleneck
 casadi
+h5pyd==0.8.0
