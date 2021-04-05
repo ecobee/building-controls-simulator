@@ -48,11 +48,11 @@ if os.environ.get("LOCAL_CACHE_DIR"):
                 "is_gbq_destination": False,
                 "destination_data_spec": DonateYourDataSpec(),
                 "destination_local_cache": os.environ.get("LOCAL_CACHE_DIR"),
+                "epw_name": "USA_IL_Chicago-OHare.Intl.AP.725300_TMY3.epw",
             },
             "building_model": {
                 "is_energyplus_building": True,
                 "idf_name": "Furnace.idf",
-                "epw_name": "USA_IL_Chicago-OHare.Intl.AP.725300_TMY3.epw",
                 "building_config": {},
                 "step_size_seconds": 900,
             },
@@ -66,10 +66,10 @@ if os.environ.get("LOCAL_CACHE_DIR"):
                 "low_pass_filter_alpha": 0.5,
             },
             "expected_result": {
-                "mean_thermostat_temperature": 31.378896713256836,
-                "mean_thermostat_humidity": 94.83988189697266,
-                "output_format_mean_thermostat_temperature": 88.48159790039062,
-                "output_format_mean_thermostat_humidity": 94.83988189697266,
+                "mean_thermostat_temperature": 16.975116729736328,
+                "mean_thermostat_humidity": 92.66638946533203,
+                "output_format_mean_thermostat_temperature": 62.55436706542969,
+                "output_format_mean_thermostat_humidity": 92.66638946533203,
             },
         },
         {
@@ -97,11 +97,11 @@ if os.environ.get("LOCAL_CACHE_DIR"):
                 "is_gbq_destination": False,
                 "destination_data_spec": DonateYourDataSpec(),
                 "destination_local_cache": os.environ.get("LOCAL_CACHE_DIR"),
+                "epw_name": "USA_IL_Chicago-OHare.Intl.AP.725300_TMY3.epw",
             },
             "building_model": {
                 "is_energyplus_building": True,
                 "idf_name": "Furnace.idf",
-                "epw_name": "USA_IL_Chicago-OHare.Intl.AP.725300_TMY3.epw",
                 "building_config": {},
                 "step_size_seconds": 60,
             },
@@ -115,10 +115,10 @@ if os.environ.get("LOCAL_CACHE_DIR"):
                 "low_pass_filter_alpha": 0.5,
             },
             "expected_result": {
-                "mean_thermostat_temperature": 31.407203674316406,
-                "mean_thermostat_humidity": 95.72138977050781,
-                "output_format_mean_thermostat_temperature": 88.53276062011719,
-                "output_format_mean_thermostat_humidity": 95.72138977050781,
+                "mean_thermostat_temperature": 14.182504653930664,
+                "mean_thermostat_humidity": 90.9677963256836,
+                "output_format_mean_thermostat_temperature": 57.52853775024414,
+                "output_format_mean_thermostat_humidity": 90.9677963256836,
             },
         },
     ]
@@ -150,11 +150,11 @@ if os.environ.get("DYD_GCS_URI_BASE"):
                 "is_gbq_destination": False,
                 "destination_data_spec": DonateYourDataSpec(),
                 "destination_local_cache": os.environ.get("LOCAL_CACHE_DIR"),
+                "epw_name": "USA_IL_Chicago-OHare.Intl.AP.725300_TMY3.epw",
             },
             "building_model": {
                 "is_energyplus_building": True,
                 "idf_name": "heatedbsmt_2story_2300sqft_gasfurnace_AC.idf",
-                "epw_name": "USA_IL_Chicago-OHare.Intl.AP.725300_TMY3.epw",
                 "step_size_seconds": 60,
                 "building_config": {
                     "infiltration_ventilation": {
@@ -225,11 +225,11 @@ if os.environ.get("DYD_GCS_URI_BASE"):
                 "is_gbq_destination": False,
                 "destination_data_spec": DonateYourDataSpec(),
                 "destination_local_cache": os.environ.get("LOCAL_CACHE_DIR"),
+                "epw_name": "USA_IL_Chicago-OHare.Intl.AP.725300_TMY3.epw",
             },
             "building_model": {
                 "is_energyplus_building": True,
                 "idf_name": "heatedbsmt_2story_2300sqft_gasfurnace_AC.idf",
-                "epw_name": "USA_IL_Chicago-OHare.Intl.AP.725300_TMY3.epw",
                 "step_size_seconds": 60,
                 "building_config": {
                     "infiltration_ventilation": {
@@ -304,11 +304,11 @@ if os.environ.get("FLATFILES_GBQ_TABLE"):
                 "is_gbq_destination": False,
                 "destination_data_spec": FlatFilesSpec(),
                 "destination_local_cache": os.environ.get("LOCAL_CACHE_DIR"),
+                "epw_name": "USA_IL_Chicago-OHare.Intl.AP.725300_TMY3.epw",
             },
             "building_model": {
                 "is_energyplus_building": True,
                 "idf_name": "heatedbsmt_2story_2300sqft_gasfurnace_AC.idf",
-                "epw_name": "USA_IL_Chicago-OHare.Intl.AP.725300_TMY3.epw",
                 "step_size_seconds": 60,
                 "building_config": {
                     "infiltration_ventilation": {
@@ -379,11 +379,11 @@ if os.environ.get("FLATFILES_GBQ_TABLE"):
                 "is_gbq_destination": False,
                 "destination_data_spec": FlatFilesSpec(),
                 "destination_local_cache": os.environ.get("LOCAL_CACHE_DIR"),
+                "epw_name": "USA_IL_Chicago-OHare.Intl.AP.725300_TMY3.epw",
             },
             "building_model": {
                 "is_energyplus_building": True,
                 "idf_name": "heatedbsmt_2story_2300sqft_gasfurnace_AC.idf",
-                "epw_name": "USA_IL_Chicago-OHare.Intl.AP.725300_TMY3.epw",
                 "step_size_seconds": 60,
                 "building_config": {
                     "infiltration_ventilation": {

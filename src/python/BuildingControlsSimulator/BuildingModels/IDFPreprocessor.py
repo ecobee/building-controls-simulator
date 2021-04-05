@@ -408,9 +408,8 @@ class IDFPreprocessor:
             )
 
         # use epw data for climate to set deisgn day values
-        winter_rec = weather_channel.fill_epw_data[
-            weather_channel.fill_epw_data.temp_air
-            == weather_channel.fill_epw_data.temp_air.min()
+        winter_rec = weather_channel.epw_data[
+            weather_channel.epw_data.temp_air == weather_channel.epw_data.temp_air.min()
         ].iloc[0]
 
         self.ep_idf.newidfobject(
@@ -434,9 +433,8 @@ class IDFPreprocessor:
             Sky_Clearness=0.0,
         )
 
-        summer_rec = weather_channel.fill_epw_data[
-            weather_channel.fill_epw_data.temp_air
-            == weather_channel.fill_epw_data.temp_air.max()
+        summer_rec = weather_channel.epw_data[
+            weather_channel.epw_data.temp_air == weather_channel.epw_data.temp_air.max()
         ].iloc[0]
 
         self.ep_idf.newidfobject(

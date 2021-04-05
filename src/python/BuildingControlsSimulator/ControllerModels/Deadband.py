@@ -138,6 +138,7 @@ class Deadband(ControllerModel):
         step_thermostat_input,
         step_sensor_input,
         step_weather_input,
+        step_weather_forecast_input,
     ):
         """Simulate controller time step."""
         t_ctrl = self.calc_t_control(step_sensor_input)
