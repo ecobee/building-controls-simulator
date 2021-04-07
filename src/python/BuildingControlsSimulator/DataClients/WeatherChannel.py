@@ -60,7 +60,11 @@ class WeatherChannel(DataChannel):
 
     @epw_backfill_columns.default
     def get_epw_backfill_columns(self):
-        return [STATES.DIRECT_NORMAL_RADIATION, STATES.GLOBAL_HORIZONTAL_RADIATION]
+        return [
+            STATES.DIRECT_NORMAL_IRRADIANCE,
+            STATES.GLOBAL_HORIZONTAL_IRRADIANCE,
+            STATES.DIFFUSE_HORIZONTAL_IRRADIANCE,
+        ]
 
     # these are the solar radiation columns defined for unit conversions
     epw_radiation_columns = attr.ib()

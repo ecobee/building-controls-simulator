@@ -312,9 +312,8 @@ class Simulation:
             )
 
         self.output = self.output[_mask]
-        self.full_input = self.full_input[_mask]
 
-        # save ouput
+        # save output
         self.data_client.store_output(
             output=self.output,
             sim_name=self.sim_name,

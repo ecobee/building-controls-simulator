@@ -649,7 +649,7 @@ class DataClient:
             )
             & (
                 full_input[self.internal_spec.datetime_column]
-                <= self.sim_config["end_utc"]
+                < self.sim_config["end_utc"]
             )
         ].reset_index(drop=True)
 
