@@ -6,7 +6,21 @@ MAINTAINER Tom Stesco <tom.s@ecobee.com>
 # Use C.UTF-8 locale to avoid issues with ASCII encoding
 ENV LANG="C.UTF-8"
 ENV LC_ALL="C.UTF-8"
+ENV USER_NAME="bcs"
 ENV IS_DOCKER_ENV="true"
+ENV PACKAGE_NAME="building-controls-simulator"
+ENV PYENV_SHELL="bash"
+
+# dependent env vars
+ENV HOME="/home/${USER_NAME}"
+ENV LIB_DIR="${HOME}/lib"
+ENV EXT_DIR="${LIB_DIR}/external"
+ENV ENERGYPLUS_INSTALL_DIR="${EXT_DIR}/EnergyPlus"
+ENV FMIL_HOME="${EXT_DIR}/FMIL/build-fmil" 
+ENV PACKAGE_DIR="${LIB_DIR}/${PACKAGE_NAME}"
+ENV PYENV_ROOT="${HOME}/.pyenv"
+ENV PATH="${HOME}/.local/bin:${PYENV_ROOT}/shims:${PYENV_ROOT}/bin:${PATH}"
+ENV VENV_NAME="${USER_NAME}_venv"
 
 # set build noninteractive
 ARG DEBIAN_FRONTEND=noninteractive
@@ -100,6 +114,7 @@ COPY ./ "${PACKAGE_DIR}"
 # copied directory will not have user ownership by default
 # install energyplus versions desired in `scripts/setup/install_ep.sh`
 # install python dev environment
+# copy .bashrc file to user home for use on startup. This can be further configured by user.
 RUN sudo chown -R "${USER_NAME}" "${PACKAGE_DIR}" \
     && cd "${PACKAGE_DIR}" \
     && mv "${PACKAGE_DIR}/.vscode" "${LIB_DIR}/.vscode" \
@@ -118,13 +133,10 @@ RUN sudo chown -R "${USER_NAME}" "${PACKAGE_DIR}" \
     && wget "https://github.com/RJT1990/pyflux/archive/0.4.15.zip" \
     && unzip "0.4.15.zip" && rm "0.4.15.zip" \
     && cd "pyflux-0.4.15" \
-    && pip install --no-cache-dir . \
-    && cd "${PACKAGE_DIR}" \
-    && . scripts/setup/install_solvers.sh
+    && pip install --no-cache-dir .
 
 # install jupyter lab extensions for plotly
 # if jupyter lab build fails with webpack optimization, set --minimize=False
-# finally copy .bashrc file to user home for use on startup. This can be further configured by user.
 RUN cd "${PACKAGE_DIR}" \
     && . "${LIB_DIR}/${VENV_NAME}/bin/activate" \
     && export NODE_OPTIONS="--max-old-space-size=8192" \
