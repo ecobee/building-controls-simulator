@@ -100,8 +100,9 @@ class STATES(enum.IntEnum):
     # Weather states
     OUTDOOR_TEMPERATURE = enum.auto()
     OUTDOOR_RELATIVE_HUMIDITY = enum.auto()
-    DIRECT_NORMAL_RADIATION = enum.auto()
-    GLOBAL_HORIZONTAL_RADIATION = enum.auto()
+    DIRECT_NORMAL_IRRADIANCE = enum.auto()
+    GLOBAL_HORIZONTAL_IRRADIANCE = enum.auto()
+    DIFFUSE_HORIZONTAL_IRRADIANCE = enum.auto()
 
     # HVAC actuation states
     FAN_STAGE_ONE = enum.auto()

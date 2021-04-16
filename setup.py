@@ -4,8 +4,8 @@ REQUIRES = []
 
 # Semantic Versioning (https://semver.org/)
 _MAJOR_VERSION = "0"
-_MINOR_VERSION = "3"
-_PATCH_VERSION = "5"
+_MINOR_VERSION = "4"
+_PATCH_VERSION = "0"
 
 _VERSION_SUFFIX = "alpha"
 
@@ -18,7 +18,6 @@ __version__ = ".".join(
 )
 if _VERSION_SUFFIX:
     __version__ = "{}-{}".format(__version__, _VERSION_SUFFIX)
-
 
 setup(
     name="BuildingControlsSimulator",

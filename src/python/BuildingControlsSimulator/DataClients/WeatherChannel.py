@@ -60,7 +60,11 @@ class WeatherChannel(DataChannel):
 
     @epw_backfill_columns.default
     def get_epw_backfill_columns(self):
-        return [STATES.DIRECT_NORMAL_RADIATION, STATES.GLOBAL_HORIZONTAL_RADIATION]
+        return [
+            STATES.DIRECT_NORMAL_IRRADIANCE,
+            STATES.GLOBAL_HORIZONTAL_IRRADIANCE,
+            STATES.DIFFUSE_HORIZONTAL_IRRADIANCE,
+        ]
 
     # these are the solar radiation columns defined for unit conversions
     epw_radiation_columns = attr.ib()
@@ -296,10 +300,10 @@ class WeatherChannel(DataChannel):
             self.epw_data = self.epw_data.interpolate(axis="rows", method="ffill")
             self.epw_data = self.epw_data.reset_index()
 
-        # radiation columns unit converstion W/m2 -> Wh/m2
-        self.epw_data.loc[:, self.epw_radiation_columns] = self.epw_data.loc[
-            :, self.epw_radiation_columns
-        ] * (self.epw_step_size_seconds / 3600.0)
+        # NOTE:
+        # EnergyPlus assumes solar radiance is given in W/m2 instead of Wh/m2
+        # if more than one data interval per hour is given
+        # see: https://github.com/NREL/EnergyPlus/blob/v9.4.0/src/EnergyPlus/WeatherManager.cc#L3147
 
         # compute dewpoint from dry-bulb and relative humidity
         self.epw_data["temp_dew"] = Conversions.relative_humidity_to_dewpoint(

@@ -507,14 +507,20 @@ class Internal:
                     "channel": CHANNELS.WEATHER,
                     "unit": UNITS.RELATIVE_HUMIDITY,
                 },
-                STATES.DIRECT_NORMAL_RADIATION: {
+                STATES.DIRECT_NORMAL_IRRADIANCE: {
                     "name": "direct_normal_radiation",
                     "dtype": "float32",
                     "channel": CHANNELS.WEATHER,
                     "unit": UNITS.WATTS_PER_METER_SQUARED,
                 },
-                STATES.GLOBAL_HORIZONTAL_RADIATION: {
+                STATES.GLOBAL_HORIZONTAL_IRRADIANCE: {
                     "name": "global_horizontal_radiation",
+                    "dtype": "float32",
+                    "channel": CHANNELS.WEATHER,
+                    "unit": UNITS.WATTS_PER_METER_SQUARED,
+                },
+                STATES.DIFFUSE_HORIZONTAL_IRRADIANCE: {
+                    "name": "diffuse_horizontal_radiation",
                     "dtype": "float32",
                     "channel": CHANNELS.WEATHER,
                     "unit": UNITS.WATTS_PER_METER_SQUARED,
@@ -1105,6 +1111,7 @@ class EnergyPlusWeather:
         datetime_column: datetime_column,
         STATES.OUTDOOR_TEMPERATURE: "temp_air",
         STATES.OUTDOOR_RELATIVE_HUMIDITY: "relative_humidity",
-        STATES.DIRECT_NORMAL_RADIATION: "dni",
-        STATES.GLOBAL_HORIZONTAL_RADIATION: "ghi",
+        STATES.DIRECT_NORMAL_IRRADIANCE: "dni",
+        STATES.GLOBAL_HORIZONTAL_IRRADIANCE: "ghi",
+        STATES.DIFFUSE_HORIZONTAL_IRRADIANCE: "dhi",
     }
