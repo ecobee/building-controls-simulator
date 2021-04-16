@@ -301,7 +301,7 @@ class WeatherChannel(DataChannel):
             self.epw_data = self.epw_data.reset_index()
 
         # NOTE:
-        # EnergyPlus assumes solar radiance is given in W/m2 instead of Wh/m2 
+        # EnergyPlus assumes solar radiance is given in W/m2 instead of Wh/m2
         # if more than one data interval per hour is given
         # see: https://github.com/NREL/EnergyPlus/blob/v9.4.0/src/EnergyPlus/WeatherManager.cc#L3147
 
