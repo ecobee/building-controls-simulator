@@ -66,10 +66,10 @@ if os.environ.get("LOCAL_CACHE_DIR"):
                 "low_pass_filter_alpha": 0.5,
             },
             "expected_result": {
-                "mean_thermostat_temperature": 16.975116729736328,
-                "mean_thermostat_humidity": 92.66638946533203,
-                "output_format_mean_thermostat_temperature": 62.55436706542969,
-                "output_format_mean_thermostat_humidity": 92.66638946533203,
+                "mean_thermostat_temperature": 31.378896713256836,
+                "mean_thermostat_humidity": 94.83988189697266,
+                "output_format_mean_thermostat_temperature": 88.48159790039062,
+                "output_format_mean_thermostat_humidity": 94.83988189697266,
             },
         },
         {
@@ -115,10 +115,10 @@ if os.environ.get("LOCAL_CACHE_DIR"):
                 "low_pass_filter_alpha": 0.5,
             },
             "expected_result": {
-                "mean_thermostat_temperature": 14.182504653930664,
-                "mean_thermostat_humidity": 90.9677963256836,
-                "output_format_mean_thermostat_temperature": 57.52853775024414,
-                "output_format_mean_thermostat_humidity": 90.9677963256836,
+                "mean_thermostat_temperature": 31.407203674316406,
+                "mean_thermostat_humidity": 95.72138977050781,
+                "output_format_mean_thermostat_temperature": 88.53276062011719,
+                "output_format_mean_thermostat_humidity": 95.72138977050781,
             },
         },
     ]
@@ -194,10 +194,10 @@ if os.environ.get("DYD_GCS_URI_BASE"):
                 "low_pass_filter_alpha": 0.5,
             },
             "expected_result": {
-                "mean_thermostat_temperature": 20.811267852783203,
-                "mean_thermostat_humidity": 24.37480926513672,
-                "output_format_mean_thermostat_temperature": 69.45946502685547,
-                "output_format_mean_thermostat_humidity": 24.37480926513672,
+                "mean_thermostat_temperature": 20.912748336791992,
+                "mean_thermostat_humidity": 24.17266273498535,
+                "output_format_mean_thermostat_temperature": 69.64370727539062,
+                "output_format_mean_thermostat_humidity": 24.17266273498535,
             },
         },
         {
@@ -269,10 +269,10 @@ if os.environ.get("DYD_GCS_URI_BASE"):
                 "low_pass_filter_alpha": 0.5,
             },
             "expected_result": {
-                "mean_thermostat_temperature": 21.750398635864258,
-                "mean_thermostat_humidity": 75.98658752441406,
-                "output_format_mean_thermostat_temperature": 71.1498031616211,
-                "output_format_mean_thermostat_humidity": 75.98658752441406,
+                "mean_thermostat_temperature": 32.04988479614258,
+                "mean_thermostat_humidity": 44.438236236572266,
+                "output_format_mean_thermostat_temperature": 89.6878433227539,
+                "output_format_mean_thermostat_humidity": 44.438236236572266,
             },
         },
     ]
@@ -348,10 +348,10 @@ if os.environ.get("FLATFILES_GBQ_TABLE"):
                 "low_pass_filter_alpha": 0.2,
             },
             "expected_result": {
-                "mean_thermostat_temperature": 20.449106216430664,
-                "mean_thermostat_humidity": 21.244773864746094,
-                "output_format_mean_thermostat_temperature": 688.0977783203125,
-                "output_format_mean_thermostat_humidity": 21.244773864746094,
+                "mean_thermostat_temperature": 20.66449546813965,
+                "mean_thermostat_humidity": 20.944664001464844,
+                "output_format_mean_thermostat_temperature": 691.9891967773438,
+                "output_format_mean_thermostat_humidity": 20.944664001464844,
             },
         },
         {
@@ -423,10 +423,10 @@ if os.environ.get("FLATFILES_GBQ_TABLE"):
                 "low_pass_filter_alpha": 0.2,
             },
             "expected_result": {
-                "mean_thermostat_temperature": 20.167783737182617,
-                "mean_thermostat_humidity": 16.607179641723633,
-                "output_format_mean_thermostat_temperature": 683.0032348632812,
-                "output_format_mean_thermostat_humidity": 16.607179641723633,
+                "mean_thermostat_temperature": 20.20801544189453,
+                "mean_thermostat_humidity": 16.570194244384766,
+                "output_format_mean_thermostat_temperature": 683.7339477539062,
+                "output_format_mean_thermostat_humidity": 16.570194244384766,
             },
         },
     ]

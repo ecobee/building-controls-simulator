@@ -294,6 +294,24 @@ docker images
 docker rmi <image ID>
 ```
 
+### Run container with interactive bash tty instead of auto-starting jupyter-lab
+
+Start bash tty in container:
+```
+# --rm removes container on exit
+# --service-ports causes defined ports to be mapped
+# --volume maps volumes individually
+source .env
+docker-compose run \
+    --rm \
+    --service-ports \
+    --volume=${LOCAL_PACKAGE_DIR}:${DOCKER_PACKAGE_DIR}:consistent\
+building-controls-simulator bash
+```
+
+The advantage over using docker run (though very similar) is automatic sourcing
+of the .env environment variables and ports configured in `docker-compose.yml`.
+
 ### Run container without docker-compose
 
 Keep in mind this will not mount volumes.
@@ -322,7 +340,7 @@ Then simply run the `test_env_setup.sh` script to set up the test environment.
 This just runs the following commands in your terminal to test up the test env vars:
 ```bash
 set -a && source .test.env && set +a
-. scripts/epvm.sh 8-9-0
+. scripts/epvm.sh 9-4-0
 ```
 
 Finally, run all the tests:
@@ -354,11 +372,12 @@ pip freeze > requirements.txt
 ```
 
 Several dependencies are installed from source so these must be removed from the
-`requirements.txt` file. These are:
+`requirements.txt` file. These may be:
 
 ```
 PyFMI
 pyflux
+hpipm-python
 ```
 
 Then change line 124 in the `Dockerfile` back to use the `requirements.txt` file.
@@ -369,7 +388,7 @@ add the pinned dependencies to the Pipfile, discard those changes.
 
 1. Commit changes to master, reference new version number.
 2. Increment version number in `.env.template` and `setup.py`. Use semver (https://semver.org/) convention for release versioning.
-3. On GitHub use the releases/new wizard (https://github.com/ecobee/building-controls-simulator/releases/new). 
+3. On GitHub use the releases/new workflow (https://github.com/ecobee/building-controls-simulator/releases/new). 
 4. Build docker image locally.
 5. Run tests.
 6. Tag release
