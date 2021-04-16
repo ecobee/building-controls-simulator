@@ -48,7 +48,6 @@ googleapis-common-protos==1.53.0
 gprof2dot==2021.2.21
 grpcio==1.37.0
 h5pyd==0.8.0
-hpipm-python==0.2
 httplib2==0.19.1
 idna==2.10
 imagesize==1.2.0
