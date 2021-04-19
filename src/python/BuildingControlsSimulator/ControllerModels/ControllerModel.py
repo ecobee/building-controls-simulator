@@ -27,7 +27,8 @@ class ControllerModel(ABC):
     current_t_idx = attr.ib(default=None)
     current_t_start = attr.ib(default=None)
 
-    status = attr.ib(default=CONTROLLERSTATUS.DEFAULT)
+    init_status = attr.ib(factory=list)
+    step_status = attr.ib(factory=list)
     log_level = attr.ib(default=0)
 
     @abstractmethod
