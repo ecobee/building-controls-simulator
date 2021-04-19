@@ -60,7 +60,7 @@ RUN sudo apt-get update && sudo apt-get upgrade -y \
     xz-utils \
     zlib1g-dev \
     unzip \
-    python2.7 \
+    # python2.7 \
     python3-dev \
     python3-distutils \
     subversion \
@@ -97,13 +97,13 @@ RUN curl -sL https://deb.nodesource.com/setup_12.x | sudo bash - \
     && mv "FMUChecker-2.0.4-linux64" "FMUComplianceChecker" \
     && mkdir "fmu" \
     && cd "${EXT_DIR}" \
-    && wget "https://github.com/lbl-srg/EnergyPlusToFMU/archive/v3.0.0.zip" \
-    && unzip "v3.0.0.zip" && rm "v3.0.0.zip" \
+    && wget "https://github.com/lbl-srg/EnergyPlusToFMU/archive/refs/tags/v3.1.0.zip" \
+    && unzip "v3.1.0.zip" && rm "v3.1.0.zip" \
     && cd "${EXT_DIR}" \
-    && wget "https://github.com/modelon-community/PyFMI/archive/PyFMI-2.7.4.tar.gz" \
-    && tar -xzf "PyFMI-2.7.4.tar.gz" \
-    && mv "${EXT_DIR}/PyFMI-PyFMI-2.7.4" "${EXT_DIR}/PyFMI" \
-    && rm -rf "${EXT_DIR}/PyFMI-PyFMI-2.7.4" "PyFMI-2.7.4.tar.gz" \
+    && wget "https://github.com/modelon-community/PyFMI/archive/refs/tags/PyFMI-2.8.6.tar.gz" \
+    && tar -xzf "PyFMI-2.8.6.tar.gz" \
+    && mv "${EXT_DIR}/PyFMI-PyFMI-2.8.6" "${EXT_DIR}/PyFMI" \
+    && rm -rf "${EXT_DIR}/PyFMI-PyFMI-2.8.6" "PyFMI-2.8.6.tar.gz" \
     && mkdir "${PACKAGE_DIR}" \
     && sudo rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
