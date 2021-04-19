@@ -3,11 +3,11 @@
 # https://github.com/giaf/hpipm
 # https://github.com/giaf/blasfeo
 
-if [ -z "${BLASFEO_MAIN_FOLDER}" ]; then; 
+if [ -z "${BLASFEO_MAIN_FOLDER}" ]; then
     BLASFEO_MAIN_FOLDER="${EXT_DIR}/blasfeo"
 fi
 
-if [ -z "${HPIPM_MAIN_FOLDER}" ]; then; 
+if [ -z "${HPIPM_MAIN_FOLDER}" ]; then
     HPIPM_MAIN_FOLDER="${EXT_DIR}/hpipm"
 fi
 
