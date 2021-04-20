@@ -80,7 +80,7 @@ RUN sudo apt-get update && sudo apt-get upgrade -y \
 RUN curl -sL https://deb.nodesource.com/setup_12.x | sudo bash - \
     && sudo apt-get update && sudo apt-get install -y nodejs \
     && curl -L https://github.com/pyenv/pyenv-installer/raw/master/bin/pyenv-installer | bash \
-    && pyenv update && pyenv install 3.8.6 \
+    && pyenv update && pyenv install 3.8.9 \
     && mkdir "${LIB_DIR}" && mkdir "${EXT_DIR}" \
     && cd "${EXT_DIR}" \
     && wget "https://github.com/modelon-community/fmi-library/archive/2.2.3.zip" \
@@ -121,11 +121,11 @@ RUN sudo chown -R "${USER_NAME}" "${PACKAGE_DIR}" \
     && sudo chmod +x "./scripts/setup/install_ep.sh" \
     && sudo ./scripts/setup/install_ep.sh "${ENERGYPLUS_INSTALL_DIR}" \
     && cd "${PACKAGE_DIR}" \
-    && ${PYENV_ROOT}/versions/3.8.6/bin/python3.8 -m venv "${LIB_DIR}/${VENV_NAME}" \
+    && ${PYENV_ROOT}/versions/3.8.9/bin/python3.8 -m venv "${LIB_DIR}/${VENV_NAME}" \
     && . "${LIB_DIR}/${VENV_NAME}/bin/activate" \
     && pip install --no-cache-dir --upgrade setuptools pip \
-    && pip install --no-cache-dir -r "requirements.txt" \
-    # && pip install --no-cache-dir -r "requirements_unfixed.txt" \
+    # && pip install --no-cache-dir -r "requirements.txt" \
+    && pip install --no-cache-dir -r "requirements_unfixed.txt" \
     && pip install --editable . \
     && cd "${EXT_DIR}/PyFMI" \
     && python "setup.py" install --fmil-home="${FMIL_HOME}" \
