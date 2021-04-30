@@ -151,5 +151,7 @@ class DataSource(ABC):
 
         # get intersection of columns
         _df = _df[set(data_spec.full.columns) & set(_df.columns)]
+        # convert datetime_column to pd datetime
+        _df[data_spec.datetime_column] = pd.to_datetime(_df[data_spec.datetime_column])
 
         return _df

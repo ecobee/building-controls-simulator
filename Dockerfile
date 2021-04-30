@@ -60,12 +60,12 @@ RUN sudo apt-get update && sudo apt-get upgrade -y \
     xz-utils \
     zlib1g-dev \
     unzip \
-    # python2.7 \
     python3-dev \
     python3-distutils \
     subversion \
     p7zip-full \
     bc \
+    gfortran \
     && sudo rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
 # install nodejs and npm (for plotly)
@@ -75,7 +75,6 @@ RUN sudo apt-get update && sudo apt-get upgrade -y \
 # install FMUComplianceChecker
 # install EnergyPlusToFMU
 # download and extract PyFMI release
-# note: PyFMI 2.7.4 is latest release that doesnt require Assimulo which is unnecessary
 # because we dont use builtin PyFMI ODE simulation capabilities
 RUN curl -sL https://deb.nodesource.com/setup_12.x | sudo bash - \
     && sudo apt-get update && sudo apt-get install -y nodejs \
@@ -99,11 +98,36 @@ RUN curl -sL https://deb.nodesource.com/setup_12.x | sudo bash - \
     && cd "${EXT_DIR}" \
     && wget "https://github.com/lbl-srg/EnergyPlusToFMU/archive/refs/tags/v3.1.0.zip" \
     && unzip "v3.1.0.zip" && rm "v3.1.0.zip" \
+    # install sundials 4.1.0 is latest supported (dep of assimulo)
+    && cd "${EXT_DIR}" \
+    && wget "https://github.com/LLNL/sundials/releases/download/v4.1.0/sundials-4.1.0.tar.gz" \
+    && tar -xzf "sundials-4.1.0.tar.gz" && rm "sundials-4.1.0.tar.gz" \
+    && cd "sundials-4.1.0" \
+    && mkdir "build" \
+    && cd "build" \
+    && cmake -DCMAKE_INSTALL_PREFIX="${EXT_DIR}/sundials" .. \
+    && make install \
+    # intsall lapack and blas (dep of assimulo)
+    && cd "${EXT_DIR}" \
+    && wget "https://github.com/Reference-LAPACK/lapack/archive/refs/tags/v3.9.1.tar.gz" \
+    && tar -xzf "v3.9.1.tar.gz" && rm "v3.9.1.tar.gz" \
+    && cd "lapack-3.9.1" \
+    && mkdir build \
+    && cd "build" \
+    && cmake -DCMAKE_INSTALL_PREFIX="${EXT_DIR}/lapack" .. \
+    && cmake --build . -j --target install \
+    # get Assimulo source
+    && cd "${EXT_DIR}" \
+    && wget "https://github.com/modelon-community/Assimulo/archive/refs/tags/Assimulo-3.2.5.tar.gz" \
+    && tar -xzf "Assimulo-3.2.5.tar.gz" && rm "Assimulo-3.2.5.tar.gz" \
+    && mv "${EXT_DIR}/Assimulo-Assimulo-3.2.5" "${EXT_DIR}/Assimulo-3.2.5" \
+    # get PyFMI source
     && cd "${EXT_DIR}" \
     && wget "https://github.com/modelon-community/PyFMI/archive/refs/tags/PyFMI-2.8.6.tar.gz" \
-    && tar -xzf "PyFMI-2.8.6.tar.gz" \
+    && tar -xzf "PyFMI-2.8.6.tar.gz" && rm "PyFMI-2.8.6.tar.gz"\
     && mv "${EXT_DIR}/PyFMI-PyFMI-2.8.6" "${EXT_DIR}/PyFMI" \
-    && rm -rf "${EXT_DIR}/PyFMI-PyFMI-2.8.6" "PyFMI-2.8.6.tar.gz" \
+    # make PACKAGE_DIR and cleanup
+    && cd "${LIB_DIR}" \
     && mkdir "${PACKAGE_DIR}" \
     && sudo rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
@@ -114,7 +138,6 @@ COPY ./ "${PACKAGE_DIR}"
 # copied directory will not have user ownership by default
 # install energyplus versions desired in `scripts/setup/install_ep.sh`
 # install python dev environment
-# copy .bashrc file to user home for use on startup. This can be further configured by user.
 RUN sudo chown -R "${USER_NAME}" "${PACKAGE_DIR}" \
     && cd "${PACKAGE_DIR}" \
     && mv "${PACKAGE_DIR}/.vscode" "${LIB_DIR}/.vscode" \
@@ -126,9 +149,16 @@ RUN sudo chown -R "${USER_NAME}" "${PACKAGE_DIR}" \
     && pip install --no-cache-dir --upgrade setuptools pip \
     # && pip install --no-cache-dir -r "requirements.txt" \
     && pip install --no-cache-dir -r "requirements_unfixed.txt" \
+    # install bcs
     && pip install --editable . \
+    # install Assimulo (dep of PyFMI 2.8+)
+    && cd "${EXT_DIR}/Assimulo-3.2.5" \
+    && python setup.py install --sundials-home="${HOME}/sundials" --blas-home="${HOME}/lapack/lib" --lapack-home="${HOME}/lapack" \
+    # install PyFMI
     && cd "${EXT_DIR}/PyFMI" \
     && python "setup.py" install --fmil-home="${FMIL_HOME}" \
+    && cd "${PACKAGE_DIR}" \
+    && . "scripts/setup/install_solvers.sh" \
     && cd "${EXT_DIR}" \
     && wget "https://github.com/RJT1990/pyflux/archive/0.4.15.zip" \
     && unzip "0.4.15.zip" && rm "0.4.15.zip" \
@@ -137,6 +167,7 @@ RUN sudo chown -R "${USER_NAME}" "${PACKAGE_DIR}" \
 
 # install jupyter lab extensions for plotly
 # if jupyter lab build fails with webpack optimization, set --minimize=False
+# copy .rc files to user home for use on startup. This can be further configured by user.
 RUN cd "${PACKAGE_DIR}" \
     && . "${LIB_DIR}/${VENV_NAME}/bin/activate" \
     && export NODE_OPTIONS="--max-old-space-size=8192" \
@@ -146,6 +177,7 @@ RUN cd "${PACKAGE_DIR}" \
     && jupyter lab build --dev-build=False --minimize=True \
     && unset NODE_OPTIONS \
     && cp "${PACKAGE_DIR}/scripts/setup/.bashrc" "$HOME/.bashrc" \
+    && cp "${PACKAGE_DIR}/scripts/setup/.pdbrc" "$HOME/.pdbrc" \
     && chmod +x "${PACKAGE_DIR}/scripts/setup/jupyter_lab_bkgrnd.sh"
 
 WORKDIR "${LIB_DIR}"

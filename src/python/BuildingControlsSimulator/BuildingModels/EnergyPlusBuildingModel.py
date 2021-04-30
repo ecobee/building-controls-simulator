@@ -63,6 +63,8 @@ class EnergyPlusBuildingModel(BuildingModel):
     heat_on = attr.ib(default=False)
     cool_on = attr.ib(default=False)
 
+    model_creation_step = attr.ib(default=True)
+
     # for reference on how attr defaults wor for mutable types (e.g. list) see:
     # https://www.attrs.org/en/stable/init.html#defaults
     input_states = attr.ib()

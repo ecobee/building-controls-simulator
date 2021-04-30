@@ -1,0 +1,3 @@
+import IPython 
+# Interactive shell
+alias interacti IPython.embed()
