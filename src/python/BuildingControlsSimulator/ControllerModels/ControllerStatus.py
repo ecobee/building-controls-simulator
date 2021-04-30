@@ -14,6 +14,7 @@ class CONTROLLERSTATUS(enum.IntEnum):
     MODEL_VALIDATION_FAILED = enum.auto()
     OPTIMIZATION_SUCCESSFUL = enum.auto()
     INFEASIBLE_OPTIMIZATION = enum.auto()
+    POSTPROCESSING_SUCCESSFUL = enum.auto()
     STEP_SUCCESSFUL = enum.auto()
     STEP_SKIPPED = enum.auto()
     STEP_FAILED = enum.auto()

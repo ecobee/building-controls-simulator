@@ -377,6 +377,7 @@ Several dependencies are installed from source so these must be removed from the
 ```
 PyFMI
 pyflux
+Assimulo
 hpipm-python
 ```
 
