@@ -158,13 +158,13 @@ class Simulation:
     def create_models(self, preprocess_check=False):
         # TODO: only have the building model that requires dynamic building
         # when other models exist that must be created generalize this interface
-        # self.building_model.step_size_seconds = self.step_size_seconds
-        self.building_model.create_model_fmu(
-            sim_config=self.config,
-            weather_channel=self.data_client.weather,
-            datetime_channel=self.data_client.datetime,
-            preprocess_check=preprocess_check,
-        )
+        if self.building_model.model_creation_step:
+            self.building_model.create_model_fmu(
+                sim_config=self.config,
+                weather_channel=self.data_client.weather,
+                datetime_channel=self.data_client.datetime,
+                preprocess_check=preprocess_check,
+            )
 
     def initialize(self, data_spec):
         """initialize sub-system models and memory for simulation"""
@@ -191,6 +191,7 @@ class Simulation:
             change_points_comfort_prefs=self.data_client.thermostat.change_points_comfort_prefs,
             change_points_hvac_mode=self.data_client.thermostat.change_points_hvac_mode,
             init=True,
+            time_utc=None,
         )
 
         self.controller_model.initialize(

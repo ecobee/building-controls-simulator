@@ -9,12 +9,10 @@ import numpy as np
 import plotly.graph_objects as go
 import plotly.express as px
 import plotly
-import attr
 
 from BuildingControlsSimulator.DataClients.DataStates import STATES
 
 
-@attr.s
 class OutputAnalysis(object):
     """OutputAnalysis
 
@@ -25,8 +23,21 @@ class OutputAnalysis(object):
     ```
     """
 
-    simulations = attr.ib()
-    data_spec = attr.ib()
+    def __init__(self, simulations, data_spec, humidity=False):
+        self.data_spec = data_spec
+        self.humidity = humidity
+
+        self.n_simulations = len(simulations)
+        self.sim_names = []
+        self.input_data = []
+        self.output_data = []
+
+        for sim in simulations:
+            self.sim_names.append(sim.sim_name)
+            self.input_data.append(sim.full_input)
+            self.output_data.append(sim.output)
+
+        
 
     def postprocess(self):
         self.df["datetime"] = self.df["time_seconds"].apply(
@@ -48,22 +59,21 @@ class OutputAnalysis(object):
 
     def comparison_plot(self, show=False, actuals=True, local_time=True):
         """"""
-        n_simulations = len(self.simulations)
         _titles = tuple(
             ["Solar", "Weather"]
             + sum(
                 [
                     [
-                        f"{'<br>'.join(textwrap.wrap(_sim.sim_name, 120))}<br>Thermal Response",
+                        f"{'<br>'.join(textwrap.wrap(sim_name, 120))}<br>Thermal Response",
                         "Equipment Run-time",
                     ]
-                    for _sim in self.simulations
+                    for sim_name in self.sim_names
                 ],
                 [],
             )
         )
-        _rows = 2 * n_simulations + 2
-        _row_heights = [1, 1] + [1, 1] * n_simulations
+        _rows = 2 * self.n_simulations + 2
+        _row_heights = [1, 1] + [1, 1] * self.n_simulations
         _specs = [[{"secondary_y": False},], [{"secondary_y": True},]] + [
             [
                 {"secondary_y": True},
@@ -71,7 +81,7 @@ class OutputAnalysis(object):
             [
                 {"secondary_y": False},
             ],
-        ] * n_simulations
+        ] * self.n_simulations
 
         fig = plotly.subplots.make_subplots(
             subplot_titles=_titles,
@@ -84,38 +94,36 @@ class OutputAnalysis(object):
             specs=_specs,
         )
 
+        # solar and weather will be the same for all simulations
         self.solar_plot(
-            output_df=self.simulations[0].output,
-            input_df=self.simulations[0].full_input,
+            output_df=self.output_data[0],
+            input_df=self.input_data[0],
             fig=fig,
             row=1,
             col=1,
         )
 
         self.weather_plot(
-            output_df=self.simulations[0].output,
-            input_df=self.simulations[0].full_input,
+            output_df=self.output_data[0],
+            input_df=self.input_data[0],
             fig=fig,
             row=2,
             col=1,
         )
 
-        for _idx, _simulation in enumerate(self.simulations):
+        for _idx in range(self.n_simulations):
             row_idx = _idx * 2 + 3
 
-            _output_df = _simulation.output
-            _input_df = _simulation.full_input
-
             self.thermal_plot(
-                output_df=_output_df,
-                input_df=_input_df,
+                output_df=self.output_data[_idx],
+                input_df=self.input_data[_idx],
                 fig=fig,
                 row=row_idx,
                 col=1,
             )
             self.control_actuation_plot(
-                output_df=_output_df,
-                input_df=_input_df,
+                output_df=self.output_data[_idx],
+                input_df=self.input_data[_idx],
                 fig=fig,
                 row=row_idx + 1,
                 col=1,
@@ -149,10 +157,8 @@ class OutputAnalysis(object):
 
     def diagnostic_plot(self, show=False, actuals=True, local_time=True):
         """"""
-        for _simulation in self.simulations:
-
-            _output_df = _simulation.output
-            _input_df = _simulation.full_input
+        for _idx in range(self.n_simulations):
+            
             if actuals:
                 _titles = (
                     "Solar",
@@ -215,31 +221,31 @@ class OutputAnalysis(object):
             )
 
             self.solar_plot(
-                output_df=_output_df,
-                input_df=_input_df,
+                output_df=self.output_data[_idx],
+                input_df=self.input_data[_idx],
                 fig=fig,
                 row=1,
                 col=1,
             )
 
             self.weather_plot(
-                output_df=_output_df,
-                input_df=_input_df,
+                output_df=self.output_data[_idx],
+                input_df=self.input_data[_idx],
                 fig=fig,
                 row=2,
                 col=1,
             )
 
             self.thermal_plot(
-                output_df=_output_df,
-                input_df=_input_df,
+                output_df=self.output_data[_idx],
+                input_df=self.input_data[_idx],
                 fig=fig,
                 row=3,
                 col=1,
             )
             self.control_actuation_plot(
-                output_df=_output_df,
-                input_df=_input_df,
+                output_df=self.output_data[_idx],
+                input_df=self.input_data[_idx],
                 fig=fig,
                 row=4,
                 col=1,
@@ -247,15 +253,15 @@ class OutputAnalysis(object):
 
             if actuals:
                 self.thermal_plot(
-                    output_df=_input_df,
-                    input_df=_input_df,
+                    output_df=self.input_data[_idx],
+                    input_df=self.input_data[_idx],
                     fig=fig,
                     row=5,
                     col=1,
                 )
                 self.control_actuation_plot(
-                    output_df=_input_df,
-                    input_df=_input_df,
+                    output_df=self.input_data[_idx],
+                    input_df=self.input_data[_idx],
                     fig=fig,
                     row=6,
                     col=1,
@@ -362,18 +368,19 @@ class OutputAnalysis(object):
             secondary_y=False,
         )
 
-        fig.add_trace(
-            go.Scatter(
-                x=input_df[STATES.DATE_TIME],
-                y=input_df[STATES.OUTDOOR_RELATIVE_HUMIDITY],
-                mode="lines",
-                name=self.data_spec.full.spec[STATES.OUTDOOR_RELATIVE_HUMIDITY]["name"],
-                hoverlabel={"namelength": -1},
-            ),
-            row=row,
-            col=col,
-            secondary_y=True,
-        )
+        if self.humidity:
+            fig.add_trace(
+                go.Scatter(
+                    x=input_df[STATES.DATE_TIME],
+                    y=input_df[STATES.OUTDOOR_RELATIVE_HUMIDITY],
+                    mode="lines",
+                    name=self.data_spec.full.spec[STATES.OUTDOOR_RELATIVE_HUMIDITY]["name"],
+                    hoverlabel={"namelength": -1},
+                ),
+                row=row,
+                col=col,
+                secondary_y=True,
+            )
 
     def thermal_plot(self, output_df, input_df, fig, row, col):
         """"""
@@ -395,7 +402,7 @@ class OutputAnalysis(object):
 
         temperature_states = [
             STATES.TEMPERATURE_CTRL,
-            STATES.THERMOSTAT_TEMPERATURE,
+            # STATES.THERMOSTAT_TEMPERATURE,
             # STATES.RS1_TEMPERATURE,
             # STATES.RS2_TEMPERATURE,
         ]
@@ -414,19 +421,21 @@ class OutputAnalysis(object):
                 secondary_y=False,
             )
 
-        fig.add_trace(
-            go.Scatter(
-                x=output_df[STATES.DATE_TIME],
-                y=output_df[STATES.THERMOSTAT_HUMIDITY],
-                mode="lines",
-                line=dict(color="blue"),
-                name=self.data_spec.full.spec[STATES.THERMOSTAT_HUMIDITY]["name"],
-                hoverlabel={"namelength": -1},
-            ),
-            row=row,
-            col=col,
-            secondary_y=True,
-        )
+        if self.humidity:
+            fig.add_trace(
+                go.Scatter(
+                    x=output_df[STATES.DATE_TIME],
+                    y=output_df[STATES.THERMOSTAT_HUMIDITY],
+                    mode="lines",
+                    line=dict(color="blue"),
+                    name=self.data_spec.full.spec[STATES.THERMOSTAT_HUMIDITY]["name"],
+                    hoverlabel={"namelength": -1},
+                    visible="legendonly",
+                ),
+                row=row,
+                col=col,
+                secondary_y=True,
+            )
 
         fig.add_trace(
             go.Scatter(
