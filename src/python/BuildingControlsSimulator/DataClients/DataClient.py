@@ -72,6 +72,7 @@ class DataClient:
     eplus_warmup_seconds = attr.ib(default=None)
     internal_spec = attr.ib(factory=Internal)
     forecast_from_measured = attr.ib(default=True)
+    has_data = attr.ib(default=False)
 
     def __attrs_post_init__(self):
         # first, post init class specification
@@ -102,6 +103,10 @@ class DataClient:
             )
 
     def get_data(self):
+        # check if data has already been fetched by another simulation
+        if self.has_data:
+            return
+
         # check for invalid start/end combination
         if self.sim_config["end_utc"] <= self.sim_config["start_utc"]:
             raise ValueError("sim_config contains invalid start_utc >= end_utc.")
@@ -348,6 +353,9 @@ class DataClient:
             sim_config=self.sim_config,
             total_sim_steps=_total_sim_steps,
         )
+
+        # set flag for other simulations using this data client
+        self.has_data = True
 
     def get_simulation_period(self, expected_period, internal_timezone):
         # set start and end times from full_data_periods and simulation config
