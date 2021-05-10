@@ -158,13 +158,13 @@ class Simulation:
     def create_models(self, preprocess_check=False):
         # TODO: only have the building model that requires dynamic building
         # when other models exist that must be created generalize this interface
-        # self.building_model.step_size_seconds = self.step_size_seconds
-        self.building_model.create_model_fmu(
-            sim_config=self.config,
-            weather_channel=self.data_client.weather,
-            datetime_channel=self.data_client.datetime,
-            preprocess_check=preprocess_check,
-        )
+        if self.building_model.model_creation_step:
+            self.building_model.create_model_fmu(
+                sim_config=self.config,
+                weather_channel=self.data_client.weather,
+                datetime_channel=self.data_client.datetime,
+                preprocess_check=preprocess_check,
+            )
 
     def initialize(self, data_spec):
         """initialize sub-system models and memory for simulation"""
@@ -191,6 +191,7 @@ class Simulation:
             change_points_comfort_prefs=self.data_client.thermostat.change_points_comfort_prefs,
             change_points_hvac_mode=self.data_client.thermostat.change_points_hvac_mode,
             init=True,
+            time_utc=None,
         )
 
         self.controller_model.initialize(
@@ -289,11 +290,14 @@ class Simulation:
         # convert output to dataframe
         self.output = pd.DataFrame.from_dict(
             {
-                STATES.DATE_TIME: self.data_client.datetime.data[STATES.DATE_TIME],
+                STATES.DATE_TIME: self.data_client.datetime.data[STATES.DATE_TIME].copy(
+                    deep=True
+                ),
                 **self.controller_model.output,
                 **self.building_model.output,
             }
         )
+
         # resample output time steps to output step size frequency
         self.output = self.data_client.resample_to_step_size(
             df=self.output,
@@ -311,7 +315,7 @@ class Simulation:
                 self.output[STATES.DATE_TIME] < dp_end
             )
 
-        self.output = self.output[_mask]
+        self.output = self.output[_mask].reset_index(drop=True)
 
         # save output
         self.data_client.store_output(

@@ -42,6 +42,10 @@ def spec_unit_conversion(df, src_spec, dest_spec):
                     dest_unit == UNITS.FARHENHEIT
                 ):
                     df[k] = df[k] / 10.0
+                elif (src_unit == UNITS.FARHENHEIT) and (
+                    dest_unit == UNITS.FARHENHEITx10
+                ):
+                    df[k] = df[k] * 10.0
                 elif (src_unit == UNITS.FARHENHEITx10) and (dest_unit == UNITS.CELSIUS):
                     df[k] = Conversions.F2C(df[k] / 10.0)
                 elif (src_unit == UNITS.CELSIUS) and (dest_unit == UNITS.FARHENHEITx10):
@@ -801,6 +805,24 @@ class FlatFilesSpec:
                     "dtype": "float32",
                     "channel": CHANNELS.WEATHER,
                     "unit": UNITS.RELATIVE_HUMIDITY,
+                },
+                "DirectNormalRadiation": {
+                    "internal_state": STATES.DIRECT_NORMAL_IRRADIANCE,
+                    "dtype": "float32",
+                    "channel": CHANNELS.WEATHER,
+                    "unit": UNITS.WATTS_PER_METER_SQUARED,
+                },
+                "GlobalHorizontalRadiation": {
+                    "internal_state": STATES.GLOBAL_HORIZONTAL_IRRADIANCE,
+                    "dtype": "float32",
+                    "channel": CHANNELS.WEATHER,
+                    "unit": UNITS.WATTS_PER_METER_SQUARED,
+                },
+                "DiffuseHorizontalRadiation": {
+                    "internal_state": STATES.DIFFUSE_HORIZONTAL_IRRADIANCE,
+                    "dtype": "float32",
+                    "channel": CHANNELS.WEATHER,
+                    "unit": UNITS.WATTS_PER_METER_SQUARED,
                 },
             },
         )

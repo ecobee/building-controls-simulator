@@ -26,8 +26,10 @@ class ControllerModel(ABC):
 
     current_t_idx = attr.ib(default=None)
     current_t_start = attr.ib(default=None)
+    start_utc = attr.ib(default=None)
 
-    status = attr.ib(default=CONTROLLERSTATUS.DEFAULT)
+    init_status = attr.ib(factory=list)
+    step_status = attr.ib(factory=list)
     log_level = attr.ib(default=0)
 
     @abstractmethod
@@ -50,13 +52,11 @@ class ControllerModel(ABC):
         """Defines human readable uniquely identifing name"""
         pass
 
-    def set_status(self, status, min_log_level):
-        self.status = status
-        self.log_status(min_log_level=min_log_level)
-
-    def log_status(self, min_log_level):
-        if self.log_level >= min_log_level:
-            logging.info(f"{type(self)}: status:{str(self.status)}")
+    def get_step_time_utc(self):
+        """For debugging use"""
+        return self.start_utc + pd.Timedelta(
+            seconds=self.current_t_idx * self.step_size_seconds
+        )
 
     def update_settings(
         self,

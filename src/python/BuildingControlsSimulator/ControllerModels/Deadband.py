@@ -10,6 +10,7 @@ from BuildingControlsSimulator.ControllerModels.ControllerModel import (
     ControllerModel,
 )
 from BuildingControlsSimulator.DataClients.DataStates import STATES
+from BuildingControlsSimulator.ControllerModels.ControllerStatus import CONTROLLERSTATUS
 from BuildingControlsSimulator.Conversions.Conversions import Conversions
 
 
@@ -141,6 +142,9 @@ class Deadband(ControllerModel):
         step_weather_forecast_input,
     ):
         """Simulate controller time step."""
+        self.step_status = []
+        self.step_status.append(CONTROLLERSTATUS.STEP_BEGAN)
+
         t_ctrl = self.calc_t_control(step_sensor_input)
         self.step_output[STATES.TEMPERATURE_CTRL] = t_ctrl
 
@@ -179,7 +183,7 @@ class Deadband(ControllerModel):
 
         self.add_step_to_output(self.step_output)
         self.current_t_idx += 1
-
+        self.step_status.append(CONTROLLERSTATUS.STEP_SUCCESSFUL)
         return self.step_output
 
     def add_step_to_output(self, step_output):

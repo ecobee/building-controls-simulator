@@ -63,6 +63,10 @@ class EnergyPlusBuildingModel(BuildingModel):
     heat_on = attr.ib(default=False)
     cool_on = attr.ib(default=False)
 
+    model_creation_step = attr.ib(default=True)
+    initialized = attr.ib(default=False)
+    model_created = attr.ib(default=False)
+
     # for reference on how attr defaults wor for mutable types (e.g. list) see:
     # https://www.attrs.org/en/stable/init.html#defaults
     input_states = attr.ib()
@@ -165,29 +169,33 @@ class EnergyPlusBuildingModel(BuildingModel):
         This script litters temporary files of fixed names which get clobbered
         if running in parallel. Need to fix scripts to be able to run in parallel.
         """
-        # pre-processing of weather data for EnergyPlus usage
-        self.epw_path = weather_channel.make_epw_file(
-            sim_config=sim_config,
-            datetime_channel=datetime_channel,
-            epw_step_size_seconds=self.step_size_seconds,
-        )
+        if not self.model_created:
 
-        self.idf.timesteps_per_hour = self.timesteps_per_hour
-        self.idf.init_temperature = self.init_temperature
-        self.idf.init_humidity = self.init_humidity
-        self.idf.preprocess(
-            sim_config,
-            datetime_channel=datetime_channel,
-            weather_channel=weather_channel,
-            preprocess_check=preprocess_check,
-        )
+            # pre-processing of weather data for EnergyPlus usage
+            self.epw_path = weather_channel.make_epw_file(
+                sim_config=sim_config,
+                datetime_channel=datetime_channel,
+                epw_step_size_seconds=self.step_size_seconds,
+            )
 
-        self.call_energy_plus_to_fmu()
+            self.idf.timesteps_per_hour = self.timesteps_per_hour
+            self.idf.init_temperature = self.init_temperature
+            self.idf.init_humidity = self.init_humidity
+            self.idf.preprocess(
+                sim_config,
+                datetime_channel=datetime_channel,
+                weather_channel=weather_channel,
+                preprocess_check=preprocess_check,
+            )
+
+            self.call_energy_plus_to_fmu()
+
+            self.model_created = True
 
         return self.fmu_path
 
     def call_energy_plus_to_fmu(self):
-        cmd = f"python2.7 {self.eplustofmu_path}"
+        cmd = f"python {self.eplustofmu_path}"
         cmd += f" -i {self.idf.idd_path}"
         cmd += f" -w {self.epw_path}"
         cmd += f" -a {self.fmi_version}"
@@ -216,7 +224,10 @@ class EnergyPlusBuildingModel(BuildingModel):
         logger.info(f"Initializing EnergyPlusBuildingModel: {self.fmu_path}")
         self.allocate_output_memory(t_start, t_end, t_step, data_spec, categories_dict)
         self.init_step_output()
-        self.fmu = pyfmi.load_fmu(fmu=self.fmu_path)
+
+        if not self.initialized:
+            self.fmu = pyfmi.load_fmu(fmu=self.fmu_path)
+
         # EnergyPlusToFMU requires that FMU is initialized for multiples of
         # 86400 seconds (1 day), with t_start being the time in seconds
         # since the start of the year. t_end can be rounded up as needed and
@@ -227,13 +238,17 @@ class EnergyPlusBuildingModel(BuildingModel):
         # However, the entry Day of Week for Start Day will be used.
         t_end = t_start + math.ceil((t_end - t_start) / 86400.0) * 86400
         self.fmu.initialize(t_start, t_end)
+        self.initialized = True
 
     def tear_down(self):
         """tear down FMU"""
         # Note: calling fmu.terminate() and fmu.free_instance() should not be needed
         # this causes segfault sometimes
         # energyplus FMU should take care of its own tear down
-        pass
+        # del self.fmu
+        # self.fmu = None
+        self.fmu.reset()
+        # self.initialized = False
 
     def init_step_output(self):
         self.step_output[STATES.THERMOSTAT_TEMPERATURE] = self.init_temperature
@@ -406,7 +421,8 @@ class EnergyPlusBuildingModel(BuildingModel):
             if self.heat_on:
                 iter_step_control_input[heat_col] = min(
                     max(
-                        step_control_input[heat_col] - self.step_size_seconds * _iter, 0
+                        step_control_input[heat_col] - self.step_size_seconds * _iter,
+                        0,
                     ),
                     self.step_size_seconds,
                 )
@@ -424,7 +440,8 @@ class EnergyPlusBuildingModel(BuildingModel):
             if self.cool_on:
                 iter_step_control_input[cool_col] = min(
                     max(
-                        step_control_input[cool_col] - self.step_size_seconds * _iter, 0
+                        step_control_input[cool_col] - self.step_size_seconds * _iter,
+                        0,
                     ),
                     self.step_size_seconds,
                 )
