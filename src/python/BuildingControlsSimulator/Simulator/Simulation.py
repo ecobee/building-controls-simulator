@@ -290,11 +290,14 @@ class Simulation:
         # convert output to dataframe
         self.output = pd.DataFrame.from_dict(
             {
-                STATES.DATE_TIME: self.data_client.datetime.data[STATES.DATE_TIME],
+                STATES.DATE_TIME: self.data_client.datetime.data[STATES.DATE_TIME].copy(
+                    deep=True
+                ),
                 **self.controller_model.output,
                 **self.building_model.output,
             }
         )
+
         # resample output time steps to output step size frequency
         self.output = self.data_client.resample_to_step_size(
             df=self.output,
@@ -312,7 +315,7 @@ class Simulation:
                 self.output[STATES.DATE_TIME] < dp_end
             )
 
-        self.output = self.output[_mask]
+        self.output = self.output[_mask].reset_index(drop=True)
 
         # save output
         self.data_client.store_output(

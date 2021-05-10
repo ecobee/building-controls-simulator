@@ -806,19 +806,19 @@ class FlatFilesSpec:
                     "channel": CHANNELS.WEATHER,
                     "unit": UNITS.RELATIVE_HUMIDITY,
                 },
-                "DirectNormalRadiation":{
+                "DirectNormalRadiation": {
                     "internal_state": STATES.DIRECT_NORMAL_IRRADIANCE,
                     "dtype": "float32",
                     "channel": CHANNELS.WEATHER,
                     "unit": UNITS.WATTS_PER_METER_SQUARED,
                 },
-                "GlobalHorizontalRadiation":{
+                "GlobalHorizontalRadiation": {
                     "internal_state": STATES.GLOBAL_HORIZONTAL_IRRADIANCE,
                     "dtype": "float32",
                     "channel": CHANNELS.WEATHER,
                     "unit": UNITS.WATTS_PER_METER_SQUARED,
                 },
-                "DiffuseHorizontalRadiation":{
+                "DiffuseHorizontalRadiation": {
                     "internal_state": STATES.DIFFUSE_HORIZONTAL_IRRADIANCE,
                     "dtype": "float32",
                     "channel": CHANNELS.WEATHER,

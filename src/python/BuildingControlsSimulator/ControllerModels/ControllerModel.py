@@ -54,7 +54,9 @@ class ControllerModel(ABC):
 
     def get_step_time_utc(self):
         """For debugging use"""
-        return self.start_utc + pd.Timedelta(seconds=self.current_t_idx * self.step_size_seconds)
+        return self.start_utc + pd.Timedelta(
+            seconds=self.current_t_idx * self.step_size_seconds
+        )
 
     def update_settings(
         self,
