@@ -9,6 +9,7 @@ import numpy as np
 import plotly.graph_objects as go
 import plotly.express as px
 import plotly
+import plotly.figure_factory as ff
 
 from BuildingControlsSimulator.DataClients.DataStates import STATES
 
@@ -29,15 +30,33 @@ class OutputAnalysis(object):
 
         self.n_simulations = len(simulations)
         self.sim_names = []
+        self.time_zones = []
         self.input_data = []
         self.output_data = []
+        self.controller_options = []
+        self.controller_stage_cost = []
 
         for sim in simulations:
+            _options = getattr(sim.controller_model, "options", None)
+            if not _options:
+                _controllers = getattr(sim.controller_model, "controllers", None)
+                if _controllers:
+                    _options = getattr(_controllers, "options", None)
+
+            self.controller_options.append(_options)
+
+            _stage_cost = getattr(sim.controller_model, "stage_cost", None)
+            if not _stage_cost:
+                _controllers = getattr(sim.controller_model, "controllers", None)
+                if _controllers:
+                    _stage_cost = getattr(_controllers, "stage_cost", None)
+
+            self.controller_stage_cost.append(_stage_cost)
+
             self.sim_names.append(sim.sim_name)
+            self.time_zones.append(sim.data_client.datetime.timezone)
             self.input_data.append(sim.full_input)
             self.output_data.append(sim.output)
-
-        
 
     def postprocess(self):
         self.df["datetime"] = self.df["time_seconds"].apply(
@@ -64,16 +83,20 @@ class OutputAnalysis(object):
             + sum(
                 [
                     [
-                        f"{'<br>'.join(textwrap.wrap(sim_name, 120))}<br>Thermal Response",
+                        f"{_idx}: {'<br>'.join(textwrap.wrap(sim_name, 120))}<br>Thermal Response",
                         "Equipment Run-time",
+                        # "Comfort",
                     ]
-                    for sim_name in self.sim_names
+                    for _idx, sim_name in enumerate(self.sim_names)
                 ],
                 [],
             )
         )
-        _rows = 2 * self.n_simulations + 2
-        _row_heights = [1, 1] + [1, 1] * self.n_simulations
+
+        n_const_plots = 2
+        n_var_plots = 2
+        _rows = n_const_plots + n_var_plots * self.n_simulations
+        _row_heights = [1] * n_const_plots + [1] * n_var_plots * self.n_simulations
         _specs = [[{"secondary_y": False},], [{"secondary_y": True},]] + [
             [
                 {"secondary_y": True},
@@ -81,6 +104,9 @@ class OutputAnalysis(object):
             [
                 {"secondary_y": False},
             ],
+            # [
+            #     {"secondary_y": False},
+            # ],
         ] * self.n_simulations
 
         fig = plotly.subplots.make_subplots(
@@ -90,63 +116,142 @@ class OutputAnalysis(object):
             shared_xaxes=True,
             x_title="Time",
             row_heights=_row_heights,  # relative heights
-            vertical_spacing=0.05,
+            # vertical_spacing=0.05,
             specs=_specs,
         )
-
-        # solar and weather will be the same for all simulations
-        self.solar_plot(
-            output_df=self.output_data[0],
-            input_df=self.input_data[0],
-            fig=fig,
-            row=1,
-            col=1,
-        )
-
-        self.weather_plot(
-            output_df=self.output_data[0],
-            input_df=self.input_data[0],
-            fig=fig,
-            row=2,
-            col=1,
-        )
-
         for _idx in range(self.n_simulations):
-            row_idx = _idx * 2 + 3
+
+            if local_time:
+                # need to copy if modifying time zone
+                _output_data = self.output_data[_idx].copy(deep=True)
+                _output_data[STATES.DATE_TIME] = _output_data[
+                    STATES.DATE_TIME
+                ].dt.tz_convert(self.time_zones[_idx])
+                _input_data = self.input_data[_idx].copy(deep=True)
+                _input_data[STATES.DATE_TIME] = _input_data[
+                    STATES.DATE_TIME
+                ].dt.tz_convert(self.time_zones[_idx])
+            else:
+                _output_data = self.output_data[_idx]
+                _input_data = self.input_data[_idx]
+
+            if _idx == 0:
+                # solar and weather will be the same for all simulations
+                self.solar_plot(
+                    output_df=_output_data,
+                    input_df=_input_data,
+                    fig=fig,
+                    row=1,
+                    col=1,
+                )
+
+                self.weather_plot(
+                    output_df=_output_data,
+                    input_df=_input_data,
+                    fig=fig,
+                    row=2,
+                    col=1,
+                )
+
+            row_idx = _idx * n_var_plots + (n_const_plots + 1)
 
             self.thermal_plot(
-                output_df=self.output_data[_idx],
-                input_df=self.input_data[_idx],
+                output_df=_output_data,
+                input_df=_input_data,
+                idx=_idx,
                 fig=fig,
                 row=row_idx,
                 col=1,
             )
+
             self.control_actuation_plot(
-                output_df=self.output_data[_idx],
-                input_df=self.input_data[_idx],
+                output_df=_output_data,
+                input_df=_input_data,
+                idx=_idx,
                 fig=fig,
                 row=row_idx + 1,
                 col=1,
             )
 
-        # _min_date_time = _output_df[STATES.DATE_TIME].min()
-        # _min_temperature = min(
-        #     _output_df[STATES.THERMOSTAT_TEMPERATURE].min(),
-        #     _input_df[STATES.OUTDOOR_TEMPERATURE].min()
-        # )
-
-        # fig.add_annotation(
-        #     x=_min_date_time, y=_min_temperature,
-        #     text=_simulation.sim_name,
-        #     showarrow=False,
-        #     yshift=10
-        # )
+            # self.comfort_plot(
+            #     output_df=_output_data,
+            #     input_df=_input_data,
+            #     idx=_idx,
+            #     fig=fig,
+            #     row=row_idx + 2,
+            #     col=1,
+            # )
 
         layout = go.Layout(
             title_text="Comparison Plots",
             autosize=False,
             width=1500,
-            height=1000,
+            height=n_var_plots * self.n_simulations * 200 + n_const_plots * 200,
+            hovermode="x unified",
+        )
+
+        fig.update_layout(layout)
+
+        if show:
+            fig.show()
+
+    def performance_plot(self, show=False, actuals=True, local_time=True):
+        """"""
+        _titles = ["Cycle lengths"] * self.n_simulations
+        _rows = 1 * self.n_simulations
+        _row_heights = [2] * self.n_simulations
+        _specs = [
+            # [
+            #     {"secondary_y": False},
+            # ],
+            [
+                {"secondary_y": False},
+            ],
+        ] * self.n_simulations
+
+        fig = plotly.subplots.make_subplots(
+            subplot_titles=_titles,
+            rows=_rows,
+            cols=1,
+            shared_xaxes=False,
+            x_title="Time",
+            row_heights=_row_heights,  # relative heights
+            vertical_spacing=0.05,
+            specs=_specs,
+        )
+
+        for _idx in range(self.n_simulations):
+
+            if local_time:
+                # need to copy if modifying time zone
+                _output_data = self.output_data[_idx].copy(deep=True)
+                _output_data[STATES.DATE_TIME] = _output_data[
+                    STATES.DATE_TIME
+                ].dt.tz_convert(self.time_zones[_idx])
+                _input_data = self.input_data[_idx].copy(deep=True)
+                _input_data[STATES.DATE_TIME] = _input_data[
+                    STATES.DATE_TIME
+                ].dt.tz_convert(self.time_zones[_idx])
+            else:
+                _output_data = self.output_data[_idx]
+                _input_data = self.input_data[_idx]
+
+            row_idx = _idx * 1 + 1
+
+            self.cycle_plot(
+                output_df=_output_data,
+                input_df=_input_data,
+                idx=_idx,
+                fig=fig,
+                row=row_idx,
+                col=1,
+            )
+
+        layout = go.Layout(
+            title_text="Performance Plots",
+            autosize=False,
+            width=1500,
+            height=400,
             hovermode="x unified",
         )
 
@@ -158,7 +263,7 @@ class OutputAnalysis(object):
     def diagnostic_plot(self, show=False, actuals=True, local_time=True):
         """"""
         for _idx in range(self.n_simulations):
-            
+
             if actuals:
                 _titles = (
                     "Solar",
@@ -239,6 +344,7 @@ class OutputAnalysis(object):
             self.thermal_plot(
                 output_df=self.output_data[_idx],
                 input_df=self.input_data[_idx],
+                idx=_idx,
                 fig=fig,
                 row=3,
                 col=1,
@@ -246,6 +352,7 @@ class OutputAnalysis(object):
             self.control_actuation_plot(
                 output_df=self.output_data[_idx],
                 input_df=self.input_data[_idx],
+                idx=_idx,
                 fig=fig,
                 row=4,
                 col=1,
@@ -255,6 +362,7 @@ class OutputAnalysis(object):
                 self.thermal_plot(
                     output_df=self.input_data[_idx],
                     input_df=self.input_data[_idx],
+                    idx=_idx,
                     fig=fig,
                     row=5,
                     col=1,
@@ -262,6 +370,7 @@ class OutputAnalysis(object):
                 self.control_actuation_plot(
                     output_df=self.input_data[_idx],
                     input_df=self.input_data[_idx],
+                    idx=_idx,
                     fig=fig,
                     row=6,
                     col=1,
@@ -374,7 +483,9 @@ class OutputAnalysis(object):
                     x=input_df[STATES.DATE_TIME],
                     y=input_df[STATES.OUTDOOR_RELATIVE_HUMIDITY],
                     mode="lines",
-                    name=self.data_spec.full.spec[STATES.OUTDOOR_RELATIVE_HUMIDITY]["name"],
+                    name=self.data_spec.full.spec[STATES.OUTDOOR_RELATIVE_HUMIDITY][
+                        "name"
+                    ],
                     hoverlabel={"namelength": -1},
                 ),
                 row=row,
@@ -382,7 +493,7 @@ class OutputAnalysis(object):
                 secondary_y=True,
             )
 
-    def thermal_plot(self, output_df, input_df, fig, row, col):
+    def thermal_plot(self, output_df, input_df, fig, row, col, idx):
         """"""
         fig.update_yaxes(title_text="Temperature (°C)", row=row, col=col)
 
@@ -454,16 +565,32 @@ class OutputAnalysis(object):
         fig.add_trace(
             go.Scatter(
                 x=output_df[STATES.DATE_TIME],
-                y=output_df[STATES.TEMPERATURE_STP_COOL],
+                y=output_df[STATES.TEMPERATURE_STP_HEAT]
+                - self.controller_options[idx]["deadband"],
                 mode="lines",
-                line=dict(color="blue", width=1, dash="dash"),
-                name=self.data_spec.full.spec[STATES.TEMPERATURE_STP_COOL]["name"],
+                line=dict(color="black", width=1, dash="dot"),
+                name="deadband_min",
                 hoverlabel={"namelength": -1},
             ),
             row=row,
             col=col,
             secondary_y=False,
         )
+
+        # fig.add_trace(
+        #     go.Scatter(
+        #         x=output_df[STATES.DATE_TIME],
+        #         y=output_df[STATES.TEMPERATURE_STP_COOL],
+        #         mode="lines",
+        #         line=dict(color="blue", width=1, dash="dash"),
+        #         name=self.data_spec.full.spec[STATES.TEMPERATURE_STP_COOL]["name"],
+        #         hoverlabel={"namelength": -1},
+        #         visible="legendonly",
+        #     ),
+        #     row=row,
+        #     col=col,
+        #     secondary_y=False,
+        # )
 
         # changes in calendar events
         if STATES.CALENDAR_EVENT in output_df.columns:
@@ -498,7 +625,7 @@ class OutputAnalysis(object):
                 secondary_y=False,
             )
 
-    def power_plot(self, fig, row, col):
+    def power_plot(self, fig, row, col, idx):
         """"""
 
         fig.update_yaxes(title_text="Power (W)", row=row, col=col)
@@ -549,7 +676,7 @@ class OutputAnalysis(object):
             col=col,
         )
 
-    def control_actuation_plot(self, output_df, input_df, fig, row, col):
+    def control_actuation_plot(self, output_df, input_df, fig, row, col, idx):
         fig.update_yaxes(title_text="Signal", row=row, col=col)
 
         # legend subtitle
@@ -568,12 +695,12 @@ class OutputAnalysis(object):
 
         hvac_states = [
             STATES.AUXHEAT1,
-            STATES.AUXHEAT2,
-            STATES.AUXHEAT3,
-            STATES.COMPCOOL1,
-            STATES.COMPCOOL2,
-            STATES.COMPHEAT1,
-            STATES.COMPHEAT2,
+            # STATES.AUXHEAT2,
+            # STATES.AUXHEAT3,
+            # STATES.COMPCOOL1,
+            # STATES.COMPCOOL2,
+            # STATES.COMPHEAT1,
+            # STATES.COMPHEAT2,
         ]
 
         for c in [c for c in output_df.columns if c in hvac_states]:
@@ -590,3 +717,181 @@ class OutputAnalysis(object):
                 col=col,
                 secondary_y=False,
             )
+
+    def comfort_plot(self, output_df, input_df, fig, row, col, idx):
+        fig.update_yaxes(title_text="Comfort", row=row, col=col)
+
+        comfort_df = self.get_comfort(
+            output_df, input_df, controller_options=self.controller_options[idx]
+        )
+
+        fig.add_trace(
+            go.Scatter(
+                x=output_df[STATES.DATE_TIME],
+                y=comfort_df,
+                mode="lines",
+                # line_shape="vh",
+                name="comfort",
+            ),
+            row=row,
+            col=col,
+            secondary_y=False,
+        )
+
+    def get_comfort(self, output_df, input_df, controller_options):
+        _comfort_df = pd.merge(
+            output_df,
+            input_df[
+                [
+                    STATES.DATE_TIME,
+                    STATES.OUTDOOR_TEMPERATURE,
+                    STATES.OUTDOOR_RELATIVE_HUMIDITY,
+                ]
+            ],
+            on=STATES.DATE_TIME,
+        )
+
+        _comfort_df["comfort"] = _comfort_df[STATES.TEMPERATURE_CTRL] - (
+            _comfort_df[STATES.TEMPERATURE_STP_HEAT] - controller_options["deadband"]
+        )
+
+        return _comfort_df["comfort"]
+
+    def get_cycles(self, df, state):
+
+        # for reference
+        hvac_states = [
+            STATES.AUXHEAT1,
+            STATES.AUXHEAT2,
+            STATES.AUXHEAT3,
+            STATES.COMPCOOL1,
+            STATES.COMPCOOL2,
+            STATES.COMPHEAT1,
+            STATES.COMPHEAT2,
+        ]
+
+        hvac_df = df[[state]].copy(deep=True)
+
+        prev_state_1 = f"{str(state)}_prev_1"
+        prev_state_2 = f"{str(state)}_prev_2"
+        hvac_df[prev_state_1] = hvac_df[state].shift(periods=1)
+        hvac_df[prev_state_2] = hvac_df[state].shift(periods=2)
+        # hvac_df["COMPCOOL1_prev"] = hvac_df[STATES.COMPCOOL1].shift(periods=1)
+
+        MIN_OFF_CYCLE = 300
+        MIN_ON_CYCLE = 300
+
+        hvac_df["cycle_on"] = 0
+        hvac_df.loc[
+            ((hvac_df[prev_state_1] == 0) & (hvac_df[state] > 0))
+            | (
+                (hvac_df[prev_state_1] + hvac_df[state] <= MIN_OFF_CYCLE)
+                & (hvac_df[prev_state_2] + hvac_df[prev_state_1] >= MIN_ON_CYCLE)
+                & (hvac_df[state] > 0)
+            ),
+            ["cycle_on"],
+        ] = 1
+
+        # | (
+        #     (hvac_df["COMPCOOL1_prev"] == 0) & (hvac_df[STATES.COMPCOOL1] > 0)
+        # )
+        # | (
+        #     (hvac_df["COMPCOOL1_prev"] + hvac_df[STATES.COMPCOOL1] <= MIN_OFF_CYCLE) & ( hvac_df[STATES.COMPCOOL1] > 0)
+        # )
+
+        # index each cycle
+        hvac_df["cycle_id"] = hvac_df["cycle_on"].cumsum()
+        # remove first cycle because it may be incomplete
+        hvac_df = hvac_df[hvac_df["cycle_id"] > 0]
+        # summing run time per cycle gives the duration of the on cycle
+        cycles_df = (
+            hvac_df[[state, "cycle_id"]]
+            .groupby(["cycle_id"])
+            .sum()
+            .reset_index(drop=True)[state]
+        )
+        return cycles_df
+
+    def performance_stats(self):
+        metrics = [
+            "total_run_time",
+            "n_cycles",
+            "cycle_length_min",
+            "cycle_length_25%ile",
+            "cycle_length_50%ile",
+            "cycle_length_75%ile",
+            "cycle_length_95%ile",
+            "cycle_length_max",
+            "comfort_min",
+            "prob_discomfort",
+        ]
+
+        stats = {}
+        for _idx in range(self.n_simulations):
+            stats[_idx] = {}
+
+            cycles_df = self.get_cycles(self.output_data[_idx], STATES.AUXHEAT1)
+            comfort_df = self.get_comfort(
+                self.output_data[_idx],
+                self.input_data[_idx],
+                controller_options=self.controller_options[_idx],
+            )
+
+            stats[_idx]["total_run_time"] = cycles_df.sum()
+            stats[_idx]["n_cycles"] = cycles_df.count()
+            stats[_idx]["cycle_length_min"] = cycles_df.min()
+            stats[_idx]["cycle_length_25"] = cycles_df.quantile(0.25)
+            stats[_idx]["cycle_length_50"] = cycles_df.quantile(0.50)
+            stats[_idx]["cycle_length_75"] = cycles_df.quantile(0.75)
+            stats[_idx]["cycle_length_95"] = cycles_df.quantile(0.95)
+            stats[_idx]["cycle_length_max"] = cycles_df.max()
+
+            stats[_idx]["comfort_min"] = comfort_df.min()
+            stats[_idx]["prob_discomfort"] = len(comfort_df[comfort_df < 0.0]) / len(
+                comfort_df
+            )
+            stats[_idx]["T_ctrl_mean"] = self.output_data[_idx][
+                STATES.TEMPERATURE_CTRL
+            ].mean()
+            stats[_idx]["T_ctrl_min"] = self.output_data[_idx][
+                STATES.TEMPERATURE_CTRL
+            ].min()
+            stats[_idx]["T_ctrl_05"] = self.output_data[_idx][
+                STATES.TEMPERATURE_CTRL
+            ].quantile(0.05)
+            stats[_idx]["T_ctrl_25"] = self.output_data[_idx][
+                STATES.TEMPERATURE_CTRL
+            ].quantile(0.25)
+            stats[_idx]["T_ctrl_50"] = self.output_data[_idx][
+                STATES.TEMPERATURE_CTRL
+            ].quantile(0.50)
+            stats[_idx]["T_ctrl_75"] = self.output_data[_idx][
+                STATES.TEMPERATURE_CTRL
+            ].quantile(0.75)
+            stats[_idx]["T_ctrl_95"] = self.output_data[_idx][
+                STATES.TEMPERATURE_CTRL
+            ].quantile(0.95)
+            stats[_idx]["T_ctrl_max"] = self.output_data[_idx][
+                STATES.TEMPERATURE_CTRL
+            ].max()
+
+        return pd.DataFrame.from_dict(stats)
+
+    def cycle_plot(self, output_df, input_df, fig, row, col, idx):
+        fig.update_yaxes(title_text="Cycle Lengths", row=row, col=col)
+
+        cycles_df = self.get_cycles(output_df, STATES.AUXHEAT1)
+
+        fig.add_trace(
+            go.Histogram(
+                x=cycles_df,
+                name="cycle length",
+                nbinsx=500,
+                cumulative_enabled=True,
+                histnorm="probability",
+                marker={"opacity": 0.7, "line": {"color": "black"}},
+            ),
+            row=row,
+            col=col,
+            secondary_y=False,
+        )

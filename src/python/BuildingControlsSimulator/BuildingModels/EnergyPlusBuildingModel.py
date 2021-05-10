@@ -64,6 +64,8 @@ class EnergyPlusBuildingModel(BuildingModel):
     cool_on = attr.ib(default=False)
 
     model_creation_step = attr.ib(default=True)
+    initialized = attr.ib(default=False)
+    model_created = attr.ib(default=False)
 
     # for reference on how attr defaults wor for mutable types (e.g. list) see:
     # https://www.attrs.org/en/stable/init.html#defaults
@@ -126,9 +128,7 @@ class EnergyPlusBuildingModel(BuildingModel):
     @property
     def fmu_name(self):
         if not self.epw_path:
-            raise ValueError(
-                "Cannot name FMU without specifying weather file."
-            )
+            raise ValueError("Cannot name FMU without specifying weather file.")
 
         # the full fmu name is unique per combination of:
         # 1. IDF file
@@ -169,24 +169,28 @@ class EnergyPlusBuildingModel(BuildingModel):
         This script litters temporary files of fixed names which get clobbered
         if running in parallel. Need to fix scripts to be able to run in parallel.
         """
-        # pre-processing of weather data for EnergyPlus usage
-        self.epw_path = weather_channel.make_epw_file(
-            sim_config=sim_config,
-            datetime_channel=datetime_channel,
-            epw_step_size_seconds=self.step_size_seconds,
-        )
+        if not self.model_created:
 
-        self.idf.timesteps_per_hour = self.timesteps_per_hour
-        self.idf.init_temperature = self.init_temperature
-        self.idf.init_humidity = self.init_humidity
-        self.idf.preprocess(
-            sim_config,
-            datetime_channel=datetime_channel,
-            weather_channel=weather_channel,
-            preprocess_check=preprocess_check,
-        )
+            # pre-processing of weather data for EnergyPlus usage
+            self.epw_path = weather_channel.make_epw_file(
+                sim_config=sim_config,
+                datetime_channel=datetime_channel,
+                epw_step_size_seconds=self.step_size_seconds,
+            )
 
-        self.call_energy_plus_to_fmu()
+            self.idf.timesteps_per_hour = self.timesteps_per_hour
+            self.idf.init_temperature = self.init_temperature
+            self.idf.init_humidity = self.init_humidity
+            self.idf.preprocess(
+                sim_config,
+                datetime_channel=datetime_channel,
+                weather_channel=weather_channel,
+                preprocess_check=preprocess_check,
+            )
+
+            self.call_energy_plus_to_fmu()
+
+            self.model_created = True
 
         return self.fmu_path
 
@@ -199,9 +203,7 @@ class EnergyPlusBuildingModel(BuildingModel):
 
         proc = subprocess.run(shlex.split(cmd), stdout=subprocess.PIPE)
         if not proc.stdout:
-            raise ValueError(
-                f"Empty STDOUT. Invalid EnergyPlusToFMU cmd={cmd}"
-            )
+            raise ValueError(f"Empty STDOUT. Invalid EnergyPlusToFMU cmd={cmd}")
 
         # EnergyPlusToFMU puts fmu in cwd always, move out of cwd
         shutil.move(
@@ -220,11 +222,12 @@ class EnergyPlusBuildingModel(BuildingModel):
     ):
         """"""
         logger.info(f"Initializing EnergyPlusBuildingModel: {self.fmu_path}")
-        self.allocate_output_memory(
-            t_start, t_end, t_step, data_spec, categories_dict
-        )
+        self.allocate_output_memory(t_start, t_end, t_step, data_spec, categories_dict)
         self.init_step_output()
-        self.fmu = pyfmi.load_fmu(fmu=self.fmu_path)
+
+        if not self.initialized:
+            self.fmu = pyfmi.load_fmu(fmu=self.fmu_path)
+
         # EnergyPlusToFMU requires that FMU is initialized for multiples of
         # 86400 seconds (1 day), with t_start being the time in seconds
         # since the start of the year. t_end can be rounded up as needed and
@@ -235,13 +238,17 @@ class EnergyPlusBuildingModel(BuildingModel):
         # However, the entry Day of Week for Start Day will be used.
         t_end = t_start + math.ceil((t_end - t_start) / 86400.0) * 86400
         self.fmu.initialize(t_start, t_end)
+        self.initialized = True
 
     def tear_down(self):
         """tear down FMU"""
         # Note: calling fmu.terminate() and fmu.free_instance() should not be needed
         # this causes segfault sometimes
         # energyplus FMU should take care of its own tear down
-        pass
+        # del self.fmu
+        # self.fmu = None
+        self.fmu.reset()
+        # self.initialized = False
 
     def init_step_output(self):
         self.step_output[STATES.THERMOSTAT_TEMPERATURE] = self.init_temperature
@@ -287,9 +294,7 @@ class EnergyPlusBuildingModel(BuildingModel):
 
         # add fmu state variables
         self.fmu_output[STATES.STEP_STATUS] = np.full(n_s, False, dtype="bool")
-        self.fmu_output[STATES.SIMULATION_TIME] = self.output[
-            STATES.SIMULATION_TIME
-        ]
+        self.fmu_output[STATES.SIMULATION_TIME] = self.output[STATES.SIMULATION_TIME]
 
         for k, v in self.idf.output_spec.items():
             (
@@ -318,9 +323,7 @@ class EnergyPlusBuildingModel(BuildingModel):
         self.current_t_start = t_start
 
         if not step_control_input:
-            raise ValueError(
-                "step_control_input={step_control_input} is empty."
-            )
+            raise ValueError("step_control_input={step_control_input} is empty.")
 
         # integrate over simulation step in building model steps
         # e.g. 300s simulation step in 5x 60s building model steps
@@ -358,16 +361,14 @@ class EnergyPlusBuildingModel(BuildingModel):
         self.output[STATES.THERMOSTAT_HUMIDITY][
             self.current_t_idx
         ] = Conversions.relative_humidity_from_dewpoint(
-            temperature=self.output[STATES.THERMOSTAT_TEMPERATURE][
-                self.current_t_idx
-            ],
+            temperature=self.output[STATES.THERMOSTAT_TEMPERATURE][self.current_t_idx],
             dewpoint=self.get_tstat_dewpoint(),
         )
 
         # pass through motion
-        self.output[STATES.THERMOSTAT_MOTION][
-            self.current_t_idx
-        ] = step_sensor_input[STATES.THERMOSTAT_MOTION]
+        self.output[STATES.THERMOSTAT_MOTION][self.current_t_idx] = step_sensor_input[
+            STATES.THERMOSTAT_MOTION
+        ]
 
         # get step_output
         for state in self.output_states:
@@ -375,9 +376,7 @@ class EnergyPlusBuildingModel(BuildingModel):
 
     def get_fmu_output_keys(self, eplus_key):
         return [
-            k
-            for k, v in self.idf.output_spec.items()
-            if v["eplus_name"] == eplus_key
+            k for k, v in self.idf.output_spec.items() if v["eplus_name"] == eplus_key
         ]
 
     def get_mean_temperature(self):
@@ -398,18 +397,14 @@ class EnergyPlusBuildingModel(BuildingModel):
 
     def get_tstat_dewpoint(self):
         """tstat temperature is air temperature from zone containing tstat"""
-        fmu_name = (
-            f"{self.idf.thermostat_zone}_zone_mean_air_dewpoint_temperature"
-        )
+        fmu_name = f"{self.idf.thermostat_zone}_zone_mean_air_dewpoint_temperature"
         return self.fmu_output[fmu_name][self.current_t_idx]
 
     def get_mean_dewpoint(self):
         return np.mean(
             [
                 self.fmu_output[k][self.current_t_idx]
-                for k in self.get_fmu_output_keys(
-                    "Zone Mean Air Dewpoint Temperature"
-                )
+                for k in self.get_fmu_output_keys("Zone Mean Air Dewpoint Temperature")
             ]
         )
 
@@ -426,8 +421,7 @@ class EnergyPlusBuildingModel(BuildingModel):
             if self.heat_on:
                 iter_step_control_input[heat_col] = min(
                     max(
-                        step_control_input[heat_col]
-                        - self.step_size_seconds * _iter,
+                        step_control_input[heat_col] - self.step_size_seconds * _iter,
                         0,
                     ),
                     self.step_size_seconds,
@@ -446,8 +440,7 @@ class EnergyPlusBuildingModel(BuildingModel):
             if self.cool_on:
                 iter_step_control_input[cool_col] = min(
                     max(
-                        step_control_input[cool_col]
-                        - self.step_size_seconds * _iter,
+                        step_control_input[cool_col] - self.step_size_seconds * _iter,
                         0,
                     ),
                     self.step_size_seconds,
@@ -522,14 +515,10 @@ class EnergyPlusBuildingModel(BuildingModel):
         _weather_dir = os.environ.get("WEATHER_DIR")
 
         if not _idf_dir:
-            raise ValueError(
-                "Required environment variable: IDF_DIR is not defined."
-            )
+            raise ValueError("Required environment variable: IDF_DIR is not defined.")
 
         if not _fmu_dir:
-            raise ValueError(
-                "Required environment variable: FMU_DIR is not defined."
-            )
+            raise ValueError("Required environment variable: FMU_DIR is not defined.")
 
         if not _weather_dir:
             raise ValueError(
