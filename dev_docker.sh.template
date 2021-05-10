@@ -8,4 +8,4 @@ docker-compose run \
     --rm \
     --service-ports \
     --volume=${LOCAL_PACKAGE_DIR}:${DOCKER_PACKAGE_DIR}:consistent\
-building-controls-simulator bash
+    building-controls-simulator bash
