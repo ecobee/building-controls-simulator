@@ -17,6 +17,49 @@ cd building-controls-simulator
 
 **Note for Windows users**: It is recommended that you clone the repository to a directory that is as short as possible and does not contain spaces or other special characters. For example, clone to `c:\devel\building-controls-simulator`.
 
+### Minimal Docker version
+
+```
+$ docker --version
+Docker version 19.03.13, build 4484c46d9d
+
+$ docker-compose --version
+docker-compose version 1.27.4, build 40524192
+```
+### Quick Start Guide
+
+This section contains the minimal set of commands as described below to get the 
+examples and tests working. For explaination of these commands and trouble 
+shooting see full installation and setup sections below.
+#### Specify the .template files
+
+Copy the template files:
+```bash
+cp .env.template .env
+cp docker-compose.yml.template docker-compose.yml
+cp .test.env.template .test.env
+```
+
+Edit in `.env`:
+```bash
+...
+LOCAL_PACKAGE_DIR=<where you cloned the repo>
+...
+```
+
+for example:
+```bash
+...
+LOCAL_PACKAGE_DIR=/Users/tom.s/projects/building-controls-simulator
+...
+```
+
+#### Run with docker-compose
+
+```bash
+docker-compose up
+```
+
 ### Local Docker Setup
 
 You're going to need Docker Desktop installed, if not see https://www.docker.com/. Docker Compose CLI is used to manage the containers and is included by default in the desktop versions of docker for all systems.
@@ -32,7 +75,7 @@ $ docker-compose --version
 docker-compose version 1.27.4, build 40524192
 ```
 
-`docker-compose.yml` defines the Dockerfile and image to use, ports to map, and volumes to mount. It also specifies the env file `.env` to inject environment variables that are needed both to build the container and to be used inside the container. As a user all you need to know is that any API keys or GCP variables are stored here (safely) the default EnergyPlus version is 8-9-0, and this can be changed later very easily. 
+`docker-compose.yml` defines the Dockerfile and image to use, ports to map, and volumes to mount. It also specifies the env file `.env` to inject environment variables that are needed both to build the container and to be used inside the container. As a user all you need to know is that any API keys or GCP variables are stored here (safely) the default EnergyPlus version is 9-4-0, and this can be changed later very easily. 
 
 Copy the template files and fill in the variables mentioned below:
 ```bash
@@ -47,13 +90,20 @@ cp .test.env.template .test.env
 (Windows, Mac OS, Linux) with respect to how the expansion of environment 
 variables works. If the base `docker-compose.yml` file fails on interpreting 
 variables, try inlining those specific variables, e.g. replacing `${LOCAL_PACKAGE_DIR}` 
-with `<where you cloned the repo to>/building-controls-simulator`.
-
+with `<where you cloned the repo to>/building-controls-simulator` for example,
+`LOCAL_PACKAGE_DIR=/Users/tom.s/projects/building-controls-simulator`.
 
 Edit in `.env`:
 ```bash
 ...
 LOCAL_PACKAGE_DIR=<where you cloned the repo>
+...
+```
+
+for example:
+```bash
+...
+LOCAL_PACKAGE_DIR=/Users/tom.s/projects/building-controls-simulator
 ...
 ```
 
@@ -66,7 +116,7 @@ If you delete the docker image just go through the setup here again to rebuild i
 You can access the latest release image from: https://hub.docker.com/r/tstesco/building-controls-simulator/tags via CLI:
 
 ```bash
-docker pull tstesco/building-controls-simulator:0.3.3-alpha
+docker pull tstesco/building-controls-simulator:0.4.1-alpha
 ```
 
 If you are using the Dockerhub repository make sure that your `.env` file contains
@@ -337,12 +387,6 @@ Then simply run the `test_env_setup.sh` script to set up the test environment.
 . scripts/setup/test_env_setup.sh
 ```
 
-This just runs the following commands in your terminal to test up the test env vars:
-```bash
-set -a && source .test.env && set +a
-. scripts/epvm.sh 9-4-0
-```
-
 Finally, run all the tests:
 ```bash
 python -m pytest src/python
@@ -469,7 +513,6 @@ NSRDB PSM3 TMY: https://developer.nrel.gov/docs/solar/nsrdb/psm3-tmy-download/
 ### CDO: https://www.ncdc.noaa.gov/cdo-web/
 
 For potential future integration.
-
 
 ### Configuration
 
