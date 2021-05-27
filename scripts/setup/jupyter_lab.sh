@@ -1,7 +1,6 @@
 #!/bin/bash
 
 set -eu -o pipefail
-source "${PACKAGE_DIR}/.env" 
 
 if [ ! -d "${DOCKER_HOME_DIR}/.jupyter" ]; then mkdir "${DOCKER_HOME_DIR}/.jupyter"; fi
 if [ ! -f "${DOCKER_HOME_DIR}/.jupyter/jupyter_notebook_config.py" ]; then
