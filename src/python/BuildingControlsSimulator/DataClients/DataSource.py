@@ -44,6 +44,16 @@ class DataSource(ABC):
     def get_data(self, sim_config):
         pass
 
+    def make_data_directories(self):
+        os.makedirs(
+            os.path.join(
+                self.local_cache,
+                self.operator_name,
+                self.source_name,
+            ),
+            exist_ok=True,
+        )
+
     def drop_unused_columns(self, _data):
         # drop all null remote sensor columns
         _all_null_columns = [
