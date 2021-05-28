@@ -872,3 +872,38 @@ class DataClient:
         # the datetime index can be reset back to a column
         res_df = res_df.reset_index()
         return res_df
+
+    @staticmethod
+    def generate_dummy_data(sim_config, spec, outdoor_weather=5., schedule=None, comfort=None, hvac_mode=None):
+        for _idx, sim in sim_config.iterrows():
+            # _df = pd.DataFrame(columns=spec.full.spec.keys())
+            _df = pd.DataFrame(
+                index=pd.date_range(
+                    start=sim.start_utc,
+                    end=sim.end_utc,
+                    freq=f"{spec.data_period_seconds}S"
+                )
+            )
+            breakpoint()
+
+            if not schedule:
+                schedule = [
+                    {
+                        "time": sim.start_utc,
+                        "schedule": [],
+                        "comfort": {},
+                    }
+                ]
+            
+            for k, v in spec.full.spec.items():
+                if v["channel"] == CHANNELS.WEATHER:
+                    pass
+                elif v["channel"] == THERMOSTAT_SENSOR:
+                    pass
+                elif v["channel"] == EQUIPMENT:
+                    pass
+                elif v["channel"] == THERMOSTAT_SETTING:
+                    pass
+            
+            _df.reset_index().rename(columns={"index": spec.datetime_column})
+
