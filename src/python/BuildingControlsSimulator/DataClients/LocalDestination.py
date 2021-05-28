@@ -23,6 +23,10 @@ logger = logging.getLogger(__name__)
 class LocalDestination(DataDestination):
 
     local_cache = attr.ib()
+    source_name = attr.ib(default="local")
+
+    def __attrs_post_init__(self):
+        self.make_data_directories()
 
     def put_data(self, df, sim_name, src_spec):
         _df = convert_spec(
