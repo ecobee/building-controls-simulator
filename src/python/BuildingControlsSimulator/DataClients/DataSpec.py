@@ -1012,7 +1012,7 @@ class DonateYourDataSpec:
                         "internal_state": STATES[f"RS{i}_TEMPERATURE"],
                         "dtype": "float32",
                         "channel": CHANNELS.REMOTE_SENSOR,
-                        "unit": UNITS.CELSIUS,
+                        "unit": UNITS.FARHENHEIT,
                     }
                     for i in range(1, self.N_ROOM_SENSORS + 1)
                 },
@@ -1043,6 +1043,24 @@ class DonateYourDataSpec:
                     "dtype": "float32",
                     "channel": CHANNELS.WEATHER,
                     "unit": UNITS.RELATIVE_HUMIDITY,
+                },
+                "DirectNormalRadiation": {
+                    "internal_state": STATES.DIRECT_NORMAL_IRRADIANCE,
+                    "dtype": "float32",
+                    "channel": CHANNELS.WEATHER,
+                    "unit": UNITS.WATTS_PER_METER_SQUARED,
+                },
+                "GlobalHorizontalRadiation": {
+                    "internal_state": STATES.GLOBAL_HORIZONTAL_IRRADIANCE,
+                    "dtype": "float32",
+                    "channel": CHANNELS.WEATHER,
+                    "unit": UNITS.WATTS_PER_METER_SQUARED,
+                },
+                "DiffuseHorizontalRadiation": {
+                    "internal_state": STATES.DIFFUSE_HORIZONTAL_IRRADIANCE,
+                    "dtype": "float32",
+                    "channel": CHANNELS.WEATHER,
+                    "unit": UNITS.WATTS_PER_METER_SQUARED,
                 },
             },
         )

@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 class LocalSource(DataSource):
 
     source_name = attr.ib(default="local")
-    local_cache = attr.ib()
+    local_cache = attr.ib(default=os.environ.get("LOCAL_CACHE_DIR"))
     data_spec = attr.ib()
     file_extension = attr.ib(default=None)
 
