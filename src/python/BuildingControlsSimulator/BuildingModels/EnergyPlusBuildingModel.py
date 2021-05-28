@@ -339,7 +339,7 @@ class EnergyPlusBuildingModel(BuildingModel):
                 step_size=self.step_size_seconds,
                 new_step=True,
             )
-
+        
         self.update_output(status, step_sensor_input)
 
         # finally increment t_idx
@@ -448,13 +448,13 @@ class EnergyPlusBuildingModel(BuildingModel):
             else:
                 iter_step_control_input[cool_col] = min(
                     max(
-                        step_control_input[heat_col]
+                        step_control_input[cool_col]
                         - self.step_size_seconds * (n_iter - _iter),
                         0,
                     ),
                     self.step_size_seconds,
                 )
-
+            
         return iter_step_control_input
 
     def actuate_HVAC_equipment(self, step_control_input):
