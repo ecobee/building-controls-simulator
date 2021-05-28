@@ -33,6 +33,19 @@ class DataDestination(ABC):
     def put_data(self, df, sim_name):
         pass
 
+    def __attrs_post_init__(self):
+        self.make_data_directories()
+
+    def make_data_directories(self):
+        os.makedirs(
+            os.path.join(
+                self.local_cache,
+                self.operator_name,
+                self.source_name,
+            ),
+            exist_ok=True,
+        )
+
     def get_file_name(self, sim_name):
         # sim_name may contain . character, replace this safely
         safe_sim_name = sim_name.replace(".", "_")

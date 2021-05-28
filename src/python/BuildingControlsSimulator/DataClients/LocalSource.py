@@ -29,6 +29,7 @@ class LocalSource(DataSource):
 
     def __attrs_post_init__(self):
         """Infer the file_extension from local_cache supplied"""
+        self.make_data_directories()
         if os.path.isdir(self.local_cache_source):
 
             # find file extension
@@ -38,9 +39,7 @@ class LocalSource(DataSource):
                 if _ext not in extensions:
                     extensions.append(_ext)
 
-            if len(extensions) == 0:
-                raise ValueError(f"{self.local_cache_source} contains no data files.")
-            elif len(extensions) == 1:
+            if len(extensions) == 1:
                 self.file_extension = extensions[0]
             elif len(extensions) > 1:
                 raise ValueError(
