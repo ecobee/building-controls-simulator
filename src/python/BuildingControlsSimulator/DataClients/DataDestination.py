@@ -33,9 +33,6 @@ class DataDestination(ABC):
     def put_data(self, df, sim_name):
         pass
 
-    def __attrs_post_init__(self):
-        self.make_data_directories()
-
     def make_data_directories(self):
         os.makedirs(
             os.path.join(
