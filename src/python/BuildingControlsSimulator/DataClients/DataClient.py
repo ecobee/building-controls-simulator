@@ -144,6 +144,9 @@ class DataClient:
         # the period data source is expected at
         _expected_period = f"{self.internal_spec.data_period_seconds}S"
 
+        _min_datetime = _data[self.internal_spec.datetime.datetime_column].min()
+        _max_datetime =  _data[self.internal_spec.datetime.datetime_column].max()
+
         # truncate the data to desired simulation start and end time
         _data = _data[
             (_data[self.internal_spec.datetime_column] >= self.sim_config["start_utc"])
@@ -260,14 +263,19 @@ class DataClient:
                 src_nullable=True,
                 dest_nullable=False,
             )
-
+        
         else:
             raise ValueError(
                 f"ID={self.sim_config['identifier']} has no full_data_periods "
                 + "for requested duration: "
                 + f"start_utc={self.sim_config['start_utc']}, "
                 + f"end_utc={self.sim_config['end_utc']} "
-                + f"with min_sim_period={self.sim_config['min_sim_period']}"
+                + f"with min_sim_period={self.sim_config['min_sim_period']}. "
+                + f"The given data file runs from {_min_datetime}"
+                + f" to {_max_datetime}. " 
+                + f"If there is overlap between these two time periods then "
+                + "there is too much missing data. If there is no overlap " 
+                + "consider altering your sim_config start_utc and end_utc."
             )
 
         self.datetime = DateTimeChannel(
