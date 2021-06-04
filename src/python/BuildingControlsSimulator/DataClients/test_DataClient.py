@@ -31,38 +31,38 @@ class TestDataClient:
     def setup_class(cls):
         # initialize with data to avoid pulling multiple times
 
-        cls.sim_config = Config.make_sim_config(
-            identifier=[
-                "DYD_dummy_data",  # test file
-            ],
-            latitude=33.481136,
-            longitude=-112.078232,
-            start_utc=[
-                "2018-01-01 00:00:00",
-            ],
-            end_utc=[
-                "2018-12-31 23:55:00",
-            ],
-            min_sim_period="3D",
-            min_chunk_period="30D",
-            sim_step_size_seconds=300,
-            output_step_size_seconds=300,
-        )
+        # cls.sim_config = Config.make_sim_config(
+        #     identifier=[
+        #         "DYD_dummy_data",  # test file
+        #     ],
+        #     latitude=33.481136,
+        #     longitude=-112.078232,
+        #     start_utc=[
+        #         "2018-01-01 00:00:00",
+        #     ],
+        #     end_utc=[
+        #         "2018-12-31 23:55:00",
+        #     ],
+        #     min_sim_period="3D",
+        #     min_chunk_period="30D",
+        #     sim_step_size_seconds=300,
+        #     output_step_size_seconds=300,
+        # )
 
-        cls.data_client = DataClient(
-            source=LocalSource(
-                local_cache=os.environ.get("LOCAL_CACHE_DIR"),
-                data_spec=DonateYourDataSpec(),
-            ),
-            destination=LocalDestination(
-                local_cache=os.environ.get("LOCAL_CACHE_DIR"),
-                data_spec=DonateYourDataSpec(),
-            ),
-        )
-        cls.data_client.sim_config = cls.sim_config.iloc[0]
+        # cls.data_client = DataClient(
+        #     source=LocalSource(
+        #         local_cache=os.environ.get("LOCAL_CACHE_DIR"),
+        #         data_spec=DonateYourDataSpec(),
+        #     ),
+        #     destination=LocalDestination(
+        #         local_cache=os.environ.get("LOCAL_CACHE_DIR"),
+        #         data_spec=DonateYourDataSpec(),
+        #     ),
+        # )
+        # cls.data_client.sim_config = cls.sim_config.iloc[0]
 
-        cls.data_client.get_data()
-        # pass
+        # cls.data_client.get_data()
+        pass
 
     @classmethod
     def teardown_class(cls):
@@ -71,7 +71,7 @@ class TestDataClient:
         """
         pass
 
-    def test_dummy_data_generator(self):
+    def test_generate_dummy_data(self):
         _sim_config = Config.make_sim_config(
             identifier=[
                 "generated_dummy_data",  # test file

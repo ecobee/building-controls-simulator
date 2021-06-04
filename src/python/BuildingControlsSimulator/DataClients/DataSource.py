@@ -72,15 +72,19 @@ class DataSource(ABC):
             for _fname in os.listdir(self.local_cache_source):
                 split = _fname.split(".")
                 if split[:1][0] == identifier:
-                    self.file_extension = ".".join(split[1:])        
+                    self.file_extension = ".".join(split[1:])
             if not self.file_extension:
-                raise ValueError(f"File identifier {identifier} not in {self.local_cache_source}")            
+                raise ValueError(
+                    f"File identifier {identifier} not in {self.local_cache_source}"
+                )
         else:
-            raise ValueError(f"No local_cache provided. To enable set env LOCAL_CACHE_DIR.")
+            raise ValueError(
+                f"No local_cache provided. To enable set env LOCAL_CACHE_DIR."
+            )
 
         return os.path.join(
-                        self.local_cache_source,
-                        f"{identifier}.{self.file_extension}",
+            self.local_cache_source,
+            f"{identifier}.{self.file_extension}",
         )
 
     def get_local_cache(self, local_cache_file):
@@ -165,7 +169,6 @@ class DataSource(ABC):
             )
         else:
             raise ValueError(f"Unsupported extension: {extension}")
-
 
         # get intersection of columns
         _df = _df[set(data_spec.full.columns) & set(_df.columns)]

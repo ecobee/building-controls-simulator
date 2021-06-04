@@ -145,7 +145,7 @@ class DataClient:
         _expected_period = f"{self.internal_spec.data_period_seconds}S"
 
         _min_datetime = _data[self.internal_spec.datetime.datetime_column].min()
-        _max_datetime =  _data[self.internal_spec.datetime.datetime_column].max()
+        _max_datetime = _data[self.internal_spec.datetime.datetime_column].max()
 
         # truncate the data to desired simulation start and end time
         _data = _data[
@@ -263,7 +263,7 @@ class DataClient:
                 src_nullable=True,
                 dest_nullable=False,
             )
-        
+
         else:
             raise ValueError(
                 f"ID={self.sim_config['identifier']} has no full_data_periods "
@@ -272,9 +272,9 @@ class DataClient:
                 + f"end_utc={self.sim_config['end_utc']} "
                 + f"with min_sim_period={self.sim_config['min_sim_period']}. "
                 + f"The given data file runs from {_min_datetime}"
-                + f" to {_max_datetime}. " 
+                + f" to {_max_datetime}. "
                 + f"If there is overlap between these two time periods then "
-                + "there is too much missing data. If there is no overlap " 
+                + "there is too much missing data. If there is no overlap "
                 + "consider altering your sim_config start_utc and end_utc."
             )
 
@@ -882,24 +882,60 @@ class DataClient:
         return res_df
 
     @staticmethod
-    def generate_dummy_data(sim_config, spec, outdoor_weather=5., schedule_chg_pts=None, comfort_chg_pts=None, hvac_mode_chg_pts=None):
+    def generate_dummy_data(
+        sim_config,
+        spec,
+        outdoor_weather=5.0,
+        schedule_chg_pts=None,
+        comfort_chg_pts=None,
+        hvac_mode_chg_pts=None,
+    ):
+        if isinstance(spec, Internal):
+            raise ValueError(
+                f"Supplied Spec {spec} is internal spec."
+                + " Data of this spec should not be stored in data files"
+            )
+
         for _idx, sim in sim_config.iterrows():
             # _df = pd.DataFrame(columns=spec.full.spec.keys())
             _df = pd.DataFrame(
                 index=pd.date_range(
                     start=sim.start_utc,
                     end=sim.end_utc,
-                    freq=f"{spec.data_period_seconds}S"
+                    freq=f"{spec.data_period_seconds}S",
                 )
             )
-            breakpoint()
 
             if not schedule_chg_pts:
                 # set default ecobee schedule
                 schedule_chg_pts = {
                     sim.start_utc: [
-                        {'name': 'Home', 'minute_of_day': 390, 'on_day_of_week': [True, True, True, True, True, True, True]},
-                        {'name': 'Sleep', 'minute_of_day': 1410, 'on_day_of_week': [True, True, True, True, True, True, True]}
+                        {
+                            "name": "Home",
+                            "minute_of_day": 390,
+                            "on_day_of_week": [
+                                True,
+                                True,
+                                True,
+                                True,
+                                True,
+                                True,
+                                True,
+                            ],
+                        },
+                        {
+                            "name": "Sleep",
+                            "minute_of_day": 1410,
+                            "on_day_of_week": [
+                                True,
+                                True,
+                                True,
+                                True,
+                                True,
+                                True,
+                                True,
+                            ],
+                        },
                     ]
                 }
 
@@ -907,20 +943,32 @@ class DataClient:
                 # set default ecobee comfort setpoints
                 comfort_chg_pts = {
                     sim.start_utc: {
-                        'Home': {<STATES.TEMPERATURE_STP_COOL: 7>: 23.5, <STATES.TEMPERATURE_STP_HEAT: 8>: 21.0},
-                        'Sleep': {<STATES.TEMPERATURE_STP_COOL: 7>: 28.0, <STATES.TEMPERATURE_STP_HEAT: 8>: 16.5}
+                        "Home": {
+                            STATES.TEMPERATURE_STP_COOL: 23.5,
+                            STATES.TEMPERATURE_STP_HEAT: 21.0,
+                        },
+                        "Sleep": {
+                            STATES.TEMPERATURE_STP_COOL: 28.0,
+                            STATES.TEMPERATURE_STP_HEAT: 16.5,
+                        },
                     }
                 }
-            
+
+            if not hvac_mode_chg_pts:
+                # set default ecobee comfort setpoints
+                hvac_mode_chg_pts = {sim.start_utc: "heat"}
+
             for k, v in spec.full.spec.items():
+
                 if v["channel"] == CHANNELS.WEATHER:
                     pass
                 elif v["channel"] == THERMOSTAT_SENSOR:
                     pass
                 elif v["channel"] == EQUIPMENT:
-                    pass
+                    _df[k] = 0
                 elif v["channel"] == THERMOSTAT_SETTING:
+                    if v["internal_state"] == STATES.HVAC_MODE:
+                        pass
                     pass
-            
-            _df.reset_index().rename(columns={"index": spec.datetime_column})
 
+            _df.reset_index().rename(columns={"index": spec.datetime_column})
