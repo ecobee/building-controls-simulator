@@ -58,23 +58,38 @@ class TestDataClient:
                 local_cache=os.environ.get("LOCAL_CACHE_DIR"),
                 data_spec=DonateYourDataSpec(),
             ),
-            nrel_dev_api_key=os.environ.get("NREL_DEV_API_KEY"),
-            nrel_dev_email=os.environ.get("NREL_DEV_EMAIL"),
-            archive_tmy3_dir=os.environ.get("ARCHIVE_TMY3_DIR"),
-            archive_tmy3_meta=os.environ.get("ARCHIVE_TMY3_META"),
-            archive_tmy3_data_dir=os.environ.get("ARCHIVE_TMY3_DATA_DIR"),
-            ep_tmy3_cache_dir=os.environ.get("EP_TMY3_CACHE_DIR"),
-            simulation_epw_dir=os.environ.get("SIMULATION_EPW_DIR"),
         )
         cls.data_client.sim_config = cls.sim_config.iloc[0]
 
         cls.data_client.get_data()
+        # pass
 
     @classmethod
     def teardown_class(cls):
         """teardown any state that was previously setup with a call to
         setup_class.
         """
+        pass
+
+    def test_dummy_data_generator(self):
+        _sim_config = Config.make_sim_config(
+            identifier=[
+                "generated_dummy_data",  # test file
+            ],
+            latitude=33.481136,
+            longitude=-112.078232,
+            start_utc=[
+                "2018-01-01 00:00:00",
+            ],
+            end_utc=[
+                "2018-12-31 23:55:00",
+            ],
+            min_sim_period="3D",
+            min_chunk_period="30D",
+            sim_step_size_seconds=300,
+            output_step_size_seconds=300,
+        )
+        DataClient.generate_dummy_data(sim_config=_sim_config, spec=Internal())
         pass
 
     def test_upresample_to_step_size(self):

@@ -882,7 +882,7 @@ class DataClient:
         return res_df
 
     @staticmethod
-    def generate_dummy_data(sim_config, spec, outdoor_weather=5., schedule=None, comfort=None, hvac_mode=None):
+    def generate_dummy_data(sim_config, spec, outdoor_weather=5., schedule_chg_pts=None, comfort_chg_pts=None, hvac_mode_chg_pts=None):
         for _idx, sim in sim_config.iterrows():
             # _df = pd.DataFrame(columns=spec.full.spec.keys())
             _df = pd.DataFrame(
@@ -894,14 +894,23 @@ class DataClient:
             )
             breakpoint()
 
-            if not schedule:
-                schedule = [
-                    {
-                        "time": sim.start_utc,
-                        "schedule": [],
-                        "comfort": {},
+            if not schedule_chg_pts:
+                # set default ecobee schedule
+                schedule_chg_pts = {
+                    sim.start_utc: [
+                        {'name': 'Home', 'minute_of_day': 390, 'on_day_of_week': [True, True, True, True, True, True, True]},
+                        {'name': 'Sleep', 'minute_of_day': 1410, 'on_day_of_week': [True, True, True, True, True, True, True]}
+                    ]
+                }
+
+            if not comfort_chg_pts:
+                # set default ecobee comfort setpoints
+                comfort_chg_pts = {
+                    sim.start_utc: {
+                        'Home': {<STATES.TEMPERATURE_STP_COOL: 7>: 23.5, <STATES.TEMPERATURE_STP_HEAT: 8>: 21.0},
+                        'Sleep': {<STATES.TEMPERATURE_STP_COOL: 7>: 28.0, <STATES.TEMPERATURE_STP_HEAT: 8>: 16.5}
                     }
-                ]
+                }
             
             for k, v in spec.full.spec.items():
                 if v["channel"] == CHANNELS.WEATHER:
