@@ -14,14 +14,10 @@ import numpy as np
 import pyfmi
 
 from BuildingControlsSimulator.DataClients.DataStates import STATES
-from BuildingControlsSimulator.BuildingModels.BuildingModel import (
-    BuildingModel,
-)
+from BuildingControlsSimulator.BuildingModels.BuildingModel import BuildingModel
 
 
-from BuildingControlsSimulator.ControllerModels.ControllerModel import (
-    ControllerModel,
-)
+from BuildingControlsSimulator.ControllerModels.ControllerModel import ControllerModel
 from BuildingControlsSimulator.Conversions.Conversions import Conversions
 
 
@@ -339,7 +335,7 @@ class EnergyPlusBuildingModel(BuildingModel):
                 step_size=self.step_size_seconds,
                 new_step=True,
             )
-        
+
         self.update_output(status, step_sensor_input)
 
         # finally increment t_idx
@@ -454,7 +450,7 @@ class EnergyPlusBuildingModel(BuildingModel):
                     ),
                     self.step_size_seconds,
                 )
-            
+
         return iter_step_control_input
 
     def actuate_HVAC_equipment(self, step_control_input):

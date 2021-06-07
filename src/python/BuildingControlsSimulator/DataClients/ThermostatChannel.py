@@ -576,7 +576,6 @@ class ThermostatChannel(DataChannel):
         )
 
         hvac_mode_chg_pts = ThermostatChannel.get_hvac_mode_change_points(data)
-
         return (
             schedule_chg_pts,
             comfort_chg_pts,

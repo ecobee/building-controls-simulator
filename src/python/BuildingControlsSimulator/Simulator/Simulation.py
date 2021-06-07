@@ -10,9 +10,7 @@ import attr
 from tqdm import trange
 
 from BuildingControlsSimulator.DataClients.DataStates import STATES
-from BuildingControlsSimulator.OutputAnalysis.OutputAnalysis import (
-    OutputAnalysis,
-)
+from BuildingControlsSimulator.OutputAnalysis.OutputAnalysis import OutputAnalysis
 
 logger = logging.getLogger(__name__)
 

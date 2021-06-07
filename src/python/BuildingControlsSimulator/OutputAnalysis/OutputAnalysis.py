@@ -24,7 +24,9 @@ class OutputAnalysis(object):
     ```
     """
 
-    def __init__(self, simulations, data_spec, humidity=False, heat_only=False, cool_only=False):
+    def __init__(
+        self, simulations, data_spec, humidity=False, heat_only=False, cool_only=False
+    ):
         self.data_spec = data_spec
         self.humidity = humidity
         self.cool_only = cool_only
