@@ -9,12 +9,8 @@ import numpy as np
 
 from BuildingControlsSimulator.Simulator.Config import Config
 from BuildingControlsSimulator.DataClients.DataClient import DataClient
-from BuildingControlsSimulator.DataClients.LocalSource import (
-    LocalSource,
-)
-from BuildingControlsSimulator.DataClients.LocalDestination import (
-    LocalDestination,
-)
+from BuildingControlsSimulator.DataClients.LocalSource import LocalSource
+from BuildingControlsSimulator.DataClients.LocalDestination import LocalDestination
 from BuildingControlsSimulator.DataClients.DataSpec import EnergyPlusWeather
 from BuildingControlsSimulator.DataClients.DataStates import STATES
 from BuildingControlsSimulator.DataClients.DataSpec import (
@@ -31,51 +27,10 @@ class TestDataClient:
     def setup_class(cls):
         # initialize with data to avoid pulling multiple times
 
-        # cls.sim_config = Config.make_sim_config(
-        #     identifier=[
-        #         "DYD_dummy_data",  # test file
-        #     ],
-        #     latitude=33.481136,
-        #     longitude=-112.078232,
-        #     start_utc=[
-        #         "2018-01-01 00:00:00",
-        #     ],
-        #     end_utc=[
-        #         "2018-12-31 23:55:00",
-        #     ],
-        #     min_sim_period="3D",
-        #     min_chunk_period="30D",
-        #     sim_step_size_seconds=300,
-        #     output_step_size_seconds=300,
-        # )
-
-        # cls.data_client = DataClient(
-        #     source=LocalSource(
-        #         local_cache=os.environ.get("LOCAL_CACHE_DIR"),
-        #         data_spec=DonateYourDataSpec(),
-        #     ),
-        #     destination=LocalDestination(
-        #         local_cache=os.environ.get("LOCAL_CACHE_DIR"),
-        #         data_spec=DonateYourDataSpec(),
-        #     ),
-        # )
-        # cls.data_client.sim_config = cls.sim_config.iloc[0]
-
-        # cls.data_client.get_data()
-        pass
-
-    @classmethod
-    def teardown_class(cls):
-        """teardown any state that was previously setup with a call to
-        setup_class.
-        """
-        pass
-
-    def test_generate_dummy_data(self):
-        _sim_config = Config.make_sim_config(
+        cls.sim_config = Config.make_sim_config(
             identifier=[
-                "generated_dummy_data",  # test file
-            ],
+                "DYD_dummy_data",
+            ],  # test file
             latitude=33.481136,
             longitude=-112.078232,
             start_utc=[
@@ -89,8 +44,51 @@ class TestDataClient:
             sim_step_size_seconds=300,
             output_step_size_seconds=300,
         )
-        DataClient.generate_dummy_data(sim_config=_sim_config, spec=Internal())
+
+        cls.data_client = DataClient(
+            source=LocalSource(
+                local_cache=os.environ.get("LOCAL_CACHE_DIR"),
+                data_spec=DonateYourDataSpec(),
+            ),
+            destination=LocalDestination(
+                local_cache=os.environ.get("LOCAL_CACHE_DIR"),
+                data_spec=DonateYourDataSpec(),
+            ),
+        )
+        cls.data_client.sim_config = cls.sim_config.iloc[0]
+
+        cls.data_client.get_data()
+
+    @classmethod
+    def teardown_class(cls):
+        """teardown any state that was previously setup with a call to
+        setup_class.
+        """
         pass
+
+    def test_generate_dummy_data(self):
+        _sim_config = Config.make_sim_config(
+            identifier=[
+                "generated_dummy_data",
+            ],  # test file
+            latitude=33.481136,
+            longitude=-112.078232,
+            start_utc=[
+                "2018-01-01 00:00:00",
+            ],
+            end_utc=[
+                "2018-12-31 23:55:00",
+            ],
+            min_sim_period="3D",
+            min_chunk_period="30D",
+            sim_step_size_seconds=300,
+            output_step_size_seconds=300,
+        )
+        _df = DataClient.generate_dummy_data(
+            sim_config=_sim_config, spec=DonateYourDataSpec()
+        )
+        assert len(_df) == 105120
+        assert all(_df["Schedule"].value_counts().values == [74460, 30660])
 
     def test_upresample_to_step_size(self):
         df = self.data_client.get_full_input()

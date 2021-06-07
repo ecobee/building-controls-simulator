@@ -13,9 +13,7 @@ from BuildingControlsSimulator.DataClients.GCSDYDSource import GCSDYDSource
 from BuildingControlsSimulator.DataClients.DataSpec import DonateYourDataSpec
 from BuildingControlsSimulator.DataClients.DataSpec import EnergyPlusWeather
 from BuildingControlsSimulator.DataClients.DataStates import STATES
-from BuildingControlsSimulator.DataClients.LocalDestination import (
-    LocalDestination,
-)
+from BuildingControlsSimulator.DataClients.LocalDestination import LocalDestination
 
 logger = logging.getLogger(__name__)
 

@@ -8,9 +8,7 @@ import numpy as np
 
 from BuildingControlsSimulator.DataClients.DataStates import STATES
 from BuildingControlsSimulator.DataClients.DataSpec import Internal
-from BuildingControlsSimulator.StateEstimatorModels.LowPassFilter import (
-    LowPassFilter,
-)
+from BuildingControlsSimulator.StateEstimatorModels.LowPassFilter import LowPassFilter
 
 logger = logging.getLogger(__name__)
 

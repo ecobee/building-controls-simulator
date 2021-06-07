@@ -14,14 +14,10 @@ import numpy as np
 import pyfmi
 
 from BuildingControlsSimulator.DataClients.DataStates import STATES
-from BuildingControlsSimulator.BuildingModels.BuildingModel import (
-    BuildingModel,
-)
+from BuildingControlsSimulator.BuildingModels.BuildingModel import BuildingModel
 
 
-from BuildingControlsSimulator.ControllerModels.ControllerModel import (
-    ControllerModel,
-)
+from BuildingControlsSimulator.ControllerModels.ControllerModel import ControllerModel
 from BuildingControlsSimulator.Conversions.Conversions import Conversions
 
 

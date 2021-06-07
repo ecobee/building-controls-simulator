@@ -10,12 +10,8 @@ import numpy as np
 import gcsfs
 
 from BuildingControlsSimulator.DataClients.DataStates import CHANNELS
-from BuildingControlsSimulator.DataClients.DataDestination import (
-    DataDestination,
-)
-from BuildingControlsSimulator.DataClients.DataSpec import (
-    convert_spec,
-)
+from BuildingControlsSimulator.DataClients.DataDestination import DataDestination
+from BuildingControlsSimulator.DataClients.DataSpec import convert_spec
 
 
 logger = logging.getLogger(__name__)

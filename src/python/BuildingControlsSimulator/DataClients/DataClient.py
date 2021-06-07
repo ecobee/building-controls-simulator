@@ -14,25 +14,19 @@ from BuildingControlsSimulator.DataClients.DataStates import (
     CHANNELS,
     STATES,
 )
+from BuildingControlsSimulator.Conversions.Conversions import Conversions
 from BuildingControlsSimulator.DataClients.DataSpec import (
     Internal,
     convert_spec,
 )
-from BuildingControlsSimulator.DataClients.DateTimeChannel import (
-    DateTimeChannel,
-)
-from BuildingControlsSimulator.DataClients.ThermostatChannel import (
-    ThermostatChannel,
-)
-from BuildingControlsSimulator.DataClients.EquipmentChannel import (
-    EquipmentChannel,
-)
+from BuildingControlsSimulator.DataClients.DateTimeChannel import DateTimeChannel
+from BuildingControlsSimulator.DataClients.ThermostatChannel import ThermostatChannel
+from BuildingControlsSimulator.DataClients.EquipmentChannel import EquipmentChannel
 from BuildingControlsSimulator.DataClients.SensorsChannel import SensorsChannel
 from BuildingControlsSimulator.DataClients.WeatherChannel import WeatherChannel
 from BuildingControlsSimulator.DataClients.DataSource import DataSource
-from BuildingControlsSimulator.DataClients.DataDestination import (
-    DataDestination,
-)
+from BuildingControlsSimulator.DataClients.DataDestination import DataDestination
+from BuildingControlsSimulator.DataClients.LocalDestination import LocalDestination
 
 
 logger = logging.getLogger(__name__)
@@ -885,7 +879,7 @@ class DataClient:
     def generate_dummy_data(
         sim_config,
         spec,
-        outdoor_weather=5.0,
+        outdoor_weather=None,
         schedule_chg_pts=None,
         comfort_chg_pts=None,
         hvac_mode_chg_pts=None,
@@ -958,17 +952,125 @@ class DataClient:
                 # set default ecobee comfort setpoints
                 hvac_mode_chg_pts = {sim.start_utc: "heat"}
 
+            # enforce ascending sorting of dict keys
+            hvac_mode_chg_pts = dict(sorted(hvac_mode_chg_pts.items()))
+            comfort_chg_pts = dict(sorted(comfort_chg_pts.items()))
+            schedule_chg_pts = dict(sorted(schedule_chg_pts.items()))
+
+            # check for errors in settings
+            if len(hvac_mode_chg_pts) <= 0:
+                raise ValueError(f"Invalid hvac_mode_chg_pts={hvac_mode_chg_pts}.")
+            if len(comfort_chg_pts) <= 0:
+                raise ValueError(f"Invalid comfort_chg_pts={comfort_chg_pts}.")
+            if len(schedule_chg_pts) <= 0:
+                raise ValueError(f"Invalid schedule_chg_pts={schedule_chg_pts}.")
+
             for k, v in spec.full.spec.items():
+                _default_value, _ = Conversions.numpy_down_cast_default_value_dtype(
+                    v["dtype"]
+                )
+                if v["channel"] == CHANNELS.THERMOSTAT_SETTING:
+                    # settings channels set with default values first
+                    # they are set below after full df columns have been filled
+                    _df[k] = _default_value
+                elif v["channel"] == CHANNELS.WEATHER:
+                    # default: set no values for outdoor_weather=None
+                    # will default to using TMY3 data for the provided location
+                    if outdoor_weather:
+                        # outdoor_weather can be set with internal states as keys
+                        if v["internal_state"] in outdoor_weather.keys():
+                            _df[k] = outdoor_weather[v["internal_state"]]
 
-                if v["channel"] == CHANNELS.WEATHER:
-                    pass
-                elif v["channel"] == THERMOSTAT_SENSOR:
-                    pass
-                elif v["channel"] == EQUIPMENT:
-                    _df[k] = 0
-                elif v["channel"] == THERMOSTAT_SETTING:
-                    if v["internal_state"] == STATES.HVAC_MODE:
-                        pass
-                    pass
+                elif v["channel"] == CHANNELS.THERMOSTAT_SENSOR:
+                    # sensor data unused for dummy data
+                    # set default
+                    _df[k] = _default_value
+                elif v["channel"] == CHANNELS.EQUIPMENT:
+                    # equipment data unused for dummy data
+                    # set default
+                    _df[k] = _default_value
 
-            _df.reset_index().rename(columns={"index": spec.datetime_column})
+            # settings is always in spec add in specific order
+            # 1. add HVAC_MODE
+            k_hvac_mode = [
+                k
+                for k, v in spec.full.spec.items()
+                if v["internal_state"] == STATES.HVAC_MODE
+            ][0]
+            # assuming sorted ascending by timestamp
+            # each change point sets all future hvac modes
+            for _ts, _hvac_mode in hvac_mode_chg_pts.items():
+                _df.loc[_df.index >= _ts, k_hvac_mode] = _hvac_mode
+
+            # 2. add SCHEDULE
+            k_schedule = [
+                k
+                for k, v in spec.full.spec.items()
+                if v["internal_state"] == STATES.SCHEDULE
+            ][0]
+            # assuming sorted ascending by timestamp
+            # each change point sets all future schedules
+            for _ts, _schedule in schedule_chg_pts.items():
+                for _dow in range(7):
+                    _dow_schedule = [
+                        _s for _s in _schedule if _s["on_day_of_week"][_dow]
+                    ]
+                    _dow_schedule = sorted(
+                        _dow_schedule, key=lambda k: k["minute_of_day"]
+                    )
+                    _prev_dow_schedule = [
+                        _s for _s in _schedule if _s["on_day_of_week"][(_dow - 1) % 7]
+                    ]
+                    _prev_dow_schedule = sorted(
+                        _prev_dow_schedule, key=lambda k: k["minute_of_day"]
+                    )
+                    # first period is defined from previous day of week last schedule
+                    _prev_s = _prev_dow_schedule[-1]
+                    _s = _dow_schedule[0]
+                    _df.loc[
+                        (_df.index >= _ts)
+                        & (_df.index.day_of_week == _dow)
+                        & (
+                            _df.index.hour * 60 + _df.index.minute < _s["minute_of_day"]
+                        ),
+                        k_schedule,
+                    ] = _prev_s["name"]
+                    for _s in _dow_schedule:
+
+                        _df.loc[
+                            (_df.index >= _ts)
+                            & (_df.index.day_of_week == _dow)
+                            & (
+                                _df.index.hour * 60 + _df.index.minute
+                                >= _s["minute_of_day"]
+                            ),
+                            k_schedule,
+                        ] = _s["name"]
+
+            # 3. add SCHEDULE
+            k_stp_cool = [
+                k
+                for k, v in spec.full.spec.items()
+                if v["internal_state"] == STATES.TEMPERATURE_STP_COOL
+            ][0]
+            k_stp_heat = [
+                k
+                for k, v in spec.full.spec.items()
+                if v["internal_state"] == STATES.TEMPERATURE_STP_HEAT
+            ][0]
+            # assuming sorted ascending by timestamp
+            # each change point sets all future comfort set points
+            for _ts, _comfort in comfort_chg_pts.items():
+                for _schedule_name, _setpoints in _comfort.items():
+                    _df.loc[
+                        (_df.index >= _ts) & (_df[k_schedule] == _schedule_name),
+                        k_stp_cool,
+                    ] = _setpoints[STATES.TEMPERATURE_STP_COOL]
+                    _df.loc[
+                        (_df.index >= _ts) & (_df[k_schedule] == _schedule_name),
+                        k_stp_heat,
+                    ] = _setpoints[STATES.TEMPERATURE_STP_HEAT]
+
+            _df = _df.reset_index().rename(columns={"index": spec.datetime_column})
+
+            return _df

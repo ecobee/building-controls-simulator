@@ -9,12 +9,8 @@ import pytz
 
 from BuildingControlsSimulator.Simulator.Config import Config
 from BuildingControlsSimulator.DataClients.DataClient import DataClient
-from BuildingControlsSimulator.DataClients.LocalSource import (
-    LocalSource,
-)
-from BuildingControlsSimulator.DataClients.GCSDestination import (
-    GCSDestination,
-)
+from BuildingControlsSimulator.DataClients.LocalSource import LocalSource
+from BuildingControlsSimulator.DataClients.GCSDestination import GCSDestination
 from BuildingControlsSimulator.DataClients.DataSpec import EnergyPlusWeather
 from BuildingControlsSimulator.DataClients.DataStates import STATES
 from BuildingControlsSimulator.DataClients.DataSpec import (
@@ -32,8 +28,8 @@ class TestGCSDestination:
         # initialize with data to avoid pulling multiple times
         cls.sim_config = Config.make_sim_config(
             identifier=[
-                "DYD_dummy_data",  # test file
-            ],
+                "DYD_dummy_data",
+            ],  # test file
             latitude=33.481136,
             longitude=-112.078232,
             start_utc=[
