@@ -355,7 +355,6 @@ class DataClient:
             sim_config=self.sim_config,
             total_sim_steps=_total_sim_steps,
         )
-
         # set flag for other simulations using this data client
         self.has_data = True
 

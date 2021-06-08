@@ -497,7 +497,7 @@ class Internal:
 
         self.weather = Spec(
             datetime_column=self.datetime_column,
-            null_check_columns=[STATES.OUTDOOR_TEMPERATURE],
+            null_check_columns=[],
             spec={
                 STATES.OUTDOOR_TEMPERATURE: {
                     "name": "outdoor_temperature",
@@ -591,7 +591,7 @@ class FlatFilesSpec:
     def __init__(self):
         self.datetime = Spec(
             datetime_column=self.datetime_column,
-            null_check_columns=self.datetime_column,
+            null_check_columns=[self.datetime_column],
             spec={
                 self.datetime_column: {
                     "internal_state": STATES.DATE_TIME,
@@ -603,7 +603,7 @@ class FlatFilesSpec:
         )
         self.thermostat = Spec(
             datetime_column=self.datetime_column,
-            null_check_columns="HvacMode",
+            null_check_columns=["HvacMode"],
             spec={
                 "HvacMode": {
                     "internal_state": STATES.HVAC_MODE,
@@ -670,7 +670,7 @@ class FlatFilesSpec:
 
         self.equipment = Spec(
             datetime_column=self.datetime_column,
-            null_check_columns="HvacMode",
+            null_check_columns=["HvacMode"],
             spec={
                 "auxHeat1": {
                     "internal_state": STATES.AUXHEAT1,
@@ -749,7 +749,7 @@ class FlatFilesSpec:
 
         self.sensors = Spec(
             datetime_column=self.datetime_column,
-            null_check_columns="thermostat_temperature",
+            null_check_columns=["SensorTemp000"],
             spec={
                 "SensorTemp000": {
                     "internal_state": STATES.THERMOSTAT_TEMPERATURE,
@@ -792,7 +792,7 @@ class FlatFilesSpec:
 
         self.weather = Spec(
             datetime_column=self.datetime_column,
-            null_check_columns="Temperature",
+            null_check_columns=[],
             spec={
                 "Temperature": {
                     "internal_state": STATES.OUTDOOR_TEMPERATURE,
@@ -864,7 +864,7 @@ class DonateYourDataSpec:
     def __init__(self):
         self.datetime = Spec(
             datetime_column=self.datetime_column,
-            null_check_columns=self.datetime_column,
+            null_check_columns=[self.datetime_column],
             spec={
                 self.datetime_column: {
                     "internal_state": STATES.DATE_TIME,
@@ -877,7 +877,7 @@ class DonateYourDataSpec:
 
         self.thermostat = Spec(
             datetime_column=self.datetime_column,
-            null_check_columns="HvacMode",
+            null_check_columns=["HvacMode"],
             spec={
                 "HvacMode": {
                     "internal_state": STATES.HVAC_MODE,
@@ -932,7 +932,7 @@ class DonateYourDataSpec:
 
         self.equipment = Spec(
             datetime_column=self.datetime_column,
-            null_check_columns="HvacMode",
+            null_check_columns=[],
             spec={
                 "auxHeat1": {
                     "internal_state": STATES.AUXHEAT1,
@@ -987,7 +987,7 @@ class DonateYourDataSpec:
 
         self.sensors = Spec(
             datetime_column=self.datetime_column,
-            null_check_columns="Thermostat_Temperature",
+            null_check_columns=["Thermostat_Temperature"],
             spec={
                 "Thermostat_Temperature": {
                     "internal_state": STATES.THERMOSTAT_TEMPERATURE,
@@ -1030,7 +1030,7 @@ class DonateYourDataSpec:
 
         self.weather = Spec(
             datetime_column=self.datetime_column,
-            null_check_columns="Temperature",
+            null_check_columns=[],
             spec={
                 "T_out": {
                     "internal_state": STATES.OUTDOOR_TEMPERATURE,
@@ -1067,13 +1067,13 @@ class DonateYourDataSpec:
 
         self.full = Spec(
             datetime_column=self.datetime_column,
-            null_check_columns=[
+            null_check_columns=
                 self.datetime.null_check_columns
                 + self.thermostat.null_check_columns
                 + self.equipment.null_check_columns
                 + self.sensors.null_check_columns
                 + self.weather.null_check_columns
-            ],
+            ,
             spec={
                 **self.datetime.spec,
                 **self.thermostat.spec,
