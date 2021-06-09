@@ -111,6 +111,12 @@ class DataDestination(ABC):
         else:
             _df = df
 
+        DataDestination.write_data_static(_df, filepath_or_buffer, file_extension)
+
+    @staticmethod
+    def write_data_static(_df, filepath_or_buffer, file_extension="parquet.gzip"):
+        """When using a buffer of bytes the compression cannot be inferred."""
+
         logger.info(f"Storing simulation ouput at: {filepath_or_buffer}")
         if file_extension.startswith("parquet"):
             # note: parquet requires string column names

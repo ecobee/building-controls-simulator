@@ -17,6 +17,8 @@ from BuildingControlsSimulator.DataClients.DataStates import (
 from BuildingControlsSimulator.Conversions.Conversions import Conversions
 from BuildingControlsSimulator.DataClients.DataSpec import (
     Internal,
+    FlatFilesSpec,
+    DonateYourDataSpec,
     convert_spec,
 )
 from BuildingControlsSimulator.DataClients.DateTimeChannel import DateTimeChannel
@@ -355,7 +357,6 @@ class DataClient:
             sim_config=self.sim_config,
             total_sim_steps=_total_sim_steps,
         )
-
         # set flag for other simulations using this data client
         self.has_data = True
 
@@ -935,15 +936,31 @@ class DataClient:
 
             if not comfort_chg_pts:
                 # set default ecobee comfort setpoints
+                if isinstance(spec, FlatFilesSpec):
+                    home_stp_cool = Conversions.C2Fx10(23.5)
+                    home_stp_heat = Conversions.C2Fx10(21.0)
+                    sleep_stp_cool = Conversions.C2Fx10(28.0)
+                    sleep_stp_heat = Conversions.C2Fx10(16.5)
+                elif isinstance(spec, DonateYourDataSpec):
+                    home_stp_cool = Conversions.C2F(23.5)
+                    home_stp_heat = Conversions.C2F(21.0)
+                    sleep_stp_cool = Conversions.C2F(28.0)
+                    sleep_stp_heat = Conversions.C2F(16.5)
+                else:
+                    home_stp_cool = 23.5
+                    home_stp_heat = 21.0
+                    sleep_stp_cool = 28.0
+                    sleep_stp_heat = 16.5
+
                 comfort_chg_pts = {
                     sim.start_utc: {
                         "Home": {
-                            STATES.TEMPERATURE_STP_COOL: 23.5,
-                            STATES.TEMPERATURE_STP_HEAT: 21.0,
+                            STATES.TEMPERATURE_STP_COOL: home_stp_cool,
+                            STATES.TEMPERATURE_STP_HEAT: home_stp_heat,
                         },
                         "Sleep": {
-                            STATES.TEMPERATURE_STP_COOL: 28.0,
-                            STATES.TEMPERATURE_STP_HEAT: 16.5,
+                            STATES.TEMPERATURE_STP_COOL: sleep_stp_cool,
+                            STATES.TEMPERATURE_STP_HEAT: sleep_stp_heat,
                         },
                     }
                 }
