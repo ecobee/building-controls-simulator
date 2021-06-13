@@ -34,14 +34,19 @@ class DataDestination(ABC):
         pass
 
     def make_data_directories(self):
-        os.makedirs(
-            os.path.join(
-                self.local_cache,
-                self.operator_name,
-                self.source_name,
-            ),
-            exist_ok=True,
-        )
+        if not self.local_cache:
+            logger.info("local_cache not supplied, directory will not be made.")
+        elif not self.source_name:
+            logger.info("source_name not supplied, directory will not be made.")
+        else:
+            os.makedirs(
+                os.path.join(
+                    self.local_cache,
+                    self.operator_name,
+                    self.source_name,
+                ),
+                exist_ok=True,
+            )
 
     def get_file_name(self, sim_name):
         # sim_name may contain . character, replace this safely

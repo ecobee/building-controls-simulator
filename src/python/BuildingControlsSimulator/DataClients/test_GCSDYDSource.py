@@ -48,7 +48,7 @@ class TestGCSDYDSource:
 
         cls.data_clients = []
 
-        # set local_cache=None to test connection with GCS
+        # set local_cache=None to avoid caching locally and always testing connection with GCS
         cls.data_client = DataClient(
             source=GCSDYDSource(
                 gcp_project=os.environ.get("DYD_GOOGLE_CLOUD_PROJECT"),
@@ -56,16 +56,8 @@ class TestGCSDYDSource:
                 local_cache=None,
             ),
             destination=LocalDestination(
-                local_cache=os.environ.get("LOCAL_CACHE_DIR"),
                 data_spec=DonateYourDataSpec(),
             ),
-            nrel_dev_api_key=os.environ.get("NREL_DEV_API_KEY"),
-            nrel_dev_email=os.environ.get("NREL_DEV_EMAIL"),
-            archive_tmy3_dir=os.environ.get("ARCHIVE_TMY3_DIR"),
-            archive_tmy3_meta=os.environ.get("ARCHIVE_TMY3_META"),
-            archive_tmy3_data_dir=os.environ.get("ARCHIVE_TMY3_DATA_DIR"),
-            ep_tmy3_cache_dir=os.environ.get("EP_TMY3_CACHE_DIR"),
-            simulation_epw_dir=os.environ.get("SIMULATION_EPW_DIR"),
         )
 
         for _idx, _sim_config in cls.sim_config.iterrows():
@@ -145,6 +137,6 @@ class TestGCSDYDSource:
                     ][STATES.TEMPERATURE_CTRL].mean()
                 )
                 assert dc.full_data_periods[0] == [
-                    pd.Timestamp("2018-02-10 17:00:00+0000", tz="UTC"),
-                    pd.Timestamp("2018-02-21 16:25:00+0000", tz="UTC"),
+                    pd.Timestamp("2018-01-02 22:05:00+0000", tz="UTC"),
+                    pd.Timestamp("2018-02-01 15:30:00+0000", tz="UTC"),
                 ]

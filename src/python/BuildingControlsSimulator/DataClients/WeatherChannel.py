@@ -65,7 +65,7 @@ class WeatherChannel(DataChannel):
             STATES.GLOBAL_HORIZONTAL_IRRADIANCE,
             STATES.DIFFUSE_HORIZONTAL_IRRADIANCE,
             STATES.OUTDOOR_TEMPERATURE,
-            STATES.OUTDOOR_RELATIVE_HUMIDITY
+            STATES.OUTDOOR_RELATIVE_HUMIDITY,
         ]
 
     # these are the solar radiation columns defined for unit conversions

@@ -31,6 +31,7 @@ docker-compose version 1.27.4, build 40524192
 This section contains the minimal set of commands as described below to get the 
 examples and tests working. For explaination of these commands and trouble 
 shooting see full installation and setup sections below.
+
 #### Specify the .template files
 
 Copy the template files:
@@ -265,7 +266,7 @@ Some issues that have occurred on different machines are:
 - `jupyter lab build` failing
     - try setting in Dockerfile command `jupyter lab build --dev-build=False --minimize=False`.
 
-### File permissions issues
+### Troubleshooting file permissions issues
 
 1. After switching branches on host machine mounted volumes give permissions
 errors when access is attempted within docker container.
@@ -277,24 +278,13 @@ errors when access is attempted within docker container.
 
 ## Usage
 
-### Example Notebook (Hello World)
+### Example Notebook (Hello World): demo_LocalSource.ipynb
 
-First move the test .idf file to the `$IDF_DIR`.
+Open in jupyterlab `notebooks/demo_LocalSource.ipynb` and run all cells.
+This demo shows the usage of the building controls simulator and will download 
+necessary data from www.energyplus.net and generate input data for the simulation.
 
-```bash
-cp "test/idf/v8-9-0/AZ_Phoenix_gasfurnace_crawlspace_IECC_2018_cycles.idf" "${IDF_DIR}"
-```
-
-Next, download the weather file for that geography using https://energyplus.net/weather.
-Other weather data can be used as long as it is put into the .epw format.
-
-```bash
-EPLUS_WEATHER_URL_USA="https://energyplus.net/weather-download/north_and_central_america_wmo_region_4/USA"
-WEATHER_FILE="AZ/USA_AZ_Phoenix-Sky.Harbor.Intl.AP.722780_TMY3/USA_AZ_Phoenix-Sky.Harbor.Intl.AP.722780_TMY3.epw"
-wget "${EPLUS_WEATHER_URL_USA}/${WEATHER_FILE}" -P "${WEATHER_DIR}"
-```
-
-### Example Notebook with Donate Your Data (DYD)
+### Example Notebook with Donate Your Data (DYD): demo_GCSDYDSource.ipynb
 
 Support for ecobee Donate Your Data (DYD) is included with the GCSDYDSource. 
 For example usage see `notebooks/demo_GCSDYDSource.ipynb`.
@@ -458,50 +448,7 @@ technical report: https://www.nrel.gov/docs/fy08osti/43156.pdf
 The simpliest data source for EPW formated TMY data is from the EnergyPlus website:
 https://energyplus.net/weather.
 
-
-### NSRDB 1991-2005 Archive Data
-
-The archived data contains the most recent TMY3 data with the fields required by the EPW format.
-Download the archive from: https://nsrdb.nrel.gov/data-sets/archives.html
-
-Note: The archive is ~3 GB, but only the TMY data (~300MB compressed, 1.7 GB uncompressed) is required and the hourly data can be deleted after download.
-
-Example bash commands to download and extract TMY3 data (if archive format changes these will need to change accordingly):
-```bash
-cd $WEATHER_DIR
-wget https://gds-files.nrelcloud.org/rredc/1991-2005.zip
-unzip 1991-2005.zip
-cd 1991-2005
-rm -rf hourly
-cd tmy3
-mkdir tmy3_data
-mv allmy3a.zip tmy3_data
-cd tmy3_data
-# be careful, this archive dumps many TMY data files into current directory
-unzip allmy3a.zip
-cd $WEATHER_DIR
-# rename tmy3 directory
-mv 1991-2005/tmy3 archive_tmy3
-```
-
-your TMY3 cache should have the following structure:
-```bash
-~/lib/building-controls-simulator/weather/archive_tmy3$ ls
-TMY3_StationsMeta.csv  tmy3_data
-
-# and inside tmy3_data, the actual TMY3 data files
-~/lib/building-controls-simulator/weather/archive_tmy3$ ls tmy3_data/
-690150TYA.CSV  722435TYA.CSV  723540TYA.CSV  724675TYA.CSV  725520TYA.CSV  726685TYA.CSV
-690190TYA.CSV  722436TYA.CSV  723544TYA.CSV  724676TYA.CSV  725524TYA.CSV  726686TYA.CSV
-690230TYA.CSV  722445TYA.CSV  723545TYA.CSV  724677TYA.CSV  725525TYA.CSV  726700TYA.CSV
-699604TYA.CSV  722446TYA.CSV  723546TYA.CSV  724695TYA.CSV  725526TYA.CSV  726770TYA.CSV
-700197TYA.CSV  722448TYA.CSV  723550TYA.CSV  724698TYA.CSV  725527TYA.CSV  726776TYA.CSV
-700260TYA.CSV  722470TYA.CSV  723560TYA.CSV  724699TYA.CSV  725530TYA.CSV  726785TYA.CSV
-700637TYA.CSV  722480TYA.CSV  723565TYA.CSV  724723TYA.CSV  725533TYA.CSV  726797TYA.CSV
-...
-```
-
-### NREL NSRDB: 
+### NREL NSRDB
 
 The current NSRDB has TMY and PSM3 data available through its developer API. 
 This however does not contain all fields required by the EPW format so those fields

@@ -1,5 +1,6 @@
 # created by Tom Stesco tom.s@ecobee.com
 
+import os
 import logging
 from abc import ABC, abstractmethod
 
@@ -18,7 +19,7 @@ logger = logging.getLogger(__name__)
 @attr.s(kw_only=True)
 class LocalDestination(DataDestination):
 
-    local_cache = attr.ib()
+    local_cache = attr.ib(default=os.environ.get("LOCAL_CACHE_DIR"))
     source_name = attr.ib(default="local")
 
     def __attrs_post_init__(self):
