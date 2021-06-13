@@ -1067,13 +1067,11 @@ class DonateYourDataSpec:
 
         self.full = Spec(
             datetime_column=self.datetime_column,
-            null_check_columns=
-                self.datetime.null_check_columns
-                + self.thermostat.null_check_columns
-                + self.equipment.null_check_columns
-                + self.sensors.null_check_columns
-                + self.weather.null_check_columns
-            ,
+            null_check_columns=self.datetime.null_check_columns
+            + self.thermostat.null_check_columns
+            + self.equipment.null_check_columns
+            + self.sensors.null_check_columns
+            + self.weather.null_check_columns,
             spec={
                 **self.datetime.spec,
                 **self.thermostat.spec,

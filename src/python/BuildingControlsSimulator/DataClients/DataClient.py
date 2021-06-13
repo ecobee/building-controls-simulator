@@ -357,6 +357,12 @@ class DataClient:
             sim_config=self.sim_config,
             total_sim_steps=_total_sim_steps,
         )
+
+        # need to convert data types of filled weather data to spec dtypes
+        self.weather.data = self.weather.data.astype(
+            {k: v["dtype"] for k, v in self.internal_spec.weather.spec.items()}
+        )
+
         # set flag for other simulations using this data client
         self.has_data = True
 

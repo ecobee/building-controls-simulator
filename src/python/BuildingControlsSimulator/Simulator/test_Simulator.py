@@ -156,7 +156,9 @@ class TestSimulator:
         _controller = None
         if controller_model_params["is_deadband"]:
             _controller = Deadband(
-                deadband=1.0,
+                options={
+                    "deadband": 1.0,
+                },
                 step_size_seconds=controller_model_params["step_size_seconds"],
                 discretization_size_seconds=60,
             )
@@ -249,6 +251,14 @@ class TestSimulator:
 
         output_format_mean_thermostat_temperature = r_df[t_ctrl_name].mean()
         output_format_mean_thermostat_humidity = r_df[humidity_name].mean()
+
+        # print out values in case of slight divergence to avoid re-running tests
+        logger.info(
+            f"\nmean_thermostat_temperature= {mean_thermostat_temperature}\n"
+            + f"mean_thermostat_humidity= {mean_thermostat_humidity}\n"
+            + f"output_format_mean_thermostat_temperature= {output_format_mean_thermostat_temperature}\n"
+            + f"output_format_mean_thermostat_humidity= {output_format_mean_thermostat_humidity}\n"
+        )
 
         assert (
             pytest.approx(test_params["expected_result"]["mean_thermostat_temperature"])

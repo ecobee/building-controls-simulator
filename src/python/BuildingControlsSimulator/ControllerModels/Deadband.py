@@ -20,7 +20,6 @@ class Deadband(ControllerModel):
     step_output = attr.ib(factory=dict)
     step_size_seconds = attr.ib(default=None)
     current_t_idx = attr.ib(default=None)
-    options = attr.ib(default=None)
 
     output = attr.ib(factory=dict)
 
