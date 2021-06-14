@@ -17,3 +17,4 @@
 - fixed `make_data_directories` usage when no local_cache is given
 - fixed `get_local_cache_file` usage when no local_cache is given
 - fixed `DataSpec.py` null_check_columns and units
+- conditional skipping of `DataClient` tests that use external data sources if those sources are not configured
