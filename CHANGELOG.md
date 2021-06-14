@@ -1,5 +1,5 @@
 
-# 0.4.2 (2021-06-13)
+# 0.5.0 (2021-06-13)
 
 ## Features and Improvements
 - simplify `.env` setup and usage
