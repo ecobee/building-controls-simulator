@@ -57,9 +57,17 @@ LOCAL_PACKAGE_DIR=/Users/tom.s/projects/building-controls-simulator
 
 #### Run with docker-compose
 
+First download latest pre-built container image from Dockerhub:
+```bash
+docker pull tstesco/building-controls-simulator:0.5.0-alpha
+```
+
+Start container and jupyter-lab server:
 ```bash
 docker-compose up
 ```
+
+You can now run notebooks, start with `demo_LocalSource.ipynb`.
 
 ### Local Docker Setup
 
@@ -117,7 +125,7 @@ If you delete the docker image just go through the setup here again to rebuild i
 You can access the latest release image from: https://hub.docker.com/r/tstesco/building-controls-simulator/tags via CLI:
 
 ```bash
-docker pull tstesco/building-controls-simulator:0.4.1-alpha
+docker pull tstesco/building-controls-simulator:0.5.0-alpha
 ```
 
 If you are using the Dockerhub repository make sure that your `.env` file contains

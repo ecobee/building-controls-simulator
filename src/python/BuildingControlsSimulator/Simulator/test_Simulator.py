@@ -190,10 +190,7 @@ class TestSimulator:
         )
         _epw_path = None
         if test_params["data_client"].get("epw_name"):
-            _epw_path = os.path.join(
-                os.environ.get("WEATHER_DIR"),
-                test_params["data_client"].get("epw_name"),
-            )
+            _epw_path = self.get_epw_path(test_params["data_client"].get("epw_name"))
 
         # do not use NREL data in test cases in case it changes or becomes unavailable
         dc = DataClient(
