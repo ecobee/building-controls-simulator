@@ -11,9 +11,7 @@ import pytest
 import pyfmi
 
 from BuildingControlsSimulator.Simulator.Config import Config
-from BuildingControlsSimulator.BuildingModels.IDFPreprocessor import (
-    IDFPreprocessor,
-)
+from BuildingControlsSimulator.BuildingModels.IDFPreprocessor import IDFPreprocessor
 from BuildingControlsSimulator.BuildingModels.EnergyPlusBuildingModel import (
     EnergyPlusBuildingModel,
 )

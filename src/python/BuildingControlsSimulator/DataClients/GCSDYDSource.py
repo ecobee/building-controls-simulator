@@ -24,6 +24,9 @@ class GCSDYDSource(GCSDataSource):
     source_name = attr.ib(default="GCSDYD")
     meta_gcs_uri = attr.ib(default=None)
 
+    def __attrs_post_init__(self):
+        self.make_data_directories()
+
     def get_metadata(self):
         if self.meta_gcs_uri:
             _fs = gcsfs.GCSFileSystem(

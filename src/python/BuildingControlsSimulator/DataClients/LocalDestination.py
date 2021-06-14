@@ -1,5 +1,6 @@
 # created by Tom Stesco tom.s@ecobee.com
 
+import os
 import logging
 from abc import ABC, abstractmethod
 
@@ -8,12 +9,8 @@ import pandas as pd
 import numpy as np
 
 from BuildingControlsSimulator.DataClients.DataStates import CHANNELS
-from BuildingControlsSimulator.DataClients.DataDestination import (
-    DataDestination,
-)
-from BuildingControlsSimulator.DataClients.DataSpec import (
-    convert_spec,
-)
+from BuildingControlsSimulator.DataClients.DataDestination import DataDestination
+from BuildingControlsSimulator.DataClients.DataSpec import convert_spec
 
 
 logger = logging.getLogger(__name__)
@@ -22,7 +19,11 @@ logger = logging.getLogger(__name__)
 @attr.s(kw_only=True)
 class LocalDestination(DataDestination):
 
-    local_cache = attr.ib()
+    local_cache = attr.ib(default=os.environ.get("LOCAL_CACHE_DIR"))
+    source_name = attr.ib(default="local")
+
+    def __attrs_post_init__(self):
+        self.make_data_directories()
 
     def put_data(self, df, sim_name, src_spec):
         _df = convert_spec(

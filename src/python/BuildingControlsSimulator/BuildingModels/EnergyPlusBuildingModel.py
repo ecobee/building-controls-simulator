@@ -14,14 +14,10 @@ import numpy as np
 import pyfmi
 
 from BuildingControlsSimulator.DataClients.DataStates import STATES
-from BuildingControlsSimulator.BuildingModels.BuildingModel import (
-    BuildingModel,
-)
+from BuildingControlsSimulator.BuildingModels.BuildingModel import BuildingModel
 
 
-from BuildingControlsSimulator.ControllerModels.ControllerModel import (
-    ControllerModel,
-)
+from BuildingControlsSimulator.ControllerModels.ControllerModel import ControllerModel
 from BuildingControlsSimulator.Conversions.Conversions import Conversions
 
 
@@ -448,7 +444,7 @@ class EnergyPlusBuildingModel(BuildingModel):
             else:
                 iter_step_control_input[cool_col] = min(
                     max(
-                        step_control_input[heat_col]
+                        step_control_input[cool_col]
                         - self.step_size_seconds * (n_iter - _iter),
                         0,
                     ),

@@ -66,9 +66,19 @@ class GBQDataSource(DataSource, ABC):
                 f"Invalid sim_config: sim_config[identifier]={sim_config['identifier']}"
             )
 
+        # first get the table schema from GBQ and take the intersection of our
+        # data spec columns to see which columns we can get from GBQ
+        client = bigquery.Client(project=self.gcp_project)
+        table = client.get_table(self.gbq_table)
+        schema_columns = [_s.name for _s in table.schema]
+        # take intersection preserving order in data spec
+        gbq_columns = [
+            _col for _col in self.data_spec.full.columns if _col in schema_columns
+        ]
+
         # query will get data for entire data set per ID so that the cache can
         # be built up correctly.
-        columns_str = ", ".join(self.data_spec.full.columns)
+        columns_str = ", ".join(gbq_columns)
         query_str = f"SELECT {columns_str}\n"
         query_str += f"FROM `{self.gbq_table}`\n"
         query_str += f"WHERE Identifier = '{sim_config['identifier']}'\n"
@@ -88,12 +98,16 @@ class GBQDataSource(DataSource, ABC):
             query=query_str,
             project_id=self.gcp_project,
             credentials=self.gbq_token,
-            col_order=self.data_spec.full.columns,
+            col_order=gbq_columns,
             reauth=True,
             dialect="standard",
             max_results=1000000,
             use_bqstorage_api=False,
-            dtypes={k: v["dtype"] for k, v in self.data_spec.full.spec.items()},
+            dtypes={
+                k: v["dtype"]
+                for k, v in self.data_spec.full.spec.items()
+                if k in gbq_columns
+            },
         )
 
         if _df.empty:

@@ -23,32 +23,14 @@ logger = logging.getLogger(__name__)
 class LocalSource(DataSource):
 
     source_name = attr.ib(default="local")
-    local_cache = attr.ib()
+    local_cache = attr.ib(default=os.environ.get("LOCAL_CACHE_DIR"))
     data_spec = attr.ib()
     file_extension = attr.ib(default=None)
 
     def __attrs_post_init__(self):
         """Infer the file_extension from local_cache supplied"""
-        if os.path.isdir(self.local_cache_source):
-
-            # find file extension
-            extensions = []
-            for _fname in os.listdir(self.local_cache_source):
-                _ext = ".".join(_fname.split(".")[1:])
-                if _ext not in extensions:
-                    extensions.append(_ext)
-
-            if len(extensions) == 0:
-                raise ValueError(f"{self.local_cache_source} contains no data files.")
-            elif len(extensions) == 1:
-                self.file_extension = extensions[0]
-            elif len(extensions) > 1:
-                raise ValueError(
-                    f"{self.local_cache_source} contains more than one file"
-                    + f" extension type, extensions: {extensions}."
-                )
-
-        else:
+        self.make_data_directories()
+        if not os.path.isdir(self.local_cache_source):
             raise ValueError(
                 f"{self.local_cache_source} is not a directory or does not exist."
             )

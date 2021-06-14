@@ -64,6 +64,8 @@ class WeatherChannel(DataChannel):
             STATES.DIRECT_NORMAL_IRRADIANCE,
             STATES.GLOBAL_HORIZONTAL_IRRADIANCE,
             STATES.DIFFUSE_HORIZONTAL_IRRADIANCE,
+            STATES.OUTDOOR_TEMPERATURE,
+            STATES.OUTDOOR_RELATIVE_HUMIDITY,
         ]
 
     # these are the solar radiation columns defined for unit conversions
@@ -734,7 +736,7 @@ class WeatherChannel(DataChannel):
         All data is internally in UTC.
         """
         if input_data.empty:
-            raise ValueError(f"input_data is empty.")
+            return input_data
 
         # if nrel API key is not set, return input
         if not self.nrel_dev_api_key:

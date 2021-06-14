@@ -14,25 +14,21 @@ from BuildingControlsSimulator.DataClients.DataStates import (
     CHANNELS,
     STATES,
 )
+from BuildingControlsSimulator.Conversions.Conversions import Conversions
 from BuildingControlsSimulator.DataClients.DataSpec import (
     Internal,
+    FlatFilesSpec,
+    DonateYourDataSpec,
     convert_spec,
 )
-from BuildingControlsSimulator.DataClients.DateTimeChannel import (
-    DateTimeChannel,
-)
-from BuildingControlsSimulator.DataClients.ThermostatChannel import (
-    ThermostatChannel,
-)
-from BuildingControlsSimulator.DataClients.EquipmentChannel import (
-    EquipmentChannel,
-)
+from BuildingControlsSimulator.DataClients.DateTimeChannel import DateTimeChannel
+from BuildingControlsSimulator.DataClients.ThermostatChannel import ThermostatChannel
+from BuildingControlsSimulator.DataClients.EquipmentChannel import EquipmentChannel
 from BuildingControlsSimulator.DataClients.SensorsChannel import SensorsChannel
 from BuildingControlsSimulator.DataClients.WeatherChannel import WeatherChannel
 from BuildingControlsSimulator.DataClients.DataSource import DataSource
-from BuildingControlsSimulator.DataClients.DataDestination import (
-    DataDestination,
-)
+from BuildingControlsSimulator.DataClients.DataDestination import DataDestination
+from BuildingControlsSimulator.DataClients.LocalDestination import LocalDestination
 
 
 logger = logging.getLogger(__name__)
@@ -143,6 +139,9 @@ class DataClient:
 
         # the period data source is expected at
         _expected_period = f"{self.internal_spec.data_period_seconds}S"
+
+        _min_datetime = _data[self.internal_spec.datetime.datetime_column].min()
+        _max_datetime = _data[self.internal_spec.datetime.datetime_column].max()
 
         # truncate the data to desired simulation start and end time
         _data = _data[
@@ -267,7 +266,12 @@ class DataClient:
                 + "for requested duration: "
                 + f"start_utc={self.sim_config['start_utc']}, "
                 + f"end_utc={self.sim_config['end_utc']} "
-                + f"with min_sim_period={self.sim_config['min_sim_period']}"
+                + f"with min_sim_period={self.sim_config['min_sim_period']}. "
+                + f"The given data file runs from {_min_datetime}"
+                + f" to {_max_datetime}. "
+                + f"If there is overlap between these two time periods then "
+                + "there is too much missing data. If there is no overlap "
+                + "consider altering your sim_config start_utc and end_utc."
             )
 
         self.datetime = DateTimeChannel(
@@ -352,6 +356,11 @@ class DataClient:
         self.weather.get_forecast_data(
             sim_config=self.sim_config,
             total_sim_steps=_total_sim_steps,
+        )
+
+        # need to convert data types of filled weather data to spec dtypes
+        self.weather.data = self.weather.data.astype(
+            {k: v["dtype"] for k, v in self.internal_spec.weather.spec.items()}
         )
 
         # set flag for other simulations using this data client
@@ -872,3 +881,219 @@ class DataClient:
         # the datetime index can be reset back to a column
         res_df = res_df.reset_index()
         return res_df
+
+    @staticmethod
+    def generate_dummy_data(
+        sim_config,
+        spec,
+        outdoor_weather=None,
+        schedule_chg_pts=None,
+        comfort_chg_pts=None,
+        hvac_mode_chg_pts=None,
+    ):
+        if isinstance(spec, Internal):
+            raise ValueError(
+                f"Supplied Spec {spec} is internal spec."
+                + " Data of this spec should not be stored in data files"
+            )
+
+        for _idx, sim in sim_config.iterrows():
+            # _df = pd.DataFrame(columns=spec.full.spec.keys())
+            _df = pd.DataFrame(
+                index=pd.date_range(
+                    start=sim.start_utc,
+                    end=sim.end_utc,
+                    freq=f"{spec.data_period_seconds}S",
+                )
+            )
+
+            if not schedule_chg_pts:
+                # set default ecobee schedule
+                schedule_chg_pts = {
+                    sim.start_utc: [
+                        {
+                            "name": "Home",
+                            "minute_of_day": 390,
+                            "on_day_of_week": [
+                                True,
+                                True,
+                                True,
+                                True,
+                                True,
+                                True,
+                                True,
+                            ],
+                        },
+                        {
+                            "name": "Sleep",
+                            "minute_of_day": 1410,
+                            "on_day_of_week": [
+                                True,
+                                True,
+                                True,
+                                True,
+                                True,
+                                True,
+                                True,
+                            ],
+                        },
+                    ]
+                }
+
+            if not comfort_chg_pts:
+                # set default ecobee comfort setpoints
+                if isinstance(spec, FlatFilesSpec):
+                    home_stp_cool = Conversions.C2Fx10(23.5)
+                    home_stp_heat = Conversions.C2Fx10(21.0)
+                    sleep_stp_cool = Conversions.C2Fx10(28.0)
+                    sleep_stp_heat = Conversions.C2Fx10(16.5)
+                elif isinstance(spec, DonateYourDataSpec):
+                    home_stp_cool = Conversions.C2F(23.5)
+                    home_stp_heat = Conversions.C2F(21.0)
+                    sleep_stp_cool = Conversions.C2F(28.0)
+                    sleep_stp_heat = Conversions.C2F(16.5)
+                else:
+                    home_stp_cool = 23.5
+                    home_stp_heat = 21.0
+                    sleep_stp_cool = 28.0
+                    sleep_stp_heat = 16.5
+
+                comfort_chg_pts = {
+                    sim.start_utc: {
+                        "Home": {
+                            STATES.TEMPERATURE_STP_COOL: home_stp_cool,
+                            STATES.TEMPERATURE_STP_HEAT: home_stp_heat,
+                        },
+                        "Sleep": {
+                            STATES.TEMPERATURE_STP_COOL: sleep_stp_cool,
+                            STATES.TEMPERATURE_STP_HEAT: sleep_stp_heat,
+                        },
+                    }
+                }
+
+            if not hvac_mode_chg_pts:
+                # set default ecobee comfort setpoints
+                hvac_mode_chg_pts = {sim.start_utc: "heat"}
+
+            # enforce ascending sorting of dict keys
+            hvac_mode_chg_pts = dict(sorted(hvac_mode_chg_pts.items()))
+            comfort_chg_pts = dict(sorted(comfort_chg_pts.items()))
+            schedule_chg_pts = dict(sorted(schedule_chg_pts.items()))
+
+            # check for errors in settings
+            if len(hvac_mode_chg_pts) <= 0:
+                raise ValueError(f"Invalid hvac_mode_chg_pts={hvac_mode_chg_pts}.")
+            if len(comfort_chg_pts) <= 0:
+                raise ValueError(f"Invalid comfort_chg_pts={comfort_chg_pts}.")
+            if len(schedule_chg_pts) <= 0:
+                raise ValueError(f"Invalid schedule_chg_pts={schedule_chg_pts}.")
+
+            for k, v in spec.full.spec.items():
+                _default_value, _ = Conversions.numpy_down_cast_default_value_dtype(
+                    v["dtype"]
+                )
+                if v["channel"] == CHANNELS.THERMOSTAT_SETTING:
+                    # settings channels set with default values first
+                    # they are set below after full df columns have been filled
+                    _df[k] = _default_value
+                elif v["channel"] == CHANNELS.WEATHER:
+                    # default: set no values for outdoor_weather=None
+                    # will default to using TMY3 data for the provided location
+                    if outdoor_weather:
+                        # outdoor_weather can be set with internal states as keys
+                        if v["internal_state"] in outdoor_weather.keys():
+                            _df[k] = outdoor_weather[v["internal_state"]]
+
+                elif v["channel"] == CHANNELS.THERMOSTAT_SENSOR:
+                    # sensor data unused for dummy data
+                    # set default
+                    _df[k] = _default_value
+                elif v["channel"] == CHANNELS.EQUIPMENT:
+                    # equipment data unused for dummy data
+                    # set default
+                    _df[k] = _default_value
+
+            # settings is always in spec add in specific order
+            # 1. add HVAC_MODE
+            k_hvac_mode = [
+                k
+                for k, v in spec.full.spec.items()
+                if v["internal_state"] == STATES.HVAC_MODE
+            ][0]
+            # assuming sorted ascending by timestamp
+            # each change point sets all future hvac modes
+            for _ts, _hvac_mode in hvac_mode_chg_pts.items():
+                _df.loc[_df.index >= _ts, k_hvac_mode] = _hvac_mode
+
+            # 2. add SCHEDULE
+            k_schedule = [
+                k
+                for k, v in spec.full.spec.items()
+                if v["internal_state"] == STATES.SCHEDULE
+            ][0]
+            # assuming sorted ascending by timestamp
+            # each change point sets all future schedules
+            for _ts, _schedule in schedule_chg_pts.items():
+                for _dow in range(7):
+                    _dow_schedule = [
+                        _s for _s in _schedule if _s["on_day_of_week"][_dow]
+                    ]
+                    _dow_schedule = sorted(
+                        _dow_schedule, key=lambda k: k["minute_of_day"]
+                    )
+                    _prev_dow_schedule = [
+                        _s for _s in _schedule if _s["on_day_of_week"][(_dow - 1) % 7]
+                    ]
+                    _prev_dow_schedule = sorted(
+                        _prev_dow_schedule, key=lambda k: k["minute_of_day"]
+                    )
+                    # first period is defined from previous day of week last schedule
+                    _prev_s = _prev_dow_schedule[-1]
+                    _s = _dow_schedule[0]
+                    _df.loc[
+                        (_df.index >= _ts)
+                        & (_df.index.day_of_week == _dow)
+                        & (
+                            _df.index.hour * 60 + _df.index.minute < _s["minute_of_day"]
+                        ),
+                        k_schedule,
+                    ] = _prev_s["name"]
+                    for _s in _dow_schedule:
+
+                        _df.loc[
+                            (_df.index >= _ts)
+                            & (_df.index.day_of_week == _dow)
+                            & (
+                                _df.index.hour * 60 + _df.index.minute
+                                >= _s["minute_of_day"]
+                            ),
+                            k_schedule,
+                        ] = _s["name"]
+
+            # 3. add SCHEDULE
+            k_stp_cool = [
+                k
+                for k, v in spec.full.spec.items()
+                if v["internal_state"] == STATES.TEMPERATURE_STP_COOL
+            ][0]
+            k_stp_heat = [
+                k
+                for k, v in spec.full.spec.items()
+                if v["internal_state"] == STATES.TEMPERATURE_STP_HEAT
+            ][0]
+            # assuming sorted ascending by timestamp
+            # each change point sets all future comfort set points
+            for _ts, _comfort in comfort_chg_pts.items():
+                for _schedule_name, _setpoints in _comfort.items():
+                    _df.loc[
+                        (_df.index >= _ts) & (_df[k_schedule] == _schedule_name),
+                        k_stp_cool,
+                    ] = _setpoints[STATES.TEMPERATURE_STP_COOL]
+                    _df.loc[
+                        (_df.index >= _ts) & (_df[k_schedule] == _schedule_name),
+                        k_stp_heat,
+                    ] = _setpoints[STATES.TEMPERATURE_STP_HEAT]
+
+            _df = _df.reset_index().rename(columns={"index": spec.datetime_column})
+
+            return _df

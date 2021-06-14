@@ -24,9 +24,13 @@ class OutputAnalysis(object):
     ```
     """
 
-    def __init__(self, simulations, data_spec, humidity=False):
+    def __init__(
+        self, simulations, data_spec, humidity=False, heat_only=False, cool_only=False
+    ):
         self.data_spec = data_spec
         self.humidity = humidity
+        self.cool_only = cool_only
+        self.heat_only = heat_only
 
         self.n_simulations = len(simulations)
         self.sim_names = []
@@ -548,49 +552,66 @@ class OutputAnalysis(object):
                 secondary_y=True,
             )
 
-        fig.add_trace(
-            go.Scatter(
-                x=output_df[STATES.DATE_TIME],
-                y=output_df[STATES.TEMPERATURE_STP_HEAT],
-                mode="lines",
-                line=dict(color="firebrick", width=1, dash="dash"),
-                name=self.data_spec.full.spec[STATES.TEMPERATURE_STP_HEAT]["name"],
-                hoverlabel={"namelength": -1},
-            ),
-            row=row,
-            col=col,
-            secondary_y=False,
-        )
+        if not self.cool_only:
+            fig.add_trace(
+                go.Scatter(
+                    x=output_df[STATES.DATE_TIME],
+                    y=output_df[STATES.TEMPERATURE_STP_HEAT],
+                    mode="lines",
+                    line=dict(color="firebrick", width=1, dash="dash"),
+                    name=self.data_spec.full.spec[STATES.TEMPERATURE_STP_HEAT]["name"],
+                    hoverlabel={"namelength": -1},
+                ),
+                row=row,
+                col=col,
+                secondary_y=False,
+            )
 
-        fig.add_trace(
-            go.Scatter(
-                x=output_df[STATES.DATE_TIME],
-                y=output_df[STATES.TEMPERATURE_STP_HEAT]
-                - self.controller_options[idx]["deadband"],
-                mode="lines",
-                line=dict(color="black", width=1, dash="dot"),
-                name="deadband_min",
-                hoverlabel={"namelength": -1},
-            ),
-            row=row,
-            col=col,
-            secondary_y=False,
-        )
+            fig.add_trace(
+                go.Scatter(
+                    x=output_df[STATES.DATE_TIME],
+                    y=output_df[STATES.TEMPERATURE_STP_HEAT]
+                    - self.controller_options[idx]["deadband"],
+                    mode="lines",
+                    line=dict(color="black", width=1, dash="dot"),
+                    name="deadband_heat_min",
+                    hoverlabel={"namelength": -1},
+                ),
+                row=row,
+                col=col,
+                secondary_y=False,
+            )
 
-        # fig.add_trace(
-        #     go.Scatter(
-        #         x=output_df[STATES.DATE_TIME],
-        #         y=output_df[STATES.TEMPERATURE_STP_COOL],
-        #         mode="lines",
-        #         line=dict(color="blue", width=1, dash="dash"),
-        #         name=self.data_spec.full.spec[STATES.TEMPERATURE_STP_COOL]["name"],
-        #         hoverlabel={"namelength": -1},
-        #         visible="legendonly",
-        #     ),
-        #     row=row,
-        #     col=col,
-        #     secondary_y=False,
-        # )
+        if not self.heat_only:
+            fig.add_trace(
+                go.Scatter(
+                    x=output_df[STATES.DATE_TIME],
+                    y=output_df[STATES.TEMPERATURE_STP_COOL],
+                    mode="lines",
+                    line=dict(color="blue", width=1, dash="dash"),
+                    name=self.data_spec.full.spec[STATES.TEMPERATURE_STP_COOL]["name"],
+                    hoverlabel={"namelength": -1},
+                    visible="legendonly",
+                ),
+                row=row,
+                col=col,
+                secondary_y=False,
+            )
+
+            fig.add_trace(
+                go.Scatter(
+                    x=output_df[STATES.DATE_TIME],
+                    y=output_df[STATES.TEMPERATURE_STP_COOL]
+                    + self.controller_options[idx]["deadband"],
+                    mode="lines",
+                    line=dict(color="black", width=1, dash="dot"),
+                    name="deadband_cool_max",
+                    hoverlabel={"namelength": -1},
+                ),
+                row=row,
+                col=col,
+                secondary_y=False,
+            )
 
         # changes in calendar events
         if STATES.CALENDAR_EVENT in output_df.columns:
@@ -697,7 +718,7 @@ class OutputAnalysis(object):
             STATES.AUXHEAT1,
             # STATES.AUXHEAT2,
             # STATES.AUXHEAT3,
-            # STATES.COMPCOOL1,
+            STATES.COMPCOOL1,
             # STATES.COMPCOOL2,
             # STATES.COMPHEAT1,
             # STATES.COMPHEAT2,

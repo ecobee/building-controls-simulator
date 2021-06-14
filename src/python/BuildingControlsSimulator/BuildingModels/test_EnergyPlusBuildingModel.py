@@ -12,22 +12,16 @@ import pyfmi
 import pandas as pd
 import numpy as np
 
-from BuildingControlsSimulator.BuildingModels.IDFPreprocessor import (
-    IDFPreprocessor,
-)
+from BuildingControlsSimulator.BuildingModels.IDFPreprocessor import IDFPreprocessor
 from BuildingControlsSimulator.BuildingModels.EnergyPlusBuildingModel import (
     EnergyPlusBuildingModel,
 )
 from BuildingControlsSimulator.DataClients.DataStates import STATES
-from BuildingControlsSimulator.DataClients.DataSpec import (
-    Internal,
-)
+from BuildingControlsSimulator.DataClients.DataSpec import Internal
 from BuildingControlsSimulator.Simulator.Config import Config
 from BuildingControlsSimulator.DataClients.DataClient import DataClient
 from BuildingControlsSimulator.DataClients.LocalSource import LocalSource
-from BuildingControlsSimulator.DataClients.LocalDestination import (
-    LocalDestination,
-)
+from BuildingControlsSimulator.DataClients.LocalDestination import LocalDestination
 from BuildingControlsSimulator.DataClients.DataSpec import DonateYourDataSpec
 
 logger = logging.getLogger(__name__)
@@ -107,8 +101,8 @@ class TestEnergyPlusBuildingModel:
         return (
             Config.make_sim_config(
                 identifier=[
-                    "DYD_dummy_data",  # has full data periods
-                ],
+                    "DYD_dummy_data",
+                ],  # has full data periods
                 latitude=41.8781,
                 longitude=-87.6298,
                 start_utc="2018-01-01",

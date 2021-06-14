@@ -6,9 +6,7 @@ import attr
 import pandas as pd
 import numpy as np
 
-from BuildingControlsSimulator.ControllerModels.ControllerModel import (
-    ControllerModel,
-)
+from BuildingControlsSimulator.ControllerModels.ControllerModel import ControllerModel
 from BuildingControlsSimulator.DataClients.DataStates import STATES
 from BuildingControlsSimulator.ControllerModels.ControllerStatus import CONTROLLERSTATUS
 from BuildingControlsSimulator.Conversions.Conversions import Conversions
@@ -71,6 +69,7 @@ class Deadband(ControllerModel):
         categories_dict,
     ):
         """"""
+        self.deadband = self.options["deadband"]
         self.current_t_idx = 0
         self.step_size_seconds = t_step
         self.allocate_output_memory(

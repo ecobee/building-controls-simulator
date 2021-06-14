@@ -10,13 +10,9 @@ import os
 
 from BuildingControlsSimulator.Simulator.Config import Config
 from BuildingControlsSimulator.DataClients.DataClient import DataClient
-from BuildingControlsSimulator.DataClients.GCSFlatFilesSource import (
-    GCSFlatFilesSource,
-)
+from BuildingControlsSimulator.DataClients.GCSFlatFilesSource import GCSFlatFilesSource
 from BuildingControlsSimulator.DataClients.DataSpec import FlatFilesSpec
-from BuildingControlsSimulator.DataClients.LocalDestination import (
-    LocalDestination,
-)
+from BuildingControlsSimulator.DataClients.LocalDestination import LocalDestination
 from BuildingControlsSimulator.DataClients.DataSpec import EnergyPlusWeather
 from BuildingControlsSimulator.DataClients.DataStates import STATES
 

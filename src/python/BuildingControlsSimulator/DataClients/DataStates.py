@@ -111,7 +111,7 @@ class STATES(enum.IntEnum):
     STEP_STATUS = enum.auto()
     SIMULATION_TIME = enum.auto()
 
-    #Moisture states
+    # Moisture states
     THERMOSTAT_MOISTURE_ESTIMATE = enum.auto()
     THERMOSTAT_MOISTURE = enum.auto()
     OUTDOOR_MOISTURE = enum.auto()
