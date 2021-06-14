@@ -22,6 +22,11 @@ from BuildingControlsSimulator.DataClients.DataSpec import (
 logger = logging.getLogger(__name__)
 
 
+@pytest.mark.skipif(
+    (not os.environ.get("BCS_GOOGLE_CLOUD_PROJECT"))
+    or (not os.environ.get("BCS_OUTPUT_GCS_URI_BASE")),
+    reason="GCS output not configured.",
+)
 class TestGCSDestination:
     @classmethod
     def setup_class(cls):

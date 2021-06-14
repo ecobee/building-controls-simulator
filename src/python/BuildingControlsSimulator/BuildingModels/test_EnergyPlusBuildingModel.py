@@ -33,27 +33,12 @@ class TestEnergyPlusBuildingModel:
         cls.eplus_version = os.environ["ENERGYPLUS_INSTALL_VERSION"]
 
         # basic IDF file found in all EnergyPlus installations
-        # cls.dummy_idf_name = "Furnace.idf"
-
-        # cls.dummy_epw_name = "USA_IL_Chicago-OHare.Intl.AP.725300_TMY3.epw"
-
         # make test/ dirs
         EnergyPlusBuildingModel.make_directories()
-        # cls.building_model = EnergyPlusBuildingModel(
-        #     idf=IDFPreprocessor(
-        #         idf_file=cls.dummy_idf_path,
-        #         init_temperature=20.0,
-        #     ),
-        #     epw_path=cls.dummy_epw_path,
-        #     step_size_seconds=300,
-        # )
 
         cls.step_size = 300
 
-    # @pytest.mark.parametrize(
-    #     "dummy_idf_name, dummy_epw_path",
-    #     [("Furnace.idf", "USA_IL_Chicago-OHare.Intl.AP.725300_TMY3.epw")],
-    # )
+
     # pytest requires the obj containing the params to be called "request"
     @pytest.fixture(
         params=[
@@ -61,10 +46,6 @@ class TestEnergyPlusBuildingModel:
                 "Furnace.idf",
                 "USA_IL_Chicago-OHare.Intl.AP.725300_TMY3.epw",
             ),
-            # (
-            #     "IL_Chicago_gasfurnace_heatedbsmt_IECC_2018.idf.idf",
-            #     "USA_IL_Chicago-OHare.Intl.AP.725300_TMY3.epw",
-            # ),
         ]
     )
     def building_model(self, request):

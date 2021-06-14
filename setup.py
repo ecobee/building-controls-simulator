@@ -4,8 +4,8 @@ REQUIRES = []
 
 # Semantic Versioning (https://semver.org/)
 _MAJOR_VERSION = "0"
-_MINOR_VERSION = "4"
-_PATCH_VERSION = "1"
+_MINOR_VERSION = "5"
+_PATCH_VERSION = "0"
 
 _VERSION_SUFFIX = "alpha"
 
