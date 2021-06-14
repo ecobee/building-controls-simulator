@@ -18,7 +18,11 @@ from BuildingControlsSimulator.DataClients.LocalDestination import LocalDestinat
 
 logger = logging.getLogger(__name__)
 
-
+@pytest.mark.skipif(
+    (not os.environ.get("DYD_GOOGLE_CLOUD_PROJECT"))
+    or (not os.environ.get("DYD_GCS_URI_BASE")),
+    reason="GCS output not configured.",
+)
 class TestGCSDYDSource:
     @classmethod
     def setup_class(cls):
