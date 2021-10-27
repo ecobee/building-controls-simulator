@@ -24,7 +24,7 @@ coverage==5.5
 cryptography==3.4.7
 cycler==0.10.0
 Cython==0.29.23
-dask==2021.6.0
+dask==2021.10.0
 decorator==5.0.9
 defusedxml==0.7.1
 docutils==0.16
