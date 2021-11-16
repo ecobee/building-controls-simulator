@@ -61,6 +61,7 @@ class STATES(enum.IntEnum):
     THERMOSTAT_TEMPERATURE = enum.auto()
     THERMOSTAT_HUMIDITY = enum.auto()
     THERMOSTAT_MOTION = enum.auto()
+    RS0_TEMPERATURE = enum.auto()
     RS1_TEMPERATURE = enum.auto()
     RS2_TEMPERATURE = enum.auto()
     RS3_TEMPERATURE = enum.auto()
@@ -70,7 +71,7 @@ class STATES(enum.IntEnum):
     RS7_TEMPERATURE = enum.auto()
     RS8_TEMPERATURE = enum.auto()
     RS9_TEMPERATURE = enum.auto()
-    RS10_TEMPERATURE = enum.auto()
+    RS0_OCCUPANCY = enum.auto()
     RS1_OCCUPANCY = enum.auto()
     RS2_OCCUPANCY = enum.auto()
     RS3_OCCUPANCY = enum.auto()
@@ -81,11 +82,11 @@ class STATES(enum.IntEnum):
     RS8_OCCUPANCY = enum.auto()
     RS9_OCCUPANCY = enum.auto()
     RS10_OCCUPANCY = enum.auto()
-
     # state estimates
     THERMOSTAT_TEMPERATURE_ESTIMATE = enum.auto()
     THERMOSTAT_HUMIDITY_ESTIMATE = enum.auto()
     THERMOSTAT_MOTION_ESTIMATE = enum.auto()
+    RS0_TEMPERATURE_ESTIMATE = enum.auto()
     RS1_TEMPERATURE_ESTIMATE = enum.auto()
     RS2_TEMPERATURE_ESTIMATE = enum.auto()
     RS3_TEMPERATURE_ESTIMATE = enum.auto()
@@ -95,7 +96,6 @@ class STATES(enum.IntEnum):
     RS7_TEMPERATURE_ESTIMATE = enum.auto()
     RS8_TEMPERATURE_ESTIMATE = enum.auto()
     RS9_TEMPERATURE_ESTIMATE = enum.auto()
-    RS10_TEMPERATURE_ESTIMATE = enum.auto()
 
     # Weather states
     OUTDOOR_TEMPERATURE = enum.auto()

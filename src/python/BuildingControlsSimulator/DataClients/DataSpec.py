@@ -148,7 +148,7 @@ def project_spec_keys(src_spec, dest_spec):
 
 
 def convert_spec(
-    df, src_spec, dest_spec, src_nullable=False, dest_nullable=False, copy=False
+    df, src_spec, dest_spec, src_nullable=False, dest_nullable=False, copy=False, drop_extra=True
 ):
     # src_nullable: whether to use nullable int types
     # dest_nullable: whether to use nullable int types
@@ -161,15 +161,21 @@ def convert_spec(
     else:
         _df = df
 
+    if not dest_nullable:
+        if _df.isnull().values.any():
+            logger.warning("Destination spec not nullable, dropping passed null records.")
+            _df = _df.dropna(axis="rows")
+
     # drop columns not in dest_spec
-    _df = _df.drop(
-        axis="columns",
-        columns=[
-            _col
-            for _col in _df.columns
-            if _col not in project_spec_keys(src_spec, dest_spec)
-        ],
-    )
+    if drop_extra:
+        _df = _df.drop(
+            axis="columns",
+            columns=[
+                _col
+                for _col in _df.columns
+                if _col not in project_spec_keys(src_spec, dest_spec)
+            ],
+        )
 
     _df = spec_unit_conversion(
         df=_df,
@@ -177,7 +183,7 @@ def convert_spec(
         dest_spec=dest_spec,
     )
     _df = _df.rename(columns=get_rename_mapper(src_spec=src_spec, dest_spec=dest_spec))
-
+    
     _df = _df.astype(
         dtype=get_dtype_mapper(
             df_cols=_df.columns,
@@ -472,7 +478,7 @@ class Internal:
                         "channel": CHANNELS.REMOTE_SENSOR,
                         "unit": UNITS.CELSIUS,
                     }
-                    for i in range(1, self.N_ROOM_SENSORS + 1)
+                    for i in range(0, self.N_ROOM_SENSORS)
                 },
                 **{
                     STATES["RS{}_TEMPERATURE_ESTIMATE".format(i)]: {
@@ -481,7 +487,7 @@ class Internal:
                         "channel": CHANNELS.REMOTE_SENSOR,
                         "unit": UNITS.CELSIUS,
                     }
-                    for i in range(1, self.N_ROOM_SENSORS + 1)
+                    for i in range(0, self.N_ROOM_SENSORS)
                 },
                 **{
                     STATES["RS{}_OCCUPANCY".format(i)]: {
@@ -490,7 +496,7 @@ class Internal:
                         "channel": CHANNELS.REMOTE_SENSOR,
                         "unit": UNITS.OTHER,
                     }
-                    for i in range(1, self.N_ROOM_SENSORS + 1)
+                    for i in range(0, self.N_ROOM_SENSORS)
                 },
             },
         )
@@ -776,16 +782,16 @@ class FlatFilesSpec:
                         "channel": CHANNELS.REMOTE_SENSOR,
                         "unit": UNITS.FARHENHEITx10,
                     }
-                    for i in range(1, self.N_ROOM_SENSORS + 1)
+                    for i in range(0, self.N_ROOM_SENSORS)
                 },
                 **{
-                    "SensorOcc1{}".format(str(i).zfill(2)): {
+                    "SensorOcc1{}".format(str(i-1).zfill(2)): {
                         "internal_state": STATES["RS{}_OCCUPANCY".format(i)],
                         "dtype": "boolean",
                         "channel": CHANNELS.REMOTE_SENSOR,
                         "unit": UNITS.OTHER,
                     }
-                    for i in range(1, self.N_ROOM_SENSORS + 1)
+                    for i in range(0, self.N_ROOM_SENSORS)
                 },
             },
         )
