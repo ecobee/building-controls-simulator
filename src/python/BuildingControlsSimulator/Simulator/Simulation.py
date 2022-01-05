@@ -286,6 +286,7 @@ class Simulation:
         self.tear_down()
 
         # convert output to dataframe
+        logger.info("converting output")
         self.output = pd.DataFrame.from_dict(
             {
                 STATES.DATE_TIME: self.data_client.datetime.data[STATES.DATE_TIME].copy(
@@ -316,11 +317,13 @@ class Simulation:
         self.output = self.output[_mask].reset_index(drop=True)
 
         # save output
+        logger.info("saving output")
         self.data_client.store_output(
             output=self.output,
             sim_name=self.sim_name,
             src_spec=self.data_client.internal_spec,
         )
+        logger.info("simulation complete.")
 
     def show_plots(self):
         output_analysis = OutputAnalysis(df=self.output_df)

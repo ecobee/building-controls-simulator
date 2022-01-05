@@ -81,7 +81,6 @@ class STATES(enum.IntEnum):
     RS7_OCCUPANCY = enum.auto()
     RS8_OCCUPANCY = enum.auto()
     RS9_OCCUPANCY = enum.auto()
-    RS10_OCCUPANCY = enum.auto()
     # state estimates
     THERMOSTAT_TEMPERATURE_ESTIMATE = enum.auto()
     THERMOSTAT_HUMIDITY_ESTIMATE = enum.auto()
