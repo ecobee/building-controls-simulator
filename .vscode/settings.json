@@ -46,12 +46,12 @@
         "--line-length",
         "79"
     ],
-    "python.jediEnabled": true,
+    "python.jediEnabled": false,
     "editor.rulers": [
         79,
         90
     ],
-    "python.languageServer": "Jedi",
+    "python.languageServer": "Pylance",
     "spellright.language": [
         "English"
     ],

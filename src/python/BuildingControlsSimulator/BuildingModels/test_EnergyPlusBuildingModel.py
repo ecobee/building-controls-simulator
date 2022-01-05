@@ -38,7 +38,6 @@ class TestEnergyPlusBuildingModel:
 
         cls.step_size = 300
 
-
     # pytest requires the obj containing the params to be called "request"
     @pytest.fixture(
         params=[

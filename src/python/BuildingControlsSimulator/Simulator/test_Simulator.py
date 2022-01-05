@@ -212,8 +212,9 @@ class TestSimulator:
                 self.get_state_estimator_model(test_params["state_estimator_model"])
             ],
         )
+        logger.info("calling master.simulate ... ")
         master.simulate(local=True, preprocess_check=False)
-
+        logger.info("done master.simulate")
         # read back stored output and check it
         sim_name = master.simulations[0].sim_name
         _fpath = os.path.join(
