@@ -116,5 +116,10 @@ class STATES(enum.IntEnum):
     THERMOSTAT_MOISTURE = enum.auto()
     OUTDOOR_MOISTURE = enum.auto()
 
+    #Humidex states
+    THERMOSTAT_HUMIDEX_ESTIMATE = enum.auto()
+    THERMOSTAT_HUMIDEX = enum.auto()
+    OUTDOOR_HUMIDEX = enum.auto()
+
     # final state enum value
     MAX_VALUE = enum.auto()
