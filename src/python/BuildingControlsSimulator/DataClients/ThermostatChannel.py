@@ -82,7 +82,7 @@ class ThermostatChannel(DataChannel):
         if data.empty:
             schedule_chg_pts = {}
             return schedule_chg_pts
-        
+
         schedule_data = data[[STATES.DATE_TIME, STATES.SCHEDULE]].dropna(
             subset=[STATES.SCHEDULE]
         )
@@ -347,28 +347,30 @@ class ThermostatChannel(DataChannel):
         for _time, _sched in schedule_chg_pts.items():
             _days_active = [False] * 7
             for _climate in _sched:
-                _days_active = [any(btup) for btup in zip(_days_active, _climate['on_day_of_week'])]
+                _days_active = [
+                    any(btup) for btup in zip(_days_active, _climate["on_day_of_week"])
+                ]
 
             if not all(_days_active):
                 _active_idxs = [
-                    _idx for _idx, _active
-                    in enumerate(_days_active)
-                    if _active
+                    _idx for _idx, _active in enumerate(_days_active) if _active
                 ]
                 _inactive_idxs = [
-                    _idx for _idx, _active
-                    in enumerate(_days_active)
-                    if not _active
+                    _idx for _idx, _active in enumerate(_days_active) if not _active
                 ]
 
                 for _idx in _inactive_idxs:
                     for _climate in _sched:
                         if _idx == 0:
                             # get first schedule by wrapping week
-                            _climate['on_day_of_week'][0] = _climate['on_day_of_week'][max(_active_idxs)]
+                            _climate["on_day_of_week"][0] = _climate["on_day_of_week"][
+                                max(_active_idxs)
+                            ]
                         else:
-                            _climate['on_day_of_week'][_idx] = _climate['on_day_of_week'][min(_active_idxs)]
-        
+                            _climate["on_day_of_week"][_idx] = _climate[
+                                "on_day_of_week"
+                            ][min(_active_idxs)]
+
         return schedule_chg_pts
 
     @staticmethod
@@ -574,7 +576,6 @@ class ThermostatChannel(DataChannel):
         )
 
         hvac_mode_chg_pts = ThermostatChannel.get_hvac_mode_change_points(data)
-
         return (
             schedule_chg_pts,
             comfort_chg_pts,

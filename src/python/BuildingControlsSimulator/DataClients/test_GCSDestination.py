@@ -9,12 +9,8 @@ import pytz
 
 from BuildingControlsSimulator.Simulator.Config import Config
 from BuildingControlsSimulator.DataClients.DataClient import DataClient
-from BuildingControlsSimulator.DataClients.LocalSource import (
-    LocalSource,
-)
-from BuildingControlsSimulator.DataClients.GCSDestination import (
-    GCSDestination,
-)
+from BuildingControlsSimulator.DataClients.LocalSource import LocalSource
+from BuildingControlsSimulator.DataClients.GCSDestination import GCSDestination
 from BuildingControlsSimulator.DataClients.DataSpec import EnergyPlusWeather
 from BuildingControlsSimulator.DataClients.DataStates import STATES
 from BuildingControlsSimulator.DataClients.DataSpec import (
@@ -26,14 +22,19 @@ from BuildingControlsSimulator.DataClients.DataSpec import (
 logger = logging.getLogger(__name__)
 
 
+@pytest.mark.skipif(
+    (not os.environ.get("BCS_GOOGLE_CLOUD_PROJECT"))
+    or (not os.environ.get("BCS_OUTPUT_GCS_URI_BASE")),
+    reason="GCS output not configured.",
+)
 class TestGCSDestination:
     @classmethod
     def setup_class(cls):
         # initialize with data to avoid pulling multiple times
         cls.sim_config = Config.make_sim_config(
             identifier=[
-                "DYD_dummy_data",  # test file
-            ],
+                "DYD_dummy_data",
+            ],  # test file
             latitude=33.481136,
             longitude=-112.078232,
             start_utc=[

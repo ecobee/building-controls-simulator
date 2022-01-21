@@ -42,3 +42,4 @@ docs/source/generated/
 .test.env
 docker-compose.yml
 build/
+dev_docker.sh

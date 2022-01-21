@@ -10,9 +10,7 @@ import attr
 from tqdm import trange
 
 from BuildingControlsSimulator.DataClients.DataStates import STATES
-from BuildingControlsSimulator.OutputAnalysis.OutputAnalysis import (
-    OutputAnalysis,
-)
+from BuildingControlsSimulator.OutputAnalysis.OutputAnalysis import OutputAnalysis
 
 logger = logging.getLogger(__name__)
 
@@ -288,13 +286,17 @@ class Simulation:
         self.tear_down()
 
         # convert output to dataframe
+        logger.info("converting output")
         self.output = pd.DataFrame.from_dict(
             {
-                STATES.DATE_TIME: self.data_client.datetime.data[STATES.DATE_TIME],
+                STATES.DATE_TIME: self.data_client.datetime.data[STATES.DATE_TIME].copy(
+                    deep=True
+                ),
                 **self.controller_model.output,
                 **self.building_model.output,
             }
         )
+
         # resample output time steps to output step size frequency
         self.output = self.data_client.resample_to_step_size(
             df=self.output,
@@ -312,14 +314,16 @@ class Simulation:
                 self.output[STATES.DATE_TIME] < dp_end
             )
 
-        self.output = self.output[_mask]
+        self.output = self.output[_mask].reset_index(drop=True)
 
         # save output
+        logger.info("saving output")
         self.data_client.store_output(
             output=self.output,
             sim_name=self.sim_name,
             src_spec=self.data_client.internal_spec,
         )
+        logger.info("simulation complete.")
 
     def show_plots(self):
         output_analysis = OutputAnalysis(df=self.output_df)

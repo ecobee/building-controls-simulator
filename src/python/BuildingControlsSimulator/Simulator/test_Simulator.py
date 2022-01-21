@@ -11,33 +11,23 @@ from BuildingControlsSimulator.Simulator.Simulator import Simulator
 from BuildingControlsSimulator.Simulator.Config import Config
 from BuildingControlsSimulator.DataClients.DataClient import DataClient
 from BuildingControlsSimulator.DataClients.GCSDYDSource import GCSDYDSource
-from BuildingControlsSimulator.DataClients.GCSFlatFilesSource import (
-    GCSFlatFilesSource,
-)
+from BuildingControlsSimulator.DataClients.GCSFlatFilesSource import GCSFlatFilesSource
 from BuildingControlsSimulator.DataClients.GBQDataSource import GBQDataSource
 from BuildingControlsSimulator.DataClients.LocalSource import LocalSource
-from BuildingControlsSimulator.BuildingModels.IDFPreprocessor import (
-    IDFPreprocessor,
-)
+from BuildingControlsSimulator.BuildingModels.IDFPreprocessor import IDFPreprocessor
 from BuildingControlsSimulator.BuildingModels.EnergyPlusBuildingModel import (
     EnergyPlusBuildingModel,
 )
-from BuildingControlsSimulator.DataClients.LocalDestination import (
-    LocalDestination,
-)
+from BuildingControlsSimulator.DataClients.LocalDestination import LocalDestination
 from BuildingControlsSimulator.DataClients.DataSpec import (
     DonateYourDataSpec,
     Internal,
     FlatFilesSpec,
 )
-from BuildingControlsSimulator.ControllerModels.FMIController import (
-    FMIController,
-)
+from BuildingControlsSimulator.ControllerModels.FMIController import FMIController
 from BuildingControlsSimulator.ControllerModels.Deadband import Deadband
 from BuildingControlsSimulator.DataClients.DataStates import STATES
-from BuildingControlsSimulator.StateEstimatorModels.LowPassFilter import (
-    LowPassFilter,
-)
+from BuildingControlsSimulator.StateEstimatorModels.LowPassFilter import LowPassFilter
 import BuildingControlsSimulator.Simulator.params_test_Simulator as params
 
 logger = logging.getLogger(__name__)
@@ -166,7 +156,9 @@ class TestSimulator:
         _controller = None
         if controller_model_params["is_deadband"]:
             _controller = Deadband(
-                deadband=1.0,
+                options={
+                    "deadband": 1.0,
+                },
                 step_size_seconds=controller_model_params["step_size_seconds"],
                 discretization_size_seconds=60,
             )
@@ -198,10 +190,7 @@ class TestSimulator:
         )
         _epw_path = None
         if test_params["data_client"].get("epw_name"):
-            _epw_path = os.path.join(
-                os.environ.get("WEATHER_DIR"),
-                test_params["data_client"].get("epw_name"),
-            )
+            _epw_path = self.get_epw_path(test_params["data_client"].get("epw_name"))
 
         # do not use NREL data in test cases in case it changes or becomes unavailable
         dc = DataClient(
@@ -223,8 +212,9 @@ class TestSimulator:
                 self.get_state_estimator_model(test_params["state_estimator_model"])
             ],
         )
+        logger.info("calling master.simulate ... ")
         master.simulate(local=True, preprocess_check=False)
-
+        logger.info("done master.simulate")
         # read back stored output and check it
         sim_name = master.simulations[0].sim_name
         _fpath = os.path.join(
@@ -259,6 +249,14 @@ class TestSimulator:
 
         output_format_mean_thermostat_temperature = r_df[t_ctrl_name].mean()
         output_format_mean_thermostat_humidity = r_df[humidity_name].mean()
+
+        # print out values in case of slight divergence to avoid re-running tests
+        logger.info(
+            f"\nmean_thermostat_temperature= {mean_thermostat_temperature}\n"
+            + f"mean_thermostat_humidity= {mean_thermostat_humidity}\n"
+            + f"output_format_mean_thermostat_temperature= {output_format_mean_thermostat_temperature}\n"
+            + f"output_format_mean_thermostat_humidity= {output_format_mean_thermostat_humidity}\n"
+        )
 
         assert (
             pytest.approx(test_params["expected_result"]["mean_thermostat_temperature"])

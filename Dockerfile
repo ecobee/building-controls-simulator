@@ -82,9 +82,9 @@ RUN curl -sL https://deb.nodesource.com/setup_12.x | sudo bash - \
     && pyenv update && pyenv install 3.8.9 \
     && mkdir "${LIB_DIR}" && mkdir "${EXT_DIR}" \
     && cd "${EXT_DIR}" \
-    && wget "https://github.com/modelon-community/fmi-library/archive/2.2.3.zip" \
-    && unzip "2.2.3.zip" && mv "fmi-library-2.2.3" "FMIL" \
-    && rm -rf "2.2.3.zip" \
+    && wget "https://github.com/modelon-community/fmi-library/archive/refs/tags/2.3.zip" \
+    && unzip "2.3.zip" && mv "fmi-library-2.3" "FMIL" \
+    && rm -rf "2.3.zip" \
     && cd "FMIL" \
     && mkdir build-fmil; cd build-fmil \
     && cmake -DFMILIB_INSTALL_PREFIX=./ ../ \
@@ -123,9 +123,9 @@ RUN curl -sL https://deb.nodesource.com/setup_12.x | sudo bash - \
     && mv "${EXT_DIR}/Assimulo-Assimulo-3.2.5" "${EXT_DIR}/Assimulo-3.2.5" \
     # get PyFMI source
     && cd "${EXT_DIR}" \
-    && wget "https://github.com/modelon-community/PyFMI/archive/refs/tags/PyFMI-2.8.6.tar.gz" \
-    && tar -xzf "PyFMI-2.8.6.tar.gz" && rm "PyFMI-2.8.6.tar.gz"\
-    && mv "${EXT_DIR}/PyFMI-PyFMI-2.8.6" "${EXT_DIR}/PyFMI" \
+    && wget "https://github.com/modelon-community/PyFMI/archive/refs/tags/PyFMI-2.8.10.tar.gz" \
+    && tar -xzf "PyFMI-2.8.10.tar.gz" && rm "PyFMI-2.8.10.tar.gz"\
+    && mv "${EXT_DIR}/PyFMI-PyFMI-2.8.10" "${EXT_DIR}/PyFMI" \
     # make PACKAGE_DIR and cleanup
     && cd "${LIB_DIR}" \
     && mkdir "${PACKAGE_DIR}" \

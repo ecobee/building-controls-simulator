@@ -26,7 +26,7 @@ class Conversions:
 
     @staticmethod
     def relative_humidity_from_dewpoint(temperature, dewpoint):
-        """ Return RH in % [0-100]"""
+        """Return RH in % [0-100]"""
         return (
             Conversions.saturation_vapor_pressure(dewpoint)
             / Conversions.saturation_vapor_pressure(temperature)
@@ -82,5 +82,7 @@ class Conversions:
         elif dtype in ["category", "Category"]:
             # 32 byte unicode str
             return ("", "<U32")
+        elif dtype in ["datetime64[ns, utc]"]:
+            return (np.datetime64("2000-01-01"), "datetime64")
         else:
             raise ValueError(f"Unsupported dtype={dtype}")

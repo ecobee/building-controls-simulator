@@ -7,9 +7,7 @@ import os
 import attr
 import pyfmi
 
-from BuildingControlsSimulator.ControllerModels.ControllerModel import (
-    ControllerModel,
-)
+from BuildingControlsSimulator.ControllerModels.ControllerModel import ControllerModel
 from BuildingControlsSimulator.ControllerModels.ControllerStatus import CONTROLLERSTATUS
 
 

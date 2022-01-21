@@ -19,6 +19,7 @@ class ControllerModel(ABC):
     output_states = attr.ib()
     step_size_seconds = attr.ib()
     discretization_size_seconds = attr.ib()
+    options = attr.ib(default=None)
 
     output = attr.ib(factory=dict)
     step_output = attr.ib(factory=dict)
@@ -54,7 +55,9 @@ class ControllerModel(ABC):
 
     def get_step_time_utc(self):
         """For debugging use"""
-        return self.start_utc + pd.Timedelta(seconds=self.current_t_idx * self.step_size_seconds)
+        return self.start_utc + pd.Timedelta(
+            seconds=self.current_t_idx * self.step_size_seconds
+        )
 
     def update_settings(
         self,

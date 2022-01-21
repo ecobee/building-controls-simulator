@@ -10,19 +10,21 @@ import os
 
 from BuildingControlsSimulator.Simulator.Config import Config
 from BuildingControlsSimulator.DataClients.DataClient import DataClient
-from BuildingControlsSimulator.DataClients.GBQDataSource import (
-    GBQDataSource,
-)
+from BuildingControlsSimulator.DataClients.GBQDataSource import GBQDataSource
 from BuildingControlsSimulator.DataClients.DataSpec import FlatFilesSpec
-from BuildingControlsSimulator.DataClients.LocalDestination import (
-    LocalDestination,
-)
+from BuildingControlsSimulator.DataClients.LocalDestination import LocalDestination
 from BuildingControlsSimulator.DataClients.DataSpec import EnergyPlusWeather
 from BuildingControlsSimulator.DataClients.DataStates import STATES
 
 logger = logging.getLogger(__name__)
 
 
+@pytest.mark.skipif(
+    (not os.environ.get("TEST_FLATFILES_GBQ_IDENTIFIER"))
+    or (not os.environ.get("FLATFILE_GOOGLE_CLOUD_PROJECT"))
+    or (not os.environ.get("FLATFILES_GBQ_TABLE")),
+    reason="GBQ FlatFiles not configured.",
+)
 class TestGBQFlatFilesSource:
     @classmethod
     def setup_class(cls):

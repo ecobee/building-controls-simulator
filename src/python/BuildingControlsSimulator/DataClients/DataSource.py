@@ -44,6 +44,21 @@ class DataSource(ABC):
     def get_data(self, sim_config):
         pass
 
+    def make_data_directories(self):
+        if not self.local_cache:
+            logger.info("local_cache not supplied, directory will not be made.")
+        elif not self.source_name:
+            logger.info("source_name not supplied, directory will not be made.")
+        else:
+            os.makedirs(
+                os.path.join(
+                    self.local_cache,
+                    self.operator_name,
+                    self.source_name,
+                ),
+                exist_ok=True,
+            )
+
     def drop_unused_columns(self, _data):
         # drop all null remote sensor columns
         _all_null_columns = [
@@ -58,13 +73,22 @@ class DataSource(ABC):
 
     def get_local_cache_file(self, identifier):
         if self.local_cache:
-            return os.path.join(
-                self.local_cache_source,
-                f"{identifier}.{self.file_extension}",
-            )
+            for _fname in os.listdir(self.local_cache_source):
+                split = _fname.split(".")
+                if split[:1][0] == identifier:
+                    self.file_extension = ".".join(split[1:])
+            if not self.file_extension:
+                raise ValueError(
+                    f"File identifier {identifier} not in {self.local_cache_source}"
+                )
         else:
-            logger.info("No local_cache provided. To enable set env LOCAL_CACHE_DIR.")
+            logger.info(f"No local_cache provided. To enable set env LOCAL_CACHE_DIR.")
             return None
+
+        return os.path.join(
+            self.local_cache_source,
+            f"{identifier}.{self.file_extension}",
+        )
 
     def get_local_cache(self, local_cache_file):
         if local_cache_file and os.path.exists(local_cache_file):
