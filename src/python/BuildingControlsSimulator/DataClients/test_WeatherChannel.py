@@ -6,10 +6,15 @@ import pytest
 import os
 
 from BuildingControlsSimulator.DataClients.WeatherChannel import WeatherChannel
+from BuildingControlsSimulator.DataClients.DateTimeChannel import DateTimeChannel
+from BuildingControlsSimulator.DataClients.DataSpec import Internal
+from BuildingControlsSimulator.DataClients.DataStates import STATES
+from BuildingControlsSimulator.Simulator.Config import Config
+
 
 from pandas import Timestamp
 from pandas import Timedelta
-import pandas
+import pandas as pd
 
 logger = logging.getLogger(__name__)
 
@@ -59,6 +64,78 @@ class TestWeatherChannel:
         cols = data.columns.to_list()
 
         assert cols == self.weather.epw_columns
+
+    def test_make_epw_file(self):
+        _start_utc = "2019-01-17"
+        _end_utc = "2019-01-19"
+        _step_size_seconds = 300
+        _sim_step_size_seconds = 60
+
+        _data = pd.DataFrame(
+            {
+                STATES.DATE_TIME: pd.date_range(
+                    start=_start_utc,
+                    end=_end_utc,
+                    freq=f"{_sim_step_size_seconds}S",
+                    tz="utc",
+                )
+            }
+        )
+
+        sim_config = Config.make_sim_config(
+            identifier="511863952006",
+            latitude=43.798577,
+            longitude=-79.239087,
+            start_utc=_start_utc,
+            end_utc=_end_utc,
+            min_sim_period="1D",
+            sim_step_size_seconds=_sim_step_size_seconds,
+            output_step_size_seconds=_step_size_seconds,
+        ).iloc[0]
+
+        _internal_timezone = DateTimeChannel.get_timezone(
+            sim_config["latitude"], sim_config["longitude"]
+        )
+        internal_spec = Internal()
+
+        datetime_channel = DateTimeChannel(
+            data=_data[
+                internal_spec.intersect_columns(
+                    _data.columns, internal_spec.datetime.spec
+                )
+            ],
+            spec=internal_spec.datetime,
+            latitude=sim_config["latitude"],
+            longitude=sim_config["longitude"],
+            internal_timezone=_internal_timezone,
+        )
+
+        weather_channel = WeatherChannel(
+            data=pd.DataFrame(),
+            spec=internal_spec,
+            nrel_dev_api_key=os.environ.get("NREL_DEV_API_KEY"),
+            nrel_dev_email=os.environ.get("NREL_DEV_EMAIL"),
+            archive_tmy3_dir=os.environ.get("ARCHIVE_TMY3_DIR"),
+            archive_tmy3_meta=os.environ.get("ARCHIVE_TMY3_META"),
+            archive_tmy3_data_dir=os.environ.get("ARCHIVE_TMY3_DATA_DIR"),
+            ep_tmy3_cache_dir=os.environ.get("EP_TMY3_CACHE_DIR"),
+            nsrdb_cache_dir=os.environ.get("NSRDB_CACHE_DIR"),
+            simulation_epw_dir=os.environ.get("SIMULATION_EPW_DIR"),
+        )
+
+        weather_channel.get_epw_data(sim_config, datetime_channel)
+
+        epw_path = weather_channel.make_epw_file(
+            sim_config=sim_config,
+            datetime_channel=datetime_channel,
+            epw_step_size_seconds=_step_size_seconds,
+        )
+
+        assert weather_channel.data.empty == False
+        assert (
+            pytest.approx(weather_channel.data[STATES.OUTDOOR_TEMPERATURE].mean())
+            == 1.78746962860115
+        )
 
     # TODO: Need to rework this test now that get_nsrdb has been absorbed into fill_nsrdb
     @pytest.mark.skip(reason="Need to rework this test")

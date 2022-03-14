@@ -1,5 +1,5 @@
-google-cloud-bigquery==2.3.1
-jupyterlab==2.2.9
+google-cloud-bigquery
+jupyterlab>=3
 pytest
 pytest-ordering
 pytest-profiling
@@ -17,7 +17,7 @@ lxml
 scipy
 eppy
 plotly
-ipywidgets
+ipywidgets>=7.6
 psutil
 attrs
 google-cloud-storage
@@ -25,7 +25,6 @@ pandas-gbq
 tqdm
 numba
 gcsfs
-dask
 requests
 scikit-learn
 statsmodels

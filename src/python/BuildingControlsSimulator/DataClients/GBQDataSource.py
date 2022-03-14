@@ -95,7 +95,7 @@ class GBQDataSource(DataSource, ABC):
         # there should never be 1,000,000 results for a single identifier
 
         _df = pandas_gbq.read_gbq(
-            query=query_str,
+            query_or_table=query_str,
             project_id=self.gcp_project,
             credentials=self.gbq_token,
             col_order=gbq_columns,

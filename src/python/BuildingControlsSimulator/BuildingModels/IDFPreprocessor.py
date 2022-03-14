@@ -201,7 +201,10 @@ class IDFPreprocessor:
             self.prep_ext_int_output()
 
             # finally before saving expand objects
-            self.prep_expand_objects()
+            # TODO: do we need prep_expand_objects? if not, remove it
+            # expand objects only appears to work for HVAC template objects
+            # using these should be discouraged
+            # self.prep_expand_objects()
             self.ep_idf.saveas(self.idf_prep_path)
 
             # fix version line
@@ -354,8 +357,8 @@ class IDFPreprocessor:
             "SimulationControl",
             Do_Zone_Sizing_Calculation="Yes",
             Do_System_Sizing_Calculation="Yes",
-            Do_Plant_Sizing_Calculation="Yes",
-            Run_Simulation_for_Sizing_Periods="Yes",
+            Do_Plant_Sizing_Calculation="No",
+            Run_Simulation_for_Sizing_Periods="No",
             Run_Simulation_for_Weather_File_Run_Periods="Yes",
             Do_HVAC_Sizing_Simulation_for_Sizing_Periods="No",
             Maximum_Number_of_HVAC_Sizing_Simulation_Passes=2,
@@ -363,9 +366,8 @@ class IDFPreprocessor:
 
     def prep_hvac(self, datetime_channel, weather_channel):
         # TODO: set HVAC equipment from config
-
-        if "hvac" not in self.building_config.keys():
-            return
+        if "hvac" not in self.building_config:
+            self.building_config["hvac"] = {}
 
         hvac_config = self.building_config["hvac"]
 
@@ -978,6 +980,8 @@ class IDFPreprocessor:
             "9-1-0": "Transition-V9-1-0-to-V9-2-0",
             "9-2-0": "Transition-V9-2-0-to-V9-3-0",
             "9-3-0": "Transition-V9-3-0-to-V9-4-0",
+            "9-4-0": "Transition-V9-4-0-to-V9-5-0",
+            "9-5-0": "Transition-V9-5-0-to-V9-6-0",
         }
 
         cur_version = self.get_idf_version(self.ep_idf)
@@ -1049,6 +1053,9 @@ class IDFPreprocessor:
     def prep_expand_objects(self):
         # must use os.chdir() because a subprocess cannot change another subprocess's wd
         # see https://stackoverflow.com/questions/21406887/subprocess-changing-directory/21406995
+        logger.error(
+            "Do not use, broken: https://github.com/NREL/EnergyPlus/issues/2822"
+        )
         logger.info(f"Expanding objects. Using: {self.idf_file}")
         original_wd = os.getcwd()
         exp_dir = os.path.join(os.environ["EPLUS_DIR"])

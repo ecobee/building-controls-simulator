@@ -32,7 +32,7 @@ function install_ep () {
     rm -rf "${DEFAULT_ENERGYPLUS_DIR:?}/bin"
     mv "${DEFAULT_ENERGYPLUS_DIR}" "$( dirname ${DEFAULT_ENERGYPLUS_DIR})/bkup/EnergyPlus-${_ENERGYPLUS_INSTALL_VERSION}"
     mv "$( dirname ${DEFAULT_ENERGYPLUS_DIR})/bkup" "${DEFAULT_ENERGYPLUS_DIR}"
-  elif [[ "${_ENERGYPLUS_INSTALL_VERSION}" == "9-4-0" ]]; then
+  elif [[ "${_ENERGYPLUS_INSTALL_VERSION}" > "9-3-0" ]]; then
     local ENERGYPLUS_DOWNLOAD_FILENAME="EnergyPlus-${ENERGYPLUS_VERSION}-${ENERGYPLUS_SHA}-Linux-Ubuntu20.04-x86_64.sh"
     local ENERGYPLUS_DOWNLOAD_URL="${ENERGYPLUS_DOWNLOAD_BASE_URL}/${ENERGYPLUS_DOWNLOAD_FILENAME}"
     curl -SLO "${ENERGYPLUS_DOWNLOAD_URL}"
@@ -66,6 +66,8 @@ _ENERGYPLUS_INSTALL_DIR="${1}"
 # install_ep "9-1-0" "08d2e308bb" "${_ENERGYPLUS_INSTALL_DIR}"
 # install_ep "9-2-0" "921312fa1d" "${_ENERGYPLUS_INSTALL_DIR}"
 # install_ep "9-3-0" "baff08990c" "${_ENERGYPLUS_INSTALL_DIR}"
-install_ep "9-4-0" "998c4b761e" "${_ENERGYPLUS_INSTALL_DIR}"
+# install_ep "9-4-0" "998c4b761e" "${_ENERGYPLUS_INSTALL_DIR}"
+# install_ep "9-5-0" "de239b2e5f" "${_ENERGYPLUS_INSTALL_DIR}"
+install_ep "9-6-0" "f420c06a69" "${_ENERGYPLUS_INSTALL_DIR}"
 
 exit 0
