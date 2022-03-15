@@ -126,7 +126,7 @@ class DataClient:
         # because in observed cases of this the extra record has 0 runtime.
         _runtime_sum_column = "sum_runtime"
         _data[_runtime_sum_column] = _data[
-            set(self.internal_spec.equipment.spec.keys()) & set(_data.columns)
+            list(set(self.internal_spec.equipment.spec.keys()) & set(_data.columns))
         ].sum(axis=1)
         # last duplicate datetime value will have maximum sum_runtime
         _data = _data.sort_values(
@@ -223,15 +223,15 @@ class DataClient:
                 (_data[self.internal_spec.datetime_column] >= _start_utc)
                 & (_data[self.internal_spec.datetime_column] <= _end_utc)
             ].reset_index(drop=True)
-            
+
             # bfill to interpolate missing data
             # first and last records must be full because we used full data periods
             # need to add a NA_code to stop fillna from clobbering columns
             # where NA means something
             na_code_name = "NA_code"
-            _data[STATES.CALENDAR_EVENT].cat.add_categories(
-                new_categories=na_code_name, inplace=True
-            )
+            _data[STATES.CALENDAR_EVENT] = _data[
+                STATES.CALENDAR_EVENT
+            ].cat.add_categories(new_categories=na_code_name)
             _data[STATES.CALENDAR_EVENT] = _data[STATES.CALENDAR_EVENT].fillna(
                 na_code_name
             )
@@ -250,6 +250,9 @@ class DataClient:
                 _data[STATES.CALENDAR_EVENT] == na_code_name,
                 [STATES.CALENDAR_EVENT],
             ] = pd.NA
+
+            # remove any columns that are all null
+            _data = _data.dropna(axis="columns", how="all")
 
             # finally convert dtypes to final types now that nulls in
             # non-nullable columns have been properly filled or removed

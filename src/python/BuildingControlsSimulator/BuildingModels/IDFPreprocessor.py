@@ -357,19 +357,20 @@ class IDFPreprocessor:
             "SimulationControl",
             Do_Zone_Sizing_Calculation="Yes",
             Do_System_Sizing_Calculation="Yes",
-            Do_Plant_Sizing_Calculation="No",
-            Run_Simulation_for_Sizing_Periods="No",
+            Do_Plant_Sizing_Calculation="Yes",
+            Run_Simulation_for_Sizing_Periods="Yes",
             Run_Simulation_for_Weather_File_Run_Periods="Yes",
             Do_HVAC_Sizing_Simulation_for_Sizing_Periods="No",
             Maximum_Number_of_HVAC_Sizing_Simulation_Passes=2,
         )
 
     def prep_hvac(self, datetime_channel, weather_channel):
-        # TODO: set HVAC equipment from config
-        if "hvac" not in self.building_config:
-            self.building_config["hvac"] = {}
+        hvac_config = self.building_config.get("hvac", {})
+        if not hvac_config:
+            # do not touch equipment or sizing
+            return
 
-        hvac_config = self.building_config["hvac"]
+        # TODO: set HVAC equipment from config
 
         # auto sizing parameters
         self.popallidfobjects("SizingPeriod:DesignDay")
