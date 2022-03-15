@@ -68,7 +68,6 @@ RUN sudo apt-get update && sudo apt-get upgrade -y \
     gfortran \
     && sudo rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
-# install nodejs and npm (for plotly)
 # install pyenv https://github.com/pyenv/pyenv-installer
 # note: pyenv.run is not accessible to all networks, use github url
 # install FMI library
@@ -76,12 +75,10 @@ RUN sudo apt-get update && sudo apt-get upgrade -y \
 # install EnergyPlusToFMU
 # download and extract PyFMI release
 # because we dont use builtin PyFMI ODE simulation capabilities
-RUN curl -sL https://deb.nodesource.com/setup_12.x | sudo bash - \
-    && sudo apt-get update && sudo apt-get install -y nodejs \
-    && curl -L https://github.com/pyenv/pyenv-installer/raw/master/bin/pyenv-installer | bash \
-    && pyenv update && pyenv install 3.8.9 \
-    && mkdir "${LIB_DIR}" && mkdir "${EXT_DIR}" \
+RUN mkdir "${LIB_DIR}" && mkdir "${EXT_DIR}" \
     && cd "${EXT_DIR}" \
+    && curl -L https://github.com/pyenv/pyenv-installer/raw/master/bin/pyenv-installer | bash \
+    && pyenv update && pyenv install 3.8.12 \
     && wget "https://github.com/modelon-community/fmi-library/archive/refs/tags/2.3.zip" \
     && unzip "2.3.zip" && mv "fmi-library-2.3" "FMIL" \
     && rm -rf "2.3.zip" \
@@ -116,18 +113,18 @@ RUN curl -sL https://deb.nodesource.com/setup_12.x | sudo bash - \
     && cd "build" \
     && cmake -DCMAKE_INSTALL_PREFIX="${EXT_DIR}/lapack" .. \
     && cmake --build . -j --target install \
-    # get Assimulo source
+    # get Assimulo source (dep of PyFMI 2.8+)
     && cd "${EXT_DIR}" \
-    && wget "https://github.com/modelon-community/Assimulo/archive/refs/tags/Assimulo-3.2.5.tar.gz" \
-    && tar -xzf "Assimulo-3.2.5.tar.gz" && rm "Assimulo-3.2.5.tar.gz" \
-    && mv "${EXT_DIR}/Assimulo-Assimulo-3.2.5" "${EXT_DIR}/Assimulo-3.2.5" \
+    && wget "https://github.com/modelon-community/Assimulo/archive/refs/tags/Assimulo-3.2.9.tar.gz" \
+    && tar -xzf "Assimulo-3.2.9.tar.gz" && rm "Assimulo-3.2.9.tar.gz" \
+    && mv "${EXT_DIR}/Assimulo-Assimulo-3.2.9" "${EXT_DIR}/Assimulo-3.2.9" \
     # get PyFMI source
     && cd "${EXT_DIR}" \
-    && wget "https://github.com/modelon-community/PyFMI/archive/refs/tags/PyFMI-2.8.10.tar.gz" \
-    && tar -xzf "PyFMI-2.8.10.tar.gz" && rm "PyFMI-2.8.10.tar.gz"\
-    && mv "${EXT_DIR}/PyFMI-PyFMI-2.8.10" "${EXT_DIR}/PyFMI" \
-    # make PACKAGE_DIR and cleanup
+    && wget "https://github.com/modelon-community/PyFMI/archive/refs/tags/PyFMI-2.9.5.tar.gz" \
+    && tar -xzf "PyFMI-2.9.5.tar.gz" && rm "PyFMI-2.9.5.tar.gz"\
+    && mv "${EXT_DIR}/PyFMI-PyFMI-2.9.5" "${EXT_DIR}/PyFMI" \
     && cd "${LIB_DIR}" \
+    # make PACKAGE_DIR and cleanup
     && mkdir "${PACKAGE_DIR}" \
     && sudo rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
@@ -144,7 +141,7 @@ RUN sudo chown -R "${USER_NAME}" "${PACKAGE_DIR}" \
     && sudo chmod +x "./scripts/setup/install_ep.sh" \
     && sudo ./scripts/setup/install_ep.sh "${ENERGYPLUS_INSTALL_DIR}" \
     && cd "${PACKAGE_DIR}" \
-    && ${PYENV_ROOT}/versions/3.8.9/bin/python3.8 -m venv "${LIB_DIR}/${VENV_NAME}" \
+    && ${PYENV_ROOT}/versions/3.8.12/bin/python3.8 -m venv "${LIB_DIR}/${VENV_NAME}" \
     && . "${LIB_DIR}/${VENV_NAME}/bin/activate" \
     && pip install --no-cache-dir --upgrade setuptools pip \
     && pip install --no-cache-dir -r "requirements.txt" \
@@ -152,30 +149,16 @@ RUN sudo chown -R "${USER_NAME}" "${PACKAGE_DIR}" \
     # install bcs
     && pip install --editable . \
     # install Assimulo (dep of PyFMI 2.8+)
-    && cd "${EXT_DIR}/Assimulo-3.2.5" \
-    && python setup.py install --sundials-home="${HOME}/sundials" --blas-home="${HOME}/lapack/lib" --lapack-home="${HOME}/lapack" \
+    && cd "${EXT_DIR}/Assimulo-3.2.9" \
+    && python setup.py install --sundials-home="${EXT_DIR}/sundials" --blas-home="${EXT_DIR}/lapack/lib" --lapack-home="${EXT_DIR}/lapack" \
     # install PyFMI
     && cd "${EXT_DIR}/PyFMI" \
     && python "setup.py" install --fmil-home="${FMIL_HOME}" \
     && cd "${PACKAGE_DIR}" \
-    && . "scripts/setup/install_solvers.sh" \
-    && cd "${EXT_DIR}" \
-    && wget "https://github.com/RJT1990/pyflux/archive/0.4.15.zip" \
-    && unzip "0.4.15.zip" && rm "0.4.15.zip" \
-    && cd "pyflux-0.4.15" \
-    && pip install --no-cache-dir .
+    && . "scripts/setup/install_solvers.sh"
 
-# install jupyter lab extensions for plotly
-# if jupyter lab build fails with webpack optimization, set --minimize=False
 # copy .rc files to user home for use on startup. This can be further configured by user.
 RUN cd "${PACKAGE_DIR}" \
-    && . "${LIB_DIR}/${VENV_NAME}/bin/activate" \
-    && export NODE_OPTIONS="--max-old-space-size=8192" \
-    && jupyter labextension install @jupyter-widgets/jupyterlab-manager@2 --no-build \
-    && jupyter labextension install jupyterlab-plotly --no-build \
-    && jupyter labextension install plotlywidget@1.5.0 --no-build \
-    && jupyter lab build --dev-build=False --minimize=True \
-    && unset NODE_OPTIONS \
     && cp "${PACKAGE_DIR}/scripts/setup/.bashrc" "$HOME/.bashrc" \
     && cp "${PACKAGE_DIR}/scripts/setup/.pdbrc" "$HOME/.pdbrc" \
     && chmod +x "${PACKAGE_DIR}/scripts/setup/jupyter_lab_bkgrnd.sh"

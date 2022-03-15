@@ -16,10 +16,8 @@ from BuildingControlsSimulator.DataClients.DataStates import STATES
 
 class OutputAnalysis(object):
     """OutputAnalysis
-
     Example:
     ```python
-
 
     ```
     """
@@ -567,20 +565,21 @@ class OutputAnalysis(object):
                 secondary_y=False,
             )
 
-            fig.add_trace(
-                go.Scatter(
-                    x=output_df[STATES.DATE_TIME],
-                    y=output_df[STATES.TEMPERATURE_STP_HEAT]
-                    - self.controller_options[idx]["deadband"],
-                    mode="lines",
-                    line=dict(color="black", width=1, dash="dot"),
-                    name="deadband_heat_min",
-                    hoverlabel={"namelength": -1},
-                ),
-                row=row,
-                col=col,
-                secondary_y=False,
-            )
+            if "deadband" in self.controller_options[idx]:
+                fig.add_trace(
+                    go.Scatter(
+                        x=output_df[STATES.DATE_TIME],
+                        y=output_df[STATES.TEMPERATURE_STP_HEAT]
+                        - self.controller_options[idx]["deadband"],
+                        mode="lines",
+                        line=dict(color="black", width=1, dash="dot"),
+                        name="deadband_heat_min",
+                        hoverlabel={"namelength": -1},
+                    ),
+                    row=row,
+                    col=col,
+                    secondary_y=False,
+                )
 
         if not self.heat_only:
             fig.add_trace(
@@ -597,21 +596,21 @@ class OutputAnalysis(object):
                 col=col,
                 secondary_y=False,
             )
-
-            fig.add_trace(
-                go.Scatter(
-                    x=output_df[STATES.DATE_TIME],
-                    y=output_df[STATES.TEMPERATURE_STP_COOL]
-                    + self.controller_options[idx]["deadband"],
-                    mode="lines",
-                    line=dict(color="black", width=1, dash="dot"),
-                    name="deadband_cool_max",
-                    hoverlabel={"namelength": -1},
-                ),
-                row=row,
-                col=col,
-                secondary_y=False,
-            )
+            if "deadband" in self.controller_options[idx]:
+                fig.add_trace(
+                    go.Scatter(
+                        x=output_df[STATES.DATE_TIME],
+                        y=output_df[STATES.TEMPERATURE_STP_COOL]
+                        + self.controller_options[idx]["deadband"],
+                        mode="lines",
+                        line=dict(color="black", width=1, dash="dot"),
+                        name="deadband_cool_max",
+                        hoverlabel={"namelength": -1},
+                    ),
+                    row=row,
+                    col=col,
+                    secondary_y=False,
+                )
 
         # changes in calendar events
         if STATES.CALENDAR_EVENT in output_df.columns:

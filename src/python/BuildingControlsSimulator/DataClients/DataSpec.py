@@ -213,6 +213,7 @@ def convert_spec(
         ),
     )
     _df = _df.sort_values(dest_spec.datetime_column, ascending=True)
+
     return _df
 
 

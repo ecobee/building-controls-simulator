@@ -20,6 +20,7 @@ from BuildingControlsSimulator.DataClients.DataSpec import (
     FlatFilesSpec,
     DonateYourDataSpec,
     convert_spec,
+    get_dtype_mapper,
 )
 from BuildingControlsSimulator.DataClients.DateTimeChannel import DateTimeChannel
 from BuildingControlsSimulator.DataClients.ThermostatChannel import ThermostatChannel
@@ -125,7 +126,7 @@ class DataClient:
         # because in observed cases of this the extra record has 0 runtime.
         _runtime_sum_column = "sum_runtime"
         _data[_runtime_sum_column] = _data[
-            set(self.internal_spec.equipment.spec.keys()) & set(_data.columns)
+            list(set(self.internal_spec.equipment.spec.keys()) & set(_data.columns))
         ].sum(axis=1)
         # last duplicate datetime value will have maximum sum_runtime
         _data = _data.sort_values(
@@ -228,9 +229,9 @@ class DataClient:
             # need to add a NA_code to stop fillna from clobbering columns
             # where NA means something
             na_code_name = "NA_code"
-            _data[STATES.CALENDAR_EVENT].cat.add_categories(
-                new_categories=na_code_name, inplace=True
-            )
+            _data[STATES.CALENDAR_EVENT] = _data[
+                STATES.CALENDAR_EVENT
+            ].cat.add_categories(new_categories=na_code_name)
             _data[STATES.CALENDAR_EVENT] = _data[STATES.CALENDAR_EVENT].fillna(
                 na_code_name
             )
@@ -250,14 +251,19 @@ class DataClient:
                 [STATES.CALENDAR_EVENT],
             ] = pd.NA
 
+            # remove any columns that are all null
+            _data = _data.dropna(axis="columns", how="all")
+
             # finally convert dtypes to final types now that nulls in
             # non-nullable columns have been properly filled or removed
-            _data = convert_spec(
-                _data,
-                src_spec=self.internal_spec,
-                dest_spec=self.internal_spec,
-                src_nullable=True,
-                dest_nullable=False,
+            # internal datatypes are not nullable
+            _data = _data.astype(
+                dtype=get_dtype_mapper(
+                    df_cols=_data.columns,
+                    dest_spec=self.internal_spec,
+                    src_nullable=True,
+                    dest_nullable=False,
+                ),
             )
 
         else:
@@ -269,7 +275,7 @@ class DataClient:
                 + f"with min_sim_period={self.sim_config['min_sim_period']}. "
                 + f"The given data file runs from {_min_datetime}"
                 + f" to {_max_datetime}. "
-                + f"If there is overlap between these two time periods then "
+                + "If there is overlap between these two time periods then "
                 + "there is too much missing data. If there is no overlap "
                 + "consider altering your sim_config start_utc and end_utc."
             )
