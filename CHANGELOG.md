@@ -1,5 +1,18 @@
+# 0.6.0-alpha (2022-03-15)
 
-# 0.5.0 (2021-06-13)
+## Features and Improvements
+- update dependencies to latest versions (see diff of requirements.txt)
+- DataSpec and conversions support nullable and non-nullable data types in numpy and pandas
+
+## Breaking changes
+- Previously undefined behaviour of nullable data types must now be defined in conversions
+
+## Bug fixes
+- fixed make_epw_file and adding test_make_epw_file
+- fixed DataClient issue with data type conversion after filling nulls
+- fixed DataClient.py removal of columns that get truncated to all NA
+
+# 0.5.0-alpha (2021-06-13)
 
 ## Features and Improvements
 - simplify `.env` setup and usage
