@@ -20,6 +20,7 @@ from BuildingControlsSimulator.DataClients.DataSpec import (
     FlatFilesSpec,
     DonateYourDataSpec,
     convert_spec,
+    get_dtype_mapper,
 )
 from BuildingControlsSimulator.DataClients.DateTimeChannel import DateTimeChannel
 from BuildingControlsSimulator.DataClients.ThermostatChannel import ThermostatChannel
@@ -222,7 +223,7 @@ class DataClient:
                 (_data[self.internal_spec.datetime_column] >= _start_utc)
                 & (_data[self.internal_spec.datetime_column] <= _end_utc)
             ].reset_index(drop=True)
-
+            
             # bfill to interpolate missing data
             # first and last records must be full because we used full data periods
             # need to add a NA_code to stop fillna from clobbering columns
@@ -252,12 +253,14 @@ class DataClient:
 
             # finally convert dtypes to final types now that nulls in
             # non-nullable columns have been properly filled or removed
-            _data = convert_spec(
-                _data,
-                src_spec=self.internal_spec,
-                dest_spec=self.internal_spec,
-                src_nullable=True,
-                dest_nullable=False,
+            # internal datatypes are not nullable
+            _data = _data.astype(
+                dtype=get_dtype_mapper(
+                    df_cols=_data.columns,
+                    dest_spec=self.internal_spec,
+                    src_nullable=True,
+                    dest_nullable=False,
+                ),
             )
 
         else:
@@ -269,7 +272,7 @@ class DataClient:
                 + f"with min_sim_period={self.sim_config['min_sim_period']}. "
                 + f"The given data file runs from {_min_datetime}"
                 + f" to {_max_datetime}. "
-                + f"If there is overlap between these two time periods then "
+                + "If there is overlap between these two time periods then "
                 + "there is too much missing data. If there is no overlap "
                 + "consider altering your sim_config start_utc and end_utc."
             )
