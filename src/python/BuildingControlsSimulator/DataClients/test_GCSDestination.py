@@ -110,7 +110,7 @@ class TestGCSDestination:
             src_spec=self.data_client.destination.data_spec,
             dest_spec=Internal(),
             src_nullable=True,
-            dest_nullable=True,
+            dest_nullable=False,
         )
 
         # remove states not in dest spec
@@ -123,4 +123,4 @@ class TestGCSDestination:
             if not _state:
                 _df = _df.drop(columns=[_col])
 
-        assert _df.equals(cr_df)
+        pd.testing.assert_frame_equal(_df, cr_df)

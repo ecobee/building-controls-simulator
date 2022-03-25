@@ -110,6 +110,7 @@ class TestLocalSource:
         for dc in self.data_clients:
             if dc.sim_config["identifier"] == "DYD_dummy_data":
                 # verify that data bfill works with full_data_periods
+
                 assert (
                     pytest.approx(21.6666316986084)
                     == dc.thermostat.data.iloc[

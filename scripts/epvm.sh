@@ -21,7 +21,7 @@ if [[ -z "${TO_SET_VERSION}" ]]; then
   printUsage
 elif [[ "${TO_SET_VERSION}" == "-h" ]]; then
   printUsage
-elif [[ "${TO_SET_VERSION}" =~ ^("8-9-0"|"9-0-1"|"9-1-0"|"9-2-0"|"9-3-0"|"9-4-0")$ ]]; then
+elif [[ "${TO_SET_VERSION}" =~ ^("8-9-0"|"9-0-1"|"9-1-0"|"9-2-0"|"9-3-0"|"9-4-0"|"9-5-0"|"9-6-0")$ ]]; then
   
   # set -u
   _NEW_EPLUS_NAME="EnergyPlus-${TO_SET_VERSION}"

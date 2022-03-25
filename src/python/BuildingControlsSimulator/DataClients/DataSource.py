@@ -174,7 +174,7 @@ class DataSource(ABC):
             raise ValueError(f"Unsupported extension: {extension}")
 
         # get intersection of columns
-        _df = _df[set(data_spec.full.columns) & set(_df.columns)]
+        _df = _df[list(set(data_spec.full.columns) & set(_df.columns))]
         # convert datetime_column to pd datetime
         _df[data_spec.datetime_column] = pd.to_datetime(_df[data_spec.datetime_column])
 

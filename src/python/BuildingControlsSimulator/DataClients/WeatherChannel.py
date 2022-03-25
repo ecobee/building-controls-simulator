@@ -30,7 +30,7 @@ class WeatherChannel(DataChannel):
     """Client for weather data."""
 
     epw_path = attr.ib(default=None)
-    epw_data = attr.ib(factory=dict)
+    epw_data = attr.ib(factory=pd.DataFrame)
     epw_meta = attr.ib(factory=dict)
     epw_meta_lines = attr.ib(factory=list)
     epw_fname = attr.ib(default=None)
@@ -154,14 +154,26 @@ class WeatherChannel(DataChannel):
         self.epw_data = epw_data
 
     def merge_data_with_epw(self, data, epw_data, datetime_channel):
+        """
+        assumes datetime_channel has canonical sample rate
+        1. resample epw_data to datetime_channel period
+        2. use given data and fill any missing epw columns with epw_data
+        """
         # add datetime column for merge with fill data
-        data = pd.concat(
-            [
-                datetime_channel.data[datetime_channel.spec.datetime_column],
-                data,
-            ],
-            axis="columns",
-        ).rename(columns={datetime_channel.spec.datetime_column: self.datetime_column})
+        if not data.empty:
+            data = pd.concat(
+                [
+                    datetime_channel.data[datetime_channel.spec.datetime_column],
+                    data,
+                ],
+                axis="columns",
+            )
+        else:
+            data = datetime_channel.data.copy(deep=True)
+
+        data = data.rename(
+            columns={datetime_channel.spec.datetime_column: self.datetime_column}
+        )
 
         # using annual TMY there may be missing rows at beginning
         # cycle from endtime to give full UTC year
@@ -244,7 +256,7 @@ class WeatherChannel(DataChannel):
         epw_data = epw_data[
             (epw_data[self.datetime_column] >= min(data[self.datetime_column]))
             & (epw_data[self.datetime_column] <= max(data[self.datetime_column]))
-        ].reset_index()
+        ].reset_index(drop=True)
 
         # overwrite epw fill with input cols
         for _col, _epw_col in EnergyPlusWeather.output_rename_dict.items():
@@ -271,7 +283,9 @@ class WeatherChannel(DataChannel):
     ):
         """Generate epw file in local time"""
         if self.epw_data.empty:
-            raise ValueError(f"No input: epw_data={epw_data} and epw_path={epw_path}")
+            raise ValueError(
+                f"No input: epw_data={self.epw_data} and epw_path={self.epw_path}"
+            )
 
         self.epw_step_size_seconds = epw_step_size_seconds
 
@@ -286,11 +300,21 @@ class WeatherChannel(DataChannel):
         )
         if _cur_epw_data_period < self.epw_step_size_seconds:
             # downsample data
+            non_numeric_cols = ["data_source_unct"]
+            numeric_cols = [
+                col for col in self.epw_data.columns if col not in non_numeric_cols
+            ]
+
             self.epw_data = (
                 self.epw_data.set_index(self.epw_data[self.datetime_column])
                 .resample(f"{self.epw_step_size_seconds}S")
-                .mean()
-                .reset_index()
+                .agg(
+                    {
+                        col: "mean" if col in numeric_cols else "max"
+                        for col in self.epw_data.columns
+                    }
+                )
+                .reset_index(drop=True)
             )
         elif _cur_epw_data_period > self.epw_step_size_seconds:
             # upsample data
