@@ -95,7 +95,7 @@ nbclient==0.5.13
 nbconvert==6.4.4
 nbformat==5.2.0
 nest-asyncio==1.5.4
-notebook==6.4.9
+notebook==6.4.12
 notebook-shim==0.1.0
 numba==0.55.1
 numexpr==2.8.1
