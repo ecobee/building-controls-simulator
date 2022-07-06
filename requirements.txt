@@ -79,7 +79,7 @@ jupyterlab-server==2.10.3
 jupyterlab-widgets==1.0.2
 kiwisolver==1.4.0
 llvmlite==0.38.0
-lxml==4.8.0
+lxml==4.9.1
 MarkupSafe==2.1.0
 matplotlib==3.5.1
 matplotlib-inline==0.1.3
