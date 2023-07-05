@@ -51,7 +51,7 @@ google-crc32c==1.3.0
 google-resumable-media==2.3.2
 googleapis-common-protos==1.55.0
 gprof2dot==2021.2.21
-grpcio==1.44.0
+grpcio==1.53.0
 grpcio-status==1.44.0
 h5pyd==0.8.0
 httplib2==0.20.4
