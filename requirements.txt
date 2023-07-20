@@ -130,7 +130,7 @@ pycparser==2.21
 pydata-google-auth==1.4.0
 pydot3k==1.0.17
 pyflakes==2.4.0
-Pygments==2.11.2
+Pygments==2.15.0
 PyJWT==2.3.0
 pyparsing==3.0.7
 pyrsistent==0.18.1
